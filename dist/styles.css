@@ -2367,8 +2367,8 @@ body {
 
 .annotation-label {
   paint-order: stroke fill;
-  stroke: rgba(239, 230, 214, .9);
-  stroke-width: 2.5px;
+  stroke: rgba(239, 230, 214, .72);
+  stroke-width: .6px;
   stroke-linejoin: round;
   font: 600 4px/1 var(--sans);
   letter-spacing: -.06em;
