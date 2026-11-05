@@ -38,11 +38,16 @@ const resultCode = $("#resultCode");
 const resultName = $("#resultName");
 const resultTagline = $("#resultTagline");
 const resultKeywords = $("#resultKeywords");
+const resultFit = $("#resultFit");
 const resultSecondary = $("#resultSecondary");
 const resultConfidence = $("#resultConfidence");
 const resultCopy = $("#resultCopy");
+const resultSynthesis = $("#resultSynthesis");
+const resultFitList = $("#resultFitList");
 const resultContexts = $("#resultContexts");
 const resultEvidence = $("#resultEvidence");
+const resultAnalysis = $("#resultAnalysis");
+const resultConnections = $("#resultConnections");
 const resultMethod = $("#resultMethod");
 const showAllTypes = $("#showAllTypes");
 const restartButton = $("#restartButton");
@@ -693,10 +698,13 @@ function completeClassification() {
   if (classificationComplete || !captured.front || !captured.profileA || !captured.profileB) return;
   const earValues = Object.values(captured.ears).filter((item) => Number.isFinite(item.earLength));
   const earLength = mean(earValues.map((item) => item.earLength));
+  const earTopToBrow = mean(earValues.map((item) => item.earTopToBrow));
+  const earBottomToNose = mean(earValues.map((item) => item.earBottomToNose));
   const earBalance = earValues.length === 2
     ? clamp(100 - (Math.abs(earValues[0].earLength - earValues[1].earLength) / mean(earValues[0].earLength, earValues[1].earLength)) * 100, 0, 100)
     : NaN;
   const profileDepth = mean(captured.profileA.noseDepth, captured.profileB.noseDepth);
+  const profileDepthSpread = Math.abs(captured.profileA.noseDepth - captured.profileB.noseDepth);
   const captureQuality = mean(captured.front.captureQuality, captured.profileA.captureQuality, captured.profileB.captureQuality);
   const completeness = earValues.length === 2 ? 100 : earValues.length === 1 ? 88 : 76;
   finalMeasurement = {
@@ -704,7 +712,11 @@ function completeClassification() {
     noseDepth: profileDepth,
     bridgeDepth: mean(captured.profileA.bridgeDepth, captured.profileB.bridgeDepth),
     chinDepth: mean(captured.profileA.chinDepth, captured.profileB.chinDepth),
+    cheekDepthBalance: mean(captured.profileA.cheekDepthBalance, captured.profileB.cheekDepthBalance),
+    profileDepthSpread,
     earLength,
+    earTopToBrow,
+    earBottomToNose,
     earBalance,
     confidence: Math.round(captureQuality * 0.88 + completeness * 0.12),
     earCount: earValues.length,
@@ -872,6 +884,243 @@ function evidenceNote(key, typeKey) {
   return notes[key] ?? "얼굴 내부의 상대값입니다.";
 }
 
+function resultElement(tag, className, text) {
+  const element = document.createElement(tag);
+  if (className) element.className = className;
+  if (text !== undefined) element.textContent = text;
+  return element;
+}
+
+function measurementBand(value, low, high, labels) {
+  if (!Number.isFinite(value)) return "측정 제외";
+  if (value < low) return labels[0];
+  if (value > high) return labels[2];
+  return labels[1];
+}
+
+function signedValue(value, digits = 1) {
+  if (!Number.isFinite(value)) return "—";
+  return `${value > 0 ? "+" : ""}${value.toFixed(digits)}`;
+}
+
+function deriveResultValues(values) {
+  const thirds = [values.upperThird, values.middleThird, values.lowerThird];
+  const thirdsDeviation = mean(...thirds.map((value) => Math.abs(value - 33.33)));
+  const thirdEntries = [
+    ["상정", values.upperThird],
+    ["중정", values.middleThird],
+    ["하정", values.lowerThird],
+  ].sort((a, b) => b[1] - a[1]);
+  const five = [values.outerLeft, values.leftEye, values.eyeGap, values.rightEye, values.outerRight];
+  const fiveDeviation = mean(...five.map((value) => Math.abs(value - 1)));
+  const outerAverage = mean(values.outerLeft, values.outerRight);
+  const openMeasure = mean(values.eyeGap, outerAverage);
+  return {
+    thirdsDeviation,
+    thirdEntries,
+    thirdLead: thirdEntries[0][1] - thirdEntries[1][1],
+    fiveDeviation,
+    outerAverage,
+    openMeasure,
+  };
+}
+
+function primaryReason(typeKey, values, derived) {
+  const thirdLeader = derived.thirdEntries[0];
+  const reasons = {
+    balance: `삼정의 평균 편차가 ${derived.thirdsDeviation.toFixed(1)}%p이고 오안의 기준 편차가 ${derived.fiveDeviation.toFixed(2)}배로, 세로와 가로 비례가 함께 비교적 고르게 나타났습니다.`,
+    upper: `상정이 ${values.upperThird.toFixed(1)}%로 가장 길고, 다음 구역보다 ${derived.thirdLead.toFixed(1)}%p 앞서 상부의 세로 비중이 유형 점수를 높였습니다.`,
+    middle: `중정이 ${values.middleThird.toFixed(1)}%로 가장 길며, 코끝 상대 깊이 ${values.noseDepth.toFixed(1)}%가 얼굴 중심축의 강조를 함께 지지했습니다.`,
+    lower: `하정이 ${values.lowerThird.toFixed(1)}%로 가장 길고 턱/광대 비율이 ${values.jawCheek.toFixed(1)}%로 나타나 하관의 세로·가로 지지가 함께 반영되었습니다.`,
+    open: `눈 사이와 양옆 바깥 구간의 평균이 눈 하나 너비의 ${derived.openMeasure.toFixed(2)}배로, 오안의 여백이 바깥으로 열리는 방향에 가까웠습니다.`,
+    focused: `눈 사이와 양옆 바깥 구간의 평균이 눈 하나 너비의 ${derived.openMeasure.toFixed(2)}배로, 오안의 여백이 중심 쪽으로 응집되는 방향에 가까웠습니다.`,
+    structure: `턱/광대 비율 ${values.jawCheek.toFixed(1)}%, 얼굴 너비/길이 ${values.faceRatio.toFixed(1)}%, 코끝 상대 깊이 ${values.noseDepth.toFixed(1)}%가 함께 윤곽의 구조 점수를 높였습니다.`,
+  };
+  return reasons[typeKey] ?? `${thirdLeader[0]} ${thirdLeader[1].toFixed(1)}%가 현재 분류에서 가장 강한 측정 축으로 작동했습니다.`;
+}
+
+function createFitRow(typeKey, score, rank) {
+  const type = FACE_TYPES[typeKey];
+  const scoreValue = Math.round(clamp(score) * 100);
+  const row = resultElement("div", "fit-row");
+  const label = resultElement("div", "fit-label");
+  label.append(
+    resultElement("span", "fit-rank", String(rank).padStart(2, "0")),
+    resultElement("strong", "", type.name),
+  );
+  const track = resultElement("div", "fit-track");
+  const fill = resultElement("i", "fit-fill");
+  fill.style.setProperty("--fit", `${scoreValue}%`);
+  track.append(fill);
+  row.append(label, track, resultElement("b", "fit-value", `${scoreValue}점`));
+  return row;
+}
+
+function createRatioVisual(items, variant) {
+  const visual = resultElement("div", `ratio-visual ${variant}`);
+  for (const item of items) {
+    const segment = resultElement("div", "ratio-segment");
+    segment.style.flexGrow = Math.max(0.15, item.value);
+    segment.append(
+      resultElement("span", "", item.label),
+      resultElement("strong", "", `${item.value.toFixed(item.digits ?? 1)}${item.unit ?? ""}`),
+    );
+    visual.append(segment);
+  }
+  return visual;
+}
+
+function createAnalysisFact(labelText, valueText, stateText, copyText, tone = "neutral") {
+  const article = resultElement("article", "analysis-fact");
+  const heading = resultElement("div", "analysis-fact-heading");
+  heading.append(
+    resultElement("span", "", labelText),
+    resultElement("b", `analysis-state is-${tone}`, stateText),
+  );
+  article.append(
+    heading,
+    resultElement("strong", "analysis-value", valueText),
+    resultElement("p", "", copyText),
+  );
+  return article;
+}
+
+function createAnalysisPanel(index, title, summary, visual, facts, note) {
+  const panel = resultElement("article", "analysis-panel");
+  const heading = resultElement("header", "analysis-panel-heading");
+  const titleBlock = resultElement("div", "");
+  titleBlock.append(
+    resultElement("span", "analysis-index", index),
+    resultElement("h4", "", title),
+  );
+  heading.append(titleBlock, resultElement("p", "", summary));
+  panel.append(heading);
+  if (visual) panel.append(visual);
+  const factGrid = resultElement("div", "analysis-facts");
+  factGrid.append(...facts);
+  panel.append(factGrid);
+  if (note) panel.append(resultElement("p", "analysis-note", note));
+  return panel;
+}
+
+function renderDetailedAnalysis(values) {
+  const derived = deriveResultValues(values);
+  const thirdsState = derived.thirdsDeviation <= 1.5 ? "고른 편" : derived.thirdsDeviation <= 3.2 ? "완만한 차이" : "강조 구역 있음";
+  const fiveState = derived.fiveDeviation <= 0.1 ? "기준에 가까움" : derived.fiveDeviation <= 0.24 ? "완만한 차이" : "구간 차이 큼";
+  const spaceState = measurementBand(derived.openMeasure, 0.96, 1.08, ["응집 방향", "중간 범위", "개방 방향"]);
+  const upperEstimated = `상정 ${values.upperThird.toFixed(1)} · 중정 ${values.middleThird.toFixed(1)} · 하정 ${values.lowerThird.toFixed(1)}%`;
+
+  const thirdsVisual = createRatioVisual([
+    { label: "상정", value: values.upperThird, unit: "%" },
+    { label: "중정", value: values.middleThird, unit: "%" },
+    { label: "하정", value: values.lowerThird, unit: "%" },
+  ], "is-thirds");
+  const thirdsFacts = [
+    createAnalysisFact("세 구역 분포", upperEstimated, thirdsState, `가장 긴 구역은 ${derived.thirdEntries[0][0]}이며, 두 번째 구역과의 차이는 ${derived.thirdLead.toFixed(1)}%p입니다.`, derived.thirdsDeviation <= 1.5 ? "balanced" : "accent"),
+    createAnalysisFact("삼정 평균 편차", `${derived.thirdsDeviation.toFixed(1)}%p`, "33.3% 기준", "각 구역이 전체의 3분의 1에서 평균적으로 얼마나 떨어졌는지를 계산한 내부 비교값입니다."),
+  ];
+
+  const fiveVisual = createRatioVisual([
+    { label: "좌외", value: values.outerLeft, unit: "×", digits: 2 },
+    { label: "좌안", value: values.leftEye, unit: "×", digits: 2 },
+    { label: "미간", value: values.eyeGap, unit: "×", digits: 2 },
+    { label: "우안", value: values.rightEye, unit: "×", digits: 2 },
+    { label: "우외", value: values.outerRight, unit: "×", digits: 2 },
+  ], "is-five");
+  const fiveFacts = [
+    createAnalysisFact("중앙·바깥 여백", `${derived.openMeasure.toFixed(2)}배`, spaceState, "눈 사이와 양옆 바깥 구간을 평균 눈 너비와 비교해 개방·응집 방향을 판단합니다.", spaceState === "중간 범위" ? "balanced" : "accent"),
+    createAnalysisFact("오안 평균 편차", `${derived.fiveDeviation.toFixed(2)}배`, fiveState, "다섯 구간이 각각 눈 하나 너비인 1.00에 얼마나 가까운지를 평균한 값입니다."),
+    createAnalysisFact("양쪽 눈 크기 관계", `${values.leftEye.toFixed(2)} / ${values.rightEye.toFixed(2)}배`, Math.abs(values.leftEye - values.rightEye) <= 0.08 ? "가까운 편" : "차이 있음", "왼쪽과 오른쪽 눈 너비를 두 눈의 평균값으로 나눈 상대 비교입니다."),
+  ];
+
+  const featureFacts = [
+    createAnalysisFact("코 너비 / 얼굴 너비", `${values.noseWidth.toFixed(1)}%`, measurementBand(values.noseWidth, 20, 26, ["좁은 구간", "중간 구간", "넓은 구간"]), "콧방울 양끝의 정면 너비가 얼굴 너비에서 차지하는 비율입니다."),
+    createAnalysisFact("코 너비 / 눈 사이", `${values.noseEyeGap.toFixed(2)}배`, measurementBand(values.noseEyeGap, 0.85, 1.15, ["눈 사이보다 좁음", "서로 가까움", "눈 사이보다 넓음"]), "코 너비를 두 눈 안쪽 사이 거리와 직접 비교한 값입니다."),
+    createAnalysisFact("입 너비 / 코 너비", `${values.mouthNose.toFixed(2)}배`, measurementBand(values.mouthNose, 1.35, 1.65, ["가까운 비율", "중간 비율", "입 너비 우세"]), "입꼬리 사이 너비가 콧방울 너비의 몇 배인지 보여줍니다."),
+    createAnalysisFact("인중 / 하정", `${values.philtrumLower.toFixed(1)}%`, measurementBand(values.philtrumLower, 20, 28, ["짧은 구간", "중간 구간", "긴 구간"]), "코 아래에서 윗입술까지가 하정 전체에서 차지하는 비율입니다."),
+    createAnalysisFact("눈꼬리 평균 기울기", `${signedValue(values.eyeTilt)}°`, "표정 영향 큼", "정면 한 장의 기울기이며 눈썹·표정·촬영 각도 때문에 유형 점수에는 사용하지 않습니다.", "caution"),
+    createAnalysisFact("입꼬리 상대 높이", `${signedValue(values.mouthLift)}%`, "표정 영향 큼", "입 중심과 양쪽 입꼬리의 높이 차이이며 표정에 민감해 설명용으로만 표시합니다.", "caution"),
+  ];
+
+  const contourFacts = [
+    createAnalysisFact("턱 너비 / 광대 너비", `${values.jawCheek.toFixed(1)}%`, measurementBand(values.jawCheek, 76, 87, ["광대 우세", "중간 구조", "턱 지지 강함"]), "정면에서 광대 폭에 비해 턱 폭이 어느 정도인지 나타냅니다."),
+    createAnalysisFact("광대 너비 / 얼굴 길이", `${values.cheekWidth.toFixed(1)}%`, measurementBand(values.cheekWidth, 41, 49, ["세로감 우세", "중간 범위", "가로감 우세"]), "광대 사이 너비를 얼굴 메시의 세로 길이와 비교했습니다."),
+    createAnalysisFact("얼굴 너비 / 길이", `${values.faceRatio.toFixed(1)}%`, measurementBand(values.faceRatio, 68, 82, ["세로형 방향", "중간 범위", "가로형 방향"]), "정면 얼굴 전체의 가로와 세로 관계를 나타내는 내부 비율입니다."),
+    createAnalysisFact("코끝 상대 깊이", `${values.noseDepth.toFixed(1)}%`, measurementBand(values.noseDepth, 4, 7, ["낮은 구간", "중간 구간", "높은 구간"]), "좌우 측면에서 볼 평면과 코끝의 메시 깊이 차이를 평균했습니다."),
+    createAnalysisFact("콧대 / 턱끝 상대 깊이", `${values.bridgeDepth.toFixed(1)} / ${values.chinDepth.toFixed(1)}%`, "측면 평균", "두 측면에서 콧대와 턱끝이 볼 평면에서 떨어진 정도를 같은 기준으로 비교했습니다."),
+    createAnalysisFact("양측면 코깊이 차이", `${values.profileDepthSpread.toFixed(1)}%p`, values.profileDepthSpread <= 2 ? "가까운 편" : "차이 있음", "왼쪽·오른쪽 측면에서 얻은 코끝 상대 깊이의 차이로, 촬영 일관성을 함께 확인하는 값입니다."),
+    createAnalysisFact("볼 평면 깊이 차이", `${values.cheekDepthBalance.toFixed(1)}%`, "설명용", "측면 촬영에서 양 볼 메시의 깊이 차이를 평균한 값이며 유형 점수에는 직접 사용하지 않습니다."),
+    createAnalysisFact("좌우 상대 균형", `${values.symmetry.toFixed(1)}점`, measurementBand(values.symmetry, 86, 94, ["차이 감지", "중간 범위", "가까운 편"]), "눈·코·입·턱 중심의 정면 차이와, 양쪽 귀가 모두 있으면 귀 길이 차이를 함께 반영합니다."),
+  ];
+  if (Number.isFinite(values.earLength)) {
+    contourFacts.push(
+      createAnalysisFact("귀 길이 / 얼굴 길이", `${values.earLength.toFixed(1)}%`, measurementBand(values.earLength, 27, 35, ["짧은 구간", "중간 구간", "긴 구간"]), `수동으로 지정한 ${values.earCount}면의 귀 위·아래 점을 얼굴 길이와 비교했습니다.`, "manual"),
+      createAnalysisFact("귀 위·아래 정렬", `${signedValue(values.earTopToBrow)} / ${signedValue(values.earBottomToNose)}%`, "수동 기준", "첫 값은 귀 윗점과 미간 높이, 두 번째 값은 귀 아랫점과 코 아래 높이의 차이입니다.", "manual"),
+    );
+    if (Number.isFinite(values.earBalance)) {
+      contourFacts.push(createAnalysisFact("양쪽 귀 길이 균형", `${values.earBalance.toFixed(1)}점`, "두 귀 비교", "좌우 귀 길이의 상대 차이를 100점 기준으로 환산해 정면 균형 점수와 함께 사용했습니다.", "manual"));
+    }
+  }
+
+  resultAnalysis.replaceChildren(
+    createAnalysisPanel("01", "삼정 · 얼굴의 세로 분할", `${derived.thirdEntries[0][0]} ${derived.thirdEntries[0][1].toFixed(1)}%가 가장 크게 측정되었습니다.`, thirdsVisual, thirdsFacts, "상정은 실제 머리카락선이 아니라 얼굴 메시 상단을 사용한 추정값입니다."),
+    createAnalysisPanel("02", "오안 · 얼굴의 다섯 가로 구간", `평균 눈 너비 1.00을 기준으로 다섯 구간을 나란히 비교합니다.`, fiveVisual, fiveFacts, "오안의 1.00은 절대적인 정상값이 아니라 이 프로토타입이 사용하는 비교 기준입니다."),
+    createAnalysisPanel("03", "오관 · 코·입·인중의 관계", "각 부위의 단독 크기보다 서로의 비례를 읽습니다.", null, featureFacts, "눈꼬리와 입꼬리 값은 표정에 민감해 유형 결정에서 제외했습니다."),
+    createAnalysisPanel("04", "윤곽과 입체 · 정면과 양측면", "광대·턱의 너비와 코·콧대·턱끝의 상대 깊이를 함께 봅니다.", null, contourFacts, "깊이값은 밀리미터 단위의 3D 실측이 아니라 카메라 메시 안의 상대 좌표입니다."),
+  );
+  return derived;
+}
+
+function renderSynthesis(values, derived) {
+  const top = classifiedType.ranked[0];
+  const second = classifiedType.ranked[1];
+  const gap = Math.round((top[1] - second[1]) * 100);
+  const isMixed = gap <= 7;
+  const box = resultElement("div", "synthesis-callout");
+  box.append(
+    resultElement("span", "synthesis-label", isMixed ? "복합 경향" : "주요 경향"),
+    resultElement("h4", "", isMixed ? `${FACE_TYPES[top[0]].name}과 ${FACE_TYPES[second[0]].name}이 가깝습니다.` : `${FACE_TYPES[top[0]].name}이 가장 뚜렷합니다.`),
+    resultElement("p", "", primaryReason(top[0], values, derived)),
+  );
+  if (isMixed) {
+    box.append(resultElement("p", "synthesis-sub", `두 유형의 적합도 차이는 ${gap}점입니다. 하나의 유형으로 단정하기보다 두 측정 축이 함께 나타난 결과로 읽는 편이 자연스럽습니다.`));
+  } else {
+    box.append(resultElement("p", "synthesis-sub", `두 번째 유형과의 적합도 차이는 ${gap}점입니다. 아래 상세 분석에서 어떤 값이 이 차이를 만들었는지 확인할 수 있습니다.`));
+  }
+  resultSynthesis.replaceChildren(box);
+  resultFitList.replaceChildren(...classifiedType.ranked.slice(0, 3).map(([key, score], index) => createFitRow(key, score, index + 1)));
+}
+
+function renderConnections(values, derived) {
+  const top = classifiedType.ranked[0];
+  const second = classifiedType.ranked[1];
+  const thirdAxis = derived.thirdEntries[0];
+  const cards = [
+    ["가장 강한 축", FACE_TYPES[top[0]].name, primaryReason(top[0], values, derived)],
+    ["함께 작동한 축", FACE_TYPES[second[0]].name, primaryReason(second[0], values, derived)],
+    [
+      "엇갈림도 결과입니다",
+      `${thirdAxis[0]} ${thirdAxis[1].toFixed(1)}% · 오안 ${derived.openMeasure.toFixed(2)}배`,
+      "세로 비례, 가로 여백, 윤곽 깊이는 서로 다른 축이므로 한 방향으로 일치하지 않을 수 있습니다. 이 차이를 억지로 한 성격으로 합치지 않고 복합적인 시각 인상으로 남깁니다.",
+    ],
+    [
+      "판정에 넣지 않은 값",
+      "눈꼬리 · 입꼬리 · 눈썹",
+      "표정, 화장, 정리 방식, 순간적인 카메라 각도에 크게 흔들리는 항목은 측정값을 보여주더라도 일곱 유형의 점수에는 넣지 않았습니다.",
+    ],
+  ];
+  resultConnections.replaceChildren(...cards.map(([labelText, titleText, copyText], index) => {
+    const article = resultElement("article", "connection-card");
+    article.append(
+      resultElement("span", "connection-index", `0${index + 1}`),
+      resultElement("small", "", labelText),
+      resultElement("strong", "", titleText),
+      resultElement("p", "", copyText),
+    );
+    return article;
+  }));
+}
+
 function renderResult() {
   if (!classifiedType || !finalMeasurement) return;
   const type = FACE_TYPES[classifiedType.key];
@@ -882,6 +1131,7 @@ function renderResult() {
   resultCode.textContent = type.code;
   resultName.textContent = type.name;
   resultTagline.textContent = type.tagline;
+  resultFit.textContent = `${Math.round(clamp(classifiedType.score) * 100)}점`;
   resultSecondary.textContent = secondaryTypes.join(" · ");
   resultConfidence.textContent = `${finalMeasurement.confidence}%`;
   resultKeywords.replaceChildren(...type.keywords.map((keyword) => {
@@ -894,6 +1144,9 @@ function renderResult() {
     p.textContent = paragraph;
     return p;
   }));
+  const derived = renderDetailedAnalysis(finalMeasurement);
+  renderSynthesis(finalMeasurement, derived);
+  renderConnections(finalMeasurement, derived);
   resultContexts.replaceChildren(...type.contexts.map(([labelText, copyText]) => {
     const article = document.createElement("article");
     const label = document.createElement("span");
@@ -917,6 +1170,7 @@ function renderResult() {
     return article;
   }));
   const methodItems = [
+    ["적합도 · 내부 점수", "일곱 유형의 현재 규칙에 얼마나 가까운지를 0–100점으로 환산했습니다. 성격이나 미래가 맞을 확률이 아닙니다."],
     ["상정 · 추정값", "실제 머리카락선을 찾지 않고 얼굴 메시 상단을 임시 기준으로 사용했습니다."],
     ["코·윤곽 · 상대 깊이", "좌우 약 30° 촬영의 메시 좌표를 합쳤으며, 밀리미터 단위의 보정된 3D 측정은 아닙니다."],
     ["귀 · 수동 지정", finalMeasurement.earCount ? `보이는 귀 ${finalMeasurement.earCount}면의 위·아래 지점을 직접 지정해 반영했습니다.` : "귀가 가려졌거나 건너뛰어 결과에서 제외했습니다."],
@@ -1027,11 +1281,19 @@ if (window.location.hostname === "127.0.0.1" && FACE_TYPES[previewType]) {
   finalMeasurement = {
     upperThird: 33.4, middleThird: 33.1, lowerThird: 33.5,
     outerLeft: 1.03, leftEye: 0.98, eyeGap: 1.06, rightEye: 1.02, outerRight: 0.99,
-    noseWidth: 23.8, philtrumLower: 22.4, jawCheek: 81.6, faceRatio: 75.2,
-    noseDepth: 5.8, earLength: 31.2, symmetry: 92.5, confidence: 89, earCount: 2,
+    noseWidth: 23.8, noseEyeGap: 0.94, mouthNose: 1.52, philtrumLower: 22.4,
+    jawCheek: 81.6, cheekWidth: 45.8, faceRatio: 75.2, eyeTilt: 1.8, mouthLift: -0.7,
+    noseDepth: 5.8, bridgeDepth: 2.9, chinDepth: 1.7, cheekDepthBalance: 1.4, profileDepthSpread: 0.8,
+    earLength: 31.2, earTopToBrow: -1.8, earBottomToNose: 2.4, earBalance: 95.4,
+    symmetry: 92.5, confidence: 89, earCount: 2,
   };
   classifiedType = classifyMeasurement(finalMeasurement);
   classifiedType.key = previewType;
+  classifiedType.score = classifiedType.scores[previewType];
+  classifiedType.ranked = [
+    [previewType, classifiedType.scores[previewType]],
+    ...classifiedType.ranked.filter(([key]) => key !== previewType),
+  ];
   classificationComplete = true;
   updateMetrics(finalMeasurement);
   sampleCount.textContent = "3 / 3 CAPTURED";

@@ -103,6 +103,7 @@
                 <p class="result-tagline" id="resultTagline"></p>
                 <div class="result-keywords" id="resultKeywords"></div>
                 <div class="result-meta">
+                  <div><span>유형 적합도</span><strong id="resultFit">—</strong></div>
                   <div><span>보조 유형</span><strong id="resultSecondary">—</strong></div>
                   <div><span>측정 완성도</span><strong id="resultConfidence">—</strong></div>
                 </div>
@@ -110,6 +111,16 @@
 
               <div class="result-body">
                 <div class="result-copy" id="resultCopy"></div>
+
+                <section class="result-synthesis-wrap" aria-labelledby="synthesisTitle">
+                  <div class="context-heading">
+                    <h3 id="synthesisTitle">한눈에 보는 측정 결론</h3>
+                    <span>MEASUREMENT SUMMARY</span>
+                  </div>
+                  <div class="result-synthesis" id="resultSynthesis"></div>
+                  <div class="result-fit-list" id="resultFitList" aria-label="상위 유형 적합도"></div>
+                  <p class="fit-caption">적합도는 현재 프로토타입의 내부 기준에 얼마나 가까운지를 나타내며, 성격이나 미래에 대한 확률이 아닙니다.</p>
+                </section>
 
                 <section class="result-contexts-wrap" aria-labelledby="contextsTitle">
                   <div class="context-heading">
@@ -120,8 +131,24 @@
                 </section>
 
                 <section class="result-evidence-wrap" aria-labelledby="evidenceTitle">
-                  <h3 id="evidenceTitle">이 얼굴이 이렇게 읽힌 이유</h3>
+                  <h3 id="evidenceTitle">핵심 판단 근거</h3>
                   <div class="result-evidence" id="resultEvidence"></div>
+                </section>
+
+                <section class="result-analysis-wrap" aria-labelledby="analysisTitle">
+                  <div class="context-heading">
+                    <h3 id="analysisTitle">측정 항목별 상세 분석</h3>
+                    <span>VALUES → READING</span>
+                  </div>
+                  <div class="result-analysis" id="resultAnalysis"></div>
+                </section>
+
+                <section class="result-connections-wrap" aria-labelledby="connectionsTitle">
+                  <div class="context-heading">
+                    <h3 id="connectionsTitle">값들이 함께 만드는 인상</h3>
+                    <span>COMBINED READING</span>
+                  </div>
+                  <div class="result-connections" id="resultConnections"></div>
                 </section>
 
                 <section class="result-method-wrap" aria-labelledby="methodTitle">
