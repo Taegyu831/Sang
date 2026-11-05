@@ -1,0 +1,73 @@
+{
+  "source": "FACE / MEASURE Sites v11",
+  "originalLatestCommit": "4223ddb770a662dad2a01664d8f1e0a5393035ac",
+  "originalBundleSha256": "5f7bcf2a4af8422d642785180451dc75e10f8a7d9cabef543b1be2c2160e7801",
+  "commits": [
+    {
+      "originalSha": "64a38296db2b59519c9e43db26b30469d6b13022",
+      "originalDate": "2026-10-24T11:51:40+09:00",
+      "githubSha": "5082a7bb1f1ff207374d2828f30b79e837d47c3b",
+      "treeSha": "2c231ede6225ec6dcd25e97c70d1e7725839ddea"
+    },
+    {
+      "originalSha": "7c5e4390411d986bab040307624db494cc86b780",
+      "originalDate": "2026-10-26T09:44:19+09:00",
+      "githubSha": "53c45211d3dd95326b5bce7a1b7d05723d57a768",
+      "treeSha": "1050671c6234a90c78b2e1388313ed0a3ef4f183"
+    },
+    {
+      "originalSha": "fe4cf9bcce7a85eb793f92ec1cb6e7ad15c87810",
+      "originalDate": "2026-10-26T09:55:22+09:00",
+      "githubSha": "3636f3ea9a5c9e4aaeed54af119d8f4376d19df0",
+      "treeSha": "974c412e48bfe67302f2656bcaa3dc96a6865f54"
+    },
+    {
+      "originalSha": "35d9a463fa45e6ae59ad89c0fa1938ce8cab1cc1",
+      "originalDate": "2026-10-26T10:18:01+09:00",
+      "githubSha": "26aecc807a02e37e50cf89f3fdc31e546bf1bf5f",
+      "treeSha": "efa987cc24d113ebb8ebe6bcc5f74055fc9e9741"
+    },
+    {
+      "originalSha": "fc42f8dd4b8bf022d3f9a55f830253d800a787ed",
+      "originalDate": "2026-10-26T10:25:54+09:00",
+      "githubSha": "3995948046b055b1071e631d7a0fb14c5efdee25",
+      "treeSha": "2c764165c7fa2e32a4e7ed5b005c61a879176ad6"
+    },
+    {
+      "originalSha": "48ccea414ac14f0ea793a3bb0b28e5a810099e72",
+      "originalDate": "2026-10-28T10:23:06+09:00",
+      "githubSha": "2d7338641007a3a3f1dc303854daffb0a82cffe5",
+      "treeSha": "d1c7536dd914faa01ced75a950a18df780775ba7"
+    },
+    {
+      "originalSha": "fb9a8c3c38b6752cf723394f6d936c891d13b058",
+      "originalDate": "2026-10-28T14:27:43+09:00",
+      "githubSha": "cdc3961f011cd5b7c80b944fee75bf99524e2838",
+      "treeSha": "2c1e75352fec95c4bafcfb54e9dd3d08bd8f4aed"
+    },
+    {
+      "originalSha": "c3e0d68d0f726c7417bb1bc54eab0ab7737b81ff",
+      "originalDate": "2026-10-28T14:50:43+09:00",
+      "githubSha": "ab92935170465b105ba239fd50ee0632f2fa24ab",
+      "treeSha": "afb364eab54485d80b89f1a14f4678704e318481"
+    },
+    {
+      "originalSha": "04aaa680b18199424baeb8873c96bcad187d9753",
+      "originalDate": "2026-10-28T15:21:27+09:00",
+      "githubSha": "bdd30655e37b710e1149ed05871c51ba8707be72",
+      "treeSha": "3a4c61fdaad6b0a72793d74f2d953275615444e8"
+    },
+    {
+      "originalSha": "cf08e417d066492d8fcd6ac0b3effb5f0fc701f7",
+      "originalDate": "2026-10-28T16:30:13+09:00",
+      "githubSha": "b6dc689fdd5e389a48c93ee0f1858070dcbd9440",
+      "treeSha": "068ea7c6ee7ab9d0d6d1b50e0a5c8b4601babf21"
+    },
+    {
+      "originalSha": "4223ddb770a662dad2a01664d8f1e0a5393035ac",
+      "originalDate": "2026-10-28T17:27:40+09:00",
+      "githubSha": "86b9ff674656bb56679bef8176e3168f2ca6a840",
+      "treeSha": "0407a3898b5b7663dff30f7222b193f0469b3136"
+    }
+  ]
+}

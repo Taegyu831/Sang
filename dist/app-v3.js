@@ -2,7 +2,7 @@ const MEDIAPIPE_VERSION = "1.1.1";
 const MEDIAPIPE_MODULE = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VERSION}/vision_bundle.mjs`;
 const MEDIAPIPE_WASM = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VERSION}/wasm`;
 const FACE_MODEL = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
-const PUBLIC_SITE_URL = "https://ium-face-measure-live.xorb0831.chatgpt.site/";
+const PUBLIC_SITE_URL = "https://taegyu831.github.io/Sang/";
 const MODEL_LOAD_TIMEOUT = 18000;
 
 const REQUIRED_FRONT_SAMPLES = 42;
