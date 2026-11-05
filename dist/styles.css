@@ -328,6 +328,178 @@ button {
   backdrop-filter: blur(14px);
 }
 
+.capture-journey {
+  --journey-progress: 0%;
+  position: absolute;
+  top: 64px;
+  left: 50%;
+  z-index: 5;
+  width: min(430px, calc(100% - 36px));
+  display: grid;
+  grid-template-columns: auto 1fr auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 13px;
+  background: rgba(8, 10, 13, 0.68);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 7px;
+  backdrop-filter: blur(14px);
+  transform: translateX(-50%);
+}
+
+.journey-step {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: 6px;
+  color: #6f7782;
+  font: 9px/1 var(--mono);
+  white-space: nowrap;
+}
+
+.journey-step i {
+  width: 7px;
+  height: 7px;
+  border: 1px solid #59616c;
+  border-radius: 50%;
+  background: #101318;
+}
+
+.journey-step b {
+  font-weight: 500;
+}
+
+.journey-step.is-active {
+  color: #dbe2ec;
+}
+
+.journey-step.is-active i {
+  border-color: var(--blue);
+  background: var(--blue);
+  box-shadow: 0 0 0 4px rgba(103,152,255,.12);
+}
+
+.journey-step.is-complete {
+  color: var(--green);
+}
+
+.journey-step.is-complete i {
+  border-color: var(--green);
+  background: var(--green);
+}
+
+.journey-line {
+  position: relative;
+  height: 1px;
+  overflow: hidden;
+  background: rgba(255,255,255,.14);
+}
+
+.journey-line i {
+  display: block;
+  width: var(--journey-progress);
+  height: 100%;
+  background: linear-gradient(90deg, var(--blue), var(--green));
+  transition: width 180ms ease;
+}
+
+.turn-cue {
+  position: absolute;
+  left: 50%;
+  bottom: 28px;
+  z-index: 5;
+  width: min(420px, calc(100% - 40px));
+  padding: 20px 22px;
+  text-align: center;
+  background: rgba(8, 10, 13, .78);
+  border: 1px solid rgba(103,152,255,.34);
+  border-radius: 9px;
+  backdrop-filter: blur(18px);
+  transform: translateX(-50%);
+  animation: ready-in 360ms ease both;
+}
+
+.turn-arrow {
+  display: block;
+  margin-bottom: 9px;
+  color: var(--blue);
+  font: 34px/1 var(--mono);
+  animation: turn-pulse 1.5s ease-in-out infinite alternate;
+}
+
+.turn-cue strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.turn-cue p {
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+@keyframes turn-pulse {
+  from { transform: translateX(-7px); }
+  to { transform: translateX(7px); }
+}
+
+.ear-marker {
+  position: absolute;
+  left: 50%;
+  bottom: 22px;
+  z-index: 8;
+  width: min(560px, calc(100% - 40px));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 14px 15px;
+  background: rgba(8, 10, 13, .88);
+  border: 1px solid rgba(114,239,176,.42);
+  border-radius: 8px;
+  backdrop-filter: blur(18px);
+  transform: translateX(-50%);
+}
+
+.ear-marker span {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--green);
+  font: 8px/1 var(--mono);
+  letter-spacing: .09em;
+}
+
+.ear-marker strong {
+  display: block;
+  font-size: 12px;
+}
+
+.ear-marker p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.ear-marker button {
+  flex: 0 0 auto;
+  padding: 9px 11px;
+  color: #c8cdd5;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 10px;
+}
+
+.camera-frame.is-ear-marking {
+  cursor: crosshair;
+}
+
+.camera-frame.is-ear-marking .face-guide {
+  opacity: .28;
+}
+
 .status-label {
   color: var(--blue);
   font-size: 9px;
@@ -478,6 +650,40 @@ button {
   font-size: 10px;
 }
 
+.result-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  margin-top: 24px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--line);
+}
+
+.result-meta > div {
+  min-width: 0;
+  padding: 12px;
+  background: rgba(11,14,18,.96);
+}
+
+.result-meta span {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.result-meta strong {
+  display: block;
+  overflow: hidden;
+  color: #dce4ef;
+  font-size: 10px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .result-body {
   align-self: start;
 }
@@ -560,7 +766,7 @@ button {
 
 .result-evidence {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   border: 1px solid var(--line);
   border-radius: 7px;
   overflow: hidden;
@@ -571,6 +777,14 @@ button {
   padding: 14px;
   border-right: 1px solid var(--line);
   background: rgba(255,255,255,.018);
+}
+
+.result-evidence article:nth-child(2n) {
+  border-right: 0;
+}
+
+.result-evidence article:nth-child(n + 3) {
+  border-top: 1px solid var(--line);
 }
 
 .result-evidence article:last-child {
@@ -597,6 +811,35 @@ button {
   font-size: 10px;
   line-height: 1.55;
   word-break: keep-all;
+}
+
+.result-method-wrap {
+  margin-top: 34px;
+}
+
+.result-method {
+  border-top: 1px solid var(--line);
+}
+
+.result-method article {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: 16px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.result-method strong {
+  color: #b8caff;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.result-method p {
+  margin: 0;
+  color: #858e9a;
+  font-size: 10px;
+  line-height: 1.65;
 }
 
 .result-actions {
@@ -784,7 +1027,7 @@ button {
   min-width: 0;
   max-width: 100%;
   display: grid;
-  grid-template-columns: repeat(8, minmax(128px, 1fr));
+  grid-template-columns: repeat(15, minmax(132px, 1fr));
   overflow-x: auto;
   scrollbar-width: thin;
   scrollbar-color: #383e48 transparent;
@@ -966,6 +1209,40 @@ button {
     padding: 8px 9px;
   }
 
+  .capture-journey {
+    top: 54px;
+    width: calc(100% - 24px);
+    gap: 7px;
+    padding: 9px 10px;
+  }
+
+  .journey-step {
+    gap: 4px;
+    font-size: 8px;
+  }
+
+  .turn-cue {
+    bottom: max(24px, env(safe-area-inset-bottom));
+    width: calc(100% - 32px);
+    padding: 18px 16px;
+  }
+
+  .turn-cue strong {
+    font-size: 14px;
+  }
+
+  .ear-marker {
+    bottom: max(18px, env(safe-area-inset-bottom));
+    width: calc(100% - 28px);
+    align-items: stretch;
+    flex-direction: column;
+    gap: 11px;
+  }
+
+  .ear-marker button {
+    min-height: 42px;
+  }
+
   .status-message {
     min-width: 0;
     font-size: 10px;
@@ -1046,6 +1323,10 @@ button {
     font-size: 15px;
   }
 
+  .result-meta {
+    margin-top: 22px;
+  }
+
   .result-body {
     margin-top: 40px;
   }
@@ -1071,6 +1352,11 @@ button {
 
   .result-evidence article:last-child {
     border-bottom: 0;
+  }
+
+  .result-method article {
+    grid-template-columns: 1fr;
+    gap: 7px;
   }
 
   .result-actions {
