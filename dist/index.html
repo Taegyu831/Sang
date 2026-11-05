@@ -46,7 +46,7 @@
             <p class="eyebrow">LOCAL FACE GEOMETRY</p>
             <h2>얼굴의 비율을<br />실시간으로 측정합니다.</h2>
             <p class="empty-copy">
-              해석이나 관상 결과 없이, 카메라에서 확인되는 상대값만 표시합니다.
+              얼굴의 상대값을 측정한 뒤, 일곱 가지 디지털 관상 유형 중 하나로 분류합니다.
             </p>
             <button class="camera-button" id="cameraButton" type="button" disabled>
               <span>카메라 시작</span>
@@ -64,6 +64,42 @@
           <button class="stop-button" id="stopButton" type="button" hidden>
             측정 종료
           </button>
+
+          <button class="classification-ready" id="classificationReady" type="button" hidden>
+            <span class="ready-dot" aria-hidden="true"></span>
+            <span>관상 유형 분류가 완료되었습니다</span>
+            <span class="ready-action">결과 보기 →</span>
+          </button>
+
+          <section class="result-view" id="resultView" aria-label="디지털 관상 유형 결과" hidden>
+            <div class="result-inner">
+              <header class="result-hero">
+                <p class="result-index">DIGITAL FACE TYPE <span id="resultCode">F—01</span></p>
+                <h2 id="resultName">균형의 상</h2>
+                <p class="result-tagline" id="resultTagline"></p>
+                <div class="result-keywords" id="resultKeywords"></div>
+              </header>
+
+              <div class="result-body">
+                <div class="result-copy" id="resultCopy"></div>
+
+                <section class="result-evidence-wrap" aria-labelledby="evidenceTitle">
+                  <h3 id="evidenceTitle">이 얼굴이 이렇게 읽힌 이유</h3>
+                  <div class="result-evidence" id="resultEvidence"></div>
+                </section>
+
+                <div class="result-actions">
+                  <button class="secondary-action" id="showAllTypes" type="button">다른 유형도 보기</button>
+                  <button class="primary-action" id="restartButton" type="button">다시 측정하기</button>
+                </div>
+
+                <p class="result-disclaimer">
+                  이 결과는 카메라에서 측정된 상대 비율을 전시적 언어로 번역한 것입니다.
+                  전통 관상학의 공인 판정이나 성격·능력에 대한 과학적 진단이 아닙니다.
+                </p>
+              </div>
+            </div>
+          </section>
         </div>
       </section>
 
@@ -123,6 +159,18 @@
       </section>
     </main>
 
-    <script type="module" src="./app.js"></script>
+    <dialog class="type-catalog" id="typeCatalog" aria-labelledby="catalogTitle">
+      <div class="catalog-header">
+        <div>
+          <p>SEVEN DIGITAL FACE TYPES</p>
+          <h2 id="catalogTitle">다른 유형도 보기</h2>
+        </div>
+        <button class="catalog-close" id="catalogClose" type="button" aria-label="닫기">×</button>
+      </div>
+      <div class="catalog-list" id="catalogList"></div>
+      <p class="catalog-note">각 유형은 얼굴의 일부 비율이 만드는 시각적 인상을 설명한 전시용 분류입니다.</p>
+    </dialog>
+
+    <script type="module" src="./app-v2.js"></script>
   </body>
 </html>
