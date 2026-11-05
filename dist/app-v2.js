@@ -341,7 +341,16 @@ async function startCamera() {
   if (!faceLandmarker || running) return;
   cameraButton.disabled = true; cameraButton.querySelector("span:first-child").textContent = "카메라 연결 중";
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 }, aspectRatio: { ideal: 16 / 9 } } });
+    const isMobileView = window.matchMedia("(max-width: 780px)").matches;
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: {
+        facingMode: "user",
+        width: { ideal: isMobileView ? 720 : 1280 },
+        height: { ideal: isMobileView ? 1280 : 720 },
+        aspectRatio: { ideal: isMobileView ? 3 / 4 : 16 / 9 },
+      },
+    });
     video.srcObject = stream; await video.play(); running = true; lastVideoTime = -1;
     emptyState.hidden = true; captureStatus.hidden = false; stopButton.hidden = false; frame.classList.add("is-running");
     setSystemState("running", "실시간 측정 중"); resetMetrics(); resetClassification(); predict();
