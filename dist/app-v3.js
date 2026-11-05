@@ -2,6 +2,8 @@ const MEDIAPIPE_VERSION = "1.1.1";
 const MEDIAPIPE_MODULE = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VERSION}/vision_bundle.mjs`;
 const MEDIAPIPE_WASM = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VERSION}/wasm`;
 const FACE_MODEL = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
+const PUBLIC_SITE_URL = "https://ium-face-measure-live.xorb0831.chatgpt.site/";
+const MODEL_LOAD_TIMEOUT = 18000;
 
 const REQUIRED_FRONT_SAMPLES = 42;
 const REQUIRED_PROFILE_SAMPLES = 34;
@@ -261,6 +263,26 @@ const FACE_TYPES = {
 function setSystemState(state, label) {
   systemState.dataset.state = state;
   systemState.querySelector("span").textContent = label;
+}
+
+function withTimeout(promise, milliseconds, message) {
+  let timeoutId;
+  const timeout = new Promise((_, reject) => {
+    timeoutId = window.setTimeout(() => reject(new Error(message)), milliseconds);
+  });
+  return Promise.race([promise, timeout]).finally(() => window.clearTimeout(timeoutId));
+}
+
+function setCameraButton(label, action, disabled = false) {
+  cameraButton.disabled = disabled;
+  cameraButton.dataset.action = action;
+  cameraButton.querySelector("span:first-child").textContent = label;
+}
+
+function showLocalFileNotice() {
+  setSystemState("error", "로컬 파일 실행 불가");
+  setCameraButton("웹 버전으로 열기", "open-public");
+  $(".permission-note").textContent = "카메라 측정은 file:// 주소에서 실행할 수 없습니다. 버튼을 눌러 HTTPS 웹 버전으로 이동해주세요.";
 }
 
 function point(landmarks, index) {
@@ -1234,38 +1256,68 @@ function openCatalog() {
 }
 
 async function initialize() {
+  if (window.location.protocol === "file:") {
+    showLocalFileNotice();
+    return;
+  }
   if (!navigator.mediaDevices?.getUserMedia) {
     setSystemState("error", "지원되지 않는 브라우저");
     $(".permission-note").textContent = "카메라를 지원하는 최신 Chrome 또는 Safari에서 열어주세요.";
     return;
   }
   try {
-    const module = await import(MEDIAPIPE_MODULE);
+    setSystemState("loading", "측정 모델 불러오는 중");
+    setCameraButton("측정 모델 준비 중", "loading", true);
+    const module = await withTimeout(
+      import(MEDIAPIPE_MODULE),
+      MODEL_LOAD_TIMEOUT,
+      "측정 모델을 불러오는 시간이 초과되었습니다.",
+    );
     FaceLandmarker = module.FaceLandmarker;
     DrawingUtils = module.DrawingUtils;
-    const vision = await module.FilesetResolver.forVisionTasks(MEDIAPIPE_WASM);
-    faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
-      baseOptions: { modelAssetPath: FACE_MODEL, delegate: "GPU" },
-      runningMode: "VIDEO",
-      numFaces: 1,
-      minFaceDetectionConfidence: 0.6,
-      minFacePresenceConfidence: 0.6,
-      minTrackingConfidence: 0.6,
-      outputFaceBlendshapes: true,
-      outputFacialTransformationMatrixes: true,
-    });
+    const vision = await withTimeout(
+      module.FilesetResolver.forVisionTasks(MEDIAPIPE_WASM),
+      MODEL_LOAD_TIMEOUT,
+      "측정 엔진을 준비하는 시간이 초과되었습니다.",
+    );
+    faceLandmarker = await withTimeout(
+      FaceLandmarker.createFromOptions(vision, {
+        baseOptions: { modelAssetPath: FACE_MODEL, delegate: "GPU" },
+        runningMode: "VIDEO",
+        numFaces: 1,
+        minFaceDetectionConfidence: 0.6,
+        minFacePresenceConfidence: 0.6,
+        minTrackingConfidence: 0.6,
+        outputFaceBlendshapes: true,
+        outputFacialTransformationMatrixes: true,
+      }),
+      MODEL_LOAD_TIMEOUT,
+      "얼굴 측정 모델을 준비하는 시간이 초과되었습니다.",
+    );
     drawingUtils = new DrawingUtils(ctx);
-    cameraButton.disabled = false;
+    setCameraButton("카메라 시작", "camera");
     setSystemState("ready", "측정 준비 완료");
+    $(".permission-note").textContent = "시작하면 브라우저가 카메라 사용 권한을 요청합니다.";
   } catch (error) {
     console.error(error);
     setSystemState("error", "측정 모델 로드 실패");
-    cameraButton.disabled = true;
-    $(".permission-note").textContent = "인터넷 연결을 확인하고 페이지를 새로고침해주세요.";
+    setCameraButton("모델 다시 불러오기", "retry");
+    $(".permission-note").textContent = `${error?.message || "측정 모델을 불러오지 못했습니다."} 인터넷 연결을 확인한 뒤 다시 시도해주세요.`;
   }
 }
 
-cameraButton.addEventListener("click", startCamera);
+cameraButton.addEventListener("click", () => {
+  const action = cameraButton.dataset.action;
+  if (action === "open-public") {
+    window.location.assign(PUBLIC_SITE_URL);
+    return;
+  }
+  if (action === "retry") {
+    initialize();
+    return;
+  }
+  if (action === "camera") startCamera();
+});
 stopButton.addEventListener("click", stopCamera);
 classificationReady.addEventListener("click", showResult);
 restartButton.addEventListener("click", restartMeasurement);

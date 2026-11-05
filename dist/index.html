@@ -278,6 +278,29 @@
       <p class="catalog-note">각 유형은 얼굴의 일부 비율이 만드는 시각적 인상을 설명한 전시용 분류입니다.</p>
     </dialog>
 
+    <script>
+      if (window.location.protocol === "file:") {
+        window.addEventListener("DOMContentLoaded", function () {
+          var button = document.getElementById("cameraButton");
+          var state = document.getElementById("systemState");
+          var note = document.querySelector(".permission-note");
+          if (state) {
+            state.dataset.state = "error";
+            state.querySelector("span").textContent = "로컬 파일 실행 불가";
+          }
+          if (button) {
+            button.disabled = false;
+            button.querySelector("span:first-child").textContent = "웹 버전으로 열기";
+            button.addEventListener("click", function () {
+              window.location.href = "https://ium-face-measure-live.xorb0831.chatgpt.site/";
+            });
+          }
+          if (note) {
+            note.textContent = "카메라 측정은 file:// 주소에서 실행할 수 없습니다. HTTPS 웹 버전에서 시작해주세요.";
+          }
+        });
+      }
+    </script>
     <script type="module" src="./app-v3.js"></script>
   </body>
 </html>
