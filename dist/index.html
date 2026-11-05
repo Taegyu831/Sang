@@ -114,50 +114,61 @@
 
                 <section class="result-synthesis-wrap" aria-labelledby="synthesisTitle">
                   <div class="context-heading">
-                    <h3 id="synthesisTitle">한눈에 보는 측정 결론</h3>
-                    <span>MEASUREMENT SUMMARY</span>
+                    <h3 id="synthesisTitle">이 해석의 중심</h3>
+                    <span>HOW IT MAY BE READ</span>
                   </div>
                   <div class="result-synthesis" id="resultSynthesis"></div>
-                  <div class="result-fit-list" id="resultFitList" aria-label="상위 유형 적합도"></div>
-                  <p class="fit-caption">적합도는 현재 프로토타입의 내부 기준에 얼마나 가까운지를 나타내며, 성격이나 미래에 대한 확률이 아닙니다.</p>
+                  <details class="result-score-disclosure">
+                    <summary>유형 적합도 확인하기</summary>
+                    <div class="result-fit-list" id="resultFitList" aria-label="상위 유형 적합도"></div>
+                    <p class="fit-caption">적합도는 현재 프로토타입의 내부 기준에 얼마나 가까운지를 나타내며, 성격이나 미래에 대한 확률이 아닙니다.</p>
+                  </details>
                 </section>
 
                 <section class="result-contexts-wrap" aria-labelledby="contextsTitle">
                   <div class="context-heading">
-                    <h3 id="contextsTitle">상황에 따라 달라지는 모습</h3>
-                    <span>가능성으로 읽어주세요</span>
+                    <h3 id="contextsTitle">이 얼굴은 이렇게 읽힐 수 있습니다</h3>
+                    <span>하나의 가능성으로 읽어주세요</span>
                   </div>
                   <div class="result-contexts" id="resultContexts"></div>
                 </section>
 
-                <section class="result-evidence-wrap" aria-labelledby="evidenceTitle">
-                  <h3 id="evidenceTitle">핵심 판단 근거</h3>
-                  <div class="result-evidence" id="resultEvidence"></div>
-                </section>
-
-                <section class="result-analysis-wrap" aria-labelledby="analysisTitle">
-                  <div class="context-heading">
-                    <h3 id="analysisTitle">측정 항목별 상세 분석</h3>
-                    <span>VALUES → READING</span>
-                  </div>
-                  <div class="result-analysis" id="resultAnalysis"></div>
-                </section>
-
                 <section class="result-connections-wrap" aria-labelledby="connectionsTitle">
                   <div class="context-heading">
-                    <h3 id="connectionsTitle">값들이 함께 만드는 인상</h3>
-                    <span>COMBINED READING</span>
+                    <h3 id="connectionsTitle">같은 인상이 다르게 보일 때</h3>
+                    <span>CONTEXT CHANGES THE READING</span>
                   </div>
                   <div class="result-connections" id="resultConnections"></div>
                 </section>
 
-                <section class="result-method-wrap" aria-labelledby="methodTitle">
-                  <div class="context-heading">
-                    <h3 id="methodTitle">측정 방식과 한계</h3>
-                    <span>값의 성격을 구분합니다</span>
+                <details class="result-data-disclosure">
+                  <summary>
+                    <span>측정값과 판정 기준 자세히 보기</span>
+                    <small>해석의 근거가 궁금할 때 펼쳐보세요</small>
+                  </summary>
+                  <div class="result-data-body">
+                    <section class="result-evidence-wrap" aria-labelledby="evidenceTitle">
+                      <h3 id="evidenceTitle">핵심 판단 근거</h3>
+                      <div class="result-evidence" id="resultEvidence"></div>
+                    </section>
+
+                    <section class="result-analysis-wrap" aria-labelledby="analysisTitle">
+                      <div class="context-heading">
+                        <h3 id="analysisTitle">측정 항목별 상세 분석</h3>
+                        <span>VALUES → READING</span>
+                      </div>
+                      <div class="result-analysis" id="resultAnalysis"></div>
+                    </section>
+
+                    <section class="result-method-wrap" aria-labelledby="methodTitle">
+                      <div class="context-heading">
+                        <h3 id="methodTitle">측정 방식과 한계</h3>
+                        <span>값의 성격을 구분합니다</span>
+                      </div>
+                      <div class="result-method" id="resultMethod"></div>
+                    </section>
                   </div>
-                  <div class="result-method" id="resultMethod"></div>
-                </section>
+                </details>
 
                 <div class="result-actions">
                   <button class="secondary-action" id="showAllTypes" type="button">다른 유형도 보기</button>

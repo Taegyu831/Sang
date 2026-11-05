@@ -260,6 +260,82 @@ const FACE_TYPES = {
   },
 };
 
+const READING_PROFILES = {
+  balance: {
+    core: "한쪽을 앞세우기보다 여러 조건을 함께 놓고 조율하는 인상",
+    overview: "얼굴의 세로 구역과 가로 여백에서 어느 한 부분이 강하게 앞서지 않아, 특정 성향 하나보다 전체의 정돈감이 먼저 들어옵니다. 그래서 처음에는 차분하고 안정적으로 보이지만, 가까이에서는 서로 다른 입장을 동시에 살피는 섬세함이 드러나는 얼굴로 읽힐 수 있습니다.",
+    relation: "사람 사이에서는 한쪽의 감정에 바로 편승하기보다, 서로 다른 말을 한 번 더 나란히 놓아보는 사람처럼 보일 수 있습니다. 갈등이 생겨도 곧장 편을 고르기보다 모두가 납득할 수 있는 지점을 찾으려는 인상을 줄 수 있습니다.",
+    decision: "결정해야 할 때는 눈앞의 한 가지 장점보다 전체 조건이 어떻게 맞물리는지를 먼저 살피는 편으로 해석될 수 있습니다. 기준이 충분히 정리되면 급격한 방향 전환보다 일정한 속도로 오래 밀고 가는 모습이 자연스럽게 연결됩니다.",
+    pressure: "마음이 급해질수록 오히려 쉽게 단정하지 않고 균형을 되찾으려는 태도가 먼저 보일 수 있습니다. 다만 모든 조건을 놓치지 않으려는 모습이 때로는 결정을 늦추거나 자신의 선호를 뒤로 미루는 것처럼 비칠 수도 있습니다.",
+    change: "변화 앞에서는 기존의 것을 전부 버리기보다, 새 환경 안에서 다시 균형점을 찾아가는 사람처럼 읽힐 수 있습니다. 낯선 상황에서도 자신의 리듬을 크게 흔들지 않으면서 조금씩 자리를 조정하는 이미지에 가깝습니다.",
+    shadow: "조율하는 능력은 안정감이 되지만, 분명한 선택을 요구받는 순간에는 지나치게 신중하거나 속마음을 알기 어려운 사람처럼 보일 수 있습니다.",
+  },
+  upper: {
+    core: "행동하기 전에 상황의 의미와 가능성을 먼저 그려보는 인상",
+    overview: "얼굴 위쪽의 여백이 먼저 시선을 붙잡기 때문에, 즉각 반응하기보다 잠시 관찰하고 생각을 정리하는 사람 같은 분위기가 만들어집니다. 실제 성격을 단정할 수는 없지만, 무엇을 시작하기 전에 머릿속에서 여러 장면을 미리 그려보는 인상으로 읽힐 수 있습니다.",
+    relation: "사람 사이에서는 말을 곧바로 꺼내기보다 상대의 표정과 대화의 맥락을 먼저 살피는 사람처럼 보일 수 있습니다. 처음에는 조용해 보여도 관계의 흐름을 오래 기억하고, 뒤늦게 정확한 말을 건네는 이미지와 연결됩니다.",
+    decision: "결정할 때는 ‘지금 무엇을 할까’보다 ‘이 선택이 어디로 이어질까’를 먼저 생각하는 편으로 해석될 수 있습니다. 실행 전에 방향과 의미를 충분히 그려보려는 모습은 기획력으로 보이지만, 상황에 따라서는 시작을 오래 망설이는 듯한 인상을 줄 수도 있습니다.",
+    pressure: "마음이 급해질수록 바로 움직이기보다 머릿속 검토가 더 길어질 수 있는 사람처럼 보입니다. 불확실한 상태에서 섣불리 답을 내기보다, 이해할 수 있는 설명을 찾고 나서야 안심하는 이미지에 가깝습니다.",
+    change: "변화 앞에서는 새 환경을 곧장 받아들이기보다 그 변화가 자신에게 어떤 의미인지 해석한 뒤 움직이는 사람처럼 읽힐 수 있습니다. 납득할 만한 방향이 생기면 이전보다 훨씬 선명하게 움직이는 모습으로 이어질 수 있습니다.",
+    shadow: "생각의 폭이 넓다는 인상은 장점이지만, 빠른 반응이 필요한 순간에는 현실보다 가능성 속에 오래 머무는 사람처럼 보일 수 있습니다.",
+  },
+  middle: {
+    core: "상황을 구체적인 행동과 현실의 언어로 바꾸는 인상",
+    overview: "얼굴 가운데의 축이 분명하게 들어와, 생각이나 감정보다 지금 눈앞에서 벌어지는 상황에 먼저 반응하는 듯한 분위기가 생깁니다. 그래서 추상적인 가능성을 오래 품기보다 실제로 할 수 있는 일을 찾아 움직이는 사람처럼 읽힐 수 있습니다.",
+    relation: "사람 사이에서는 상대의 말에 현실적인 답을 빠르게 돌려주는 사람처럼 보일 수 있습니다. 애매한 위로나 돌려 말하기보다 지금 필요한 도움이나 해결책을 제시하는 이미지가 강하며, 그 직접성이 때로는 단호함으로 느껴질 수도 있습니다.",
+    decision: "결정해야 할 때는 복잡한 생각을 실행 가능한 단계로 나누고, 가장 먼저 할 수 있는 일부터 잡는 사람처럼 해석될 수 있습니다. 결과가 손에 잡히는 순간 집중력이 더 선명해지는 인상과도 연결됩니다.",
+    pressure: "마음이 급해질수록 문제를 빨리 구체화하고 답을 내리려는 모습이 앞설 수 있습니다. 이때 추진력은 분명해 보이지만, 상대가 아직 감정을 정리하는 중이라면 속도를 재촉하는 사람처럼 비칠 여지도 있습니다.",
+    change: "변화 앞에서는 불확실함을 오래 바라보기보다, 새로운 상황에서 당장 가능한 행동을 찾는 사람처럼 읽힐 수 있습니다. 작은 실행을 통해 상황을 이해하고 방향을 수정하는 이미지에 가깝습니다.",
+    shadow: "현실적인 태도는 신뢰감을 주지만, 충분히 머물러야 하는 감정이나 아직 답이 없는 질문까지 너무 빨리 해결하려는 사람처럼 보일 수 있습니다.",
+  },
+  lower: {
+    core: "한번 세운 기준과 관계를 오래 지탱하는 인상",
+    overview: "얼굴 아래쪽이 전체 인상을 받쳐 주어, 순간적인 반응보다 오래 유지되는 의지와 생활의 리듬이 먼저 느껴질 수 있습니다. 그래서 쉽게 방향을 바꾸기보다 자신이 중요하다고 여긴 것을 꾸준히 지켜가는 사람 같은 인상으로 읽힐 수 있습니다.",
+    relation: "사람 사이에서는 가까워지기까지 시간이 걸리더라도, 한번 맺은 관계와 약속을 가볍게 여기지 않는 사람처럼 보일 수 있습니다. 표현이 크지 않아도 행동으로 책임을 보여주는 이미지와 연결됩니다.",
+    decision: "결정해야 할 때는 새로움 자체보다 그 선택을 끝까지 감당할 수 있는지를 먼저 보는 편으로 해석될 수 있습니다. 한번 방향을 정하면 외부의 작은 흔들림에도 쉽게 포기하지 않는 모습이 자연스럽게 떠오릅니다.",
+    pressure: "마음이 급해질수록 이미 세워둔 기준과 경계를 더 단단히 붙잡는 사람처럼 보일 수 있습니다. 버티는 힘은 커 보이지만, 상황이 달라졌는데도 방식을 바꾸지 않는 완고함으로 읽힐 가능성도 있습니다.",
+    change: "변화 앞에서는 모든 것을 새로 시작하기보다 지켜야 할 기반을 남겨두고 조금씩 옮겨가는 사람처럼 읽힐 수 있습니다. 충분한 이유가 생기면 느리지만 확실하게 움직이는 이미지에 가깝습니다.",
+    shadow: "꾸준함과 책임감은 강점으로 보이지만, 빠른 수정이 필요한 순간에는 자신의 방식과 익숙한 질서를 너무 오래 고수하는 사람처럼 보일 수 있습니다.",
+  },
+  open: {
+    core: "하나의 답에 머물기보다 주변의 가능성을 넓게 받아들이는 인상",
+    overview: "눈 사이와 양옆의 여백이 바깥으로 열려 보여, 시선이 한 지점에만 머물지 않고 주변까지 넓게 살피는 듯한 분위기가 생깁니다. 그래서 새로운 사람과 정보에 비교적 여지를 열어두고 여러 가능성을 함께 탐색하는 사람처럼 읽힐 수 있습니다.",
+    relation: "사람 사이에서는 처음 만난 상대에게도 대화의 공간을 남기고, 낯선 분위기를 비교적 자연스럽게 받아들이는 사람처럼 보일 수 있습니다. 여러 사람의 차이를 흥미롭게 바라보는 이미지와도 연결됩니다.",
+    decision: "결정해야 할 때는 정답 하나를 빨리 고르기보다 가능한 선택지를 충분히 펼쳐보는 편으로 해석될 수 있습니다. 예상하지 못한 연결을 발견하는 데 강점이 있어 보이지만, 선택지가 많아질수록 자신만의 기준이 필요해 보일 수도 있습니다.",
+    pressure: "마음이 급해질수록 한 문제에 집중하기보다 주변의 다른 가능성까지 동시에 보려는 모습이 나타날 수 있습니다. 폭넓은 시야가 도움이 되기도 하지만, 에너지가 여러 방향으로 흩어지는 인상으로 바뀔 수 있습니다.",
+    change: "변화 앞에서는 낯선 자극을 일단 받아들이고, 직접 경험하면서 자신에게 맞는 방향을 찾는 사람처럼 읽힐 수 있습니다. 완성된 계획보다 열린 시작에서 힘을 얻는 이미지에 가깝습니다.",
+    shadow: "열린 태도는 유연함으로 보이지만, 한 가지에 오래 집중해야 하는 순간에는 관심이 쉽게 옮겨가거나 결정을 미루는 사람처럼 느껴질 수 있습니다.",
+  },
+  focused: {
+    core: "넓게 펼치기보다 중요한 한 지점에 오래 주의를 두는 인상",
+    overview: "눈 주변의 구간이 얼굴 중심으로 응집되어 보여, 주변을 넓게 훑기보다 자신이 중요하다고 판단한 대상에 집중하는 듯한 분위기가 생깁니다. 그래서 많은 것에 동시에 반응하기보다 충분히 납득한 한 가지를 깊게 파고드는 사람처럼 읽힐 수 있습니다.",
+    relation: "사람 사이에서는 넓은 관계보다 신뢰가 생긴 몇 사람에게 주의를 오래 두는 사람처럼 보일 수 있습니다. 처음에는 조심스럽고 거리가 있어 보여도, 가까워진 뒤에는 상대의 작은 변화까지 기억하는 이미지와 연결됩니다.",
+    decision: "결정해야 할 때는 충분한 근거를 확인하고 핵심을 좁힌 뒤 움직이는 편으로 해석될 수 있습니다. 방향을 납득한 뒤에는 주변의 작은 방해에도 집중을 오래 유지하는 모습이 떠오릅니다.",
+    pressure: "마음이 급해질수록 익숙한 문제나 이미 중요하다고 여긴 한 지점에 더 깊이 파고들 수 있습니다. 집중력은 높아 보이지만, 다른 가능성을 받아들일 여유가 줄어든 사람처럼 비칠 수도 있습니다.",
+    change: "변화 앞에서는 먼저 안전한 근거와 예측 가능한 기준을 찾고, 그것이 확인된 뒤 선명하게 움직이는 사람처럼 읽힐 수 있습니다. 변화 자체보다 변화의 이유가 분명할 때 힘을 얻는 이미지입니다.",
+    shadow: "깊이 보는 태도는 신뢰감을 주지만, 시야를 넓혀야 하는 순간에는 한 가지 해석을 너무 오래 붙잡는 사람처럼 보일 수 있습니다.",
+  },
+  structure: {
+    core: "분명한 기준과 역할 안에서 안정적으로 힘을 유지하는 인상",
+    overview: "광대와 턱, 코와 얼굴 중심의 관계가 또렷하게 느껴져, 여러 요소가 하나의 구조를 이루고 있는 듯한 분위기가 생깁니다. 그래서 자신이 맡은 역할과 지켜야 할 경계를 분명히 알고, 그 틀 안에서 일관성을 유지하는 사람처럼 읽힐 수 있습니다.",
+    relation: "사람 사이에서는 가까움의 정도와 서로의 역할을 분명히 하려는 사람처럼 보일 수 있습니다. 한 번 신뢰한 상대에게는 일관된 태도를 보여 주지만, 기준이 맞지 않을 때는 선을 확실히 긋는 이미지와 연결됩니다.",
+    decision: "결정해야 할 때는 무엇을 할지뿐 아니라 누가 어떤 책임을 맡고 어떤 순서로 움직일지를 정리하는 편으로 해석될 수 있습니다. 구조가 분명할수록 안정적으로 힘을 발휘하는 인상에 가깝습니다.",
+    pressure: "마음이 급해질수록 상황을 통제 가능한 틀 안에 넣고 기준을 더 분명히 하려는 모습이 보일 수 있습니다. 혼란을 정리하는 힘이 되기도 하지만, 예상 밖의 움직임을 불편해하는 사람처럼 비칠 수도 있습니다.",
+    change: "변화 앞에서는 지켜야 할 핵심을 먼저 정한 뒤, 그 위에 새로운 구조를 세우는 사람처럼 읽힐 수 있습니다. 무작정 흔들리기보다 새로운 질서를 만들어 적응하는 이미지입니다.",
+    shadow: "분명한 기준은 든든함으로 보이지만, 유연한 타협이 필요한 순간에는 정해진 틀을 쉽게 놓지 못하는 사람처럼 느껴질 수 있습니다.",
+  },
+};
+
+const SECONDARY_INFLUENCE = {
+  balance: "균형형이 함께 나타나면 주된 인상이 한쪽으로 과하게 기울기보다, 상황에 맞춰 속도를 조절하는 결이 더해집니다.",
+  upper: "상정 강조형이 함께 나타나면 행동이나 반응 앞에 한 번 더 의미를 생각하고 방향을 그려보는 결이 더해집니다.",
+  middle: "중정 강조형이 함께 나타나면 생각에 머물기보다 지금 할 수 있는 행동을 찾아 구체화하는 결이 더해집니다.",
+  lower: "하정 강조형이 함께 나타나면 선택한 관계와 기준을 오래 지키려는 꾸준한 결이 더해집니다.",
+  open: "오안 개방형이 함께 나타나면 하나의 답에 고정되기보다 주변의 다른 가능성을 받아들이는 결이 더해집니다.",
+  focused: "오안 응집형이 함께 나타나면 여러 자극 가운데 중요한 한 지점을 골라 오래 집중하는 결이 더해집니다.",
+  structure: "오악 구조형이 함께 나타나면 자신의 역할과 경계를 분명히 하며 질서를 세우는 결이 더해집니다.",
+};
+
 function setSystemState(state, label) {
   systemState.dataset.state = state;
   systemState.querySelector("span").textContent = label;
@@ -1093,21 +1169,64 @@ function renderDetailedAnalysis(values) {
   return derived;
 }
 
+function measurementInterpretation(typeKey, values, derived) {
+  const readings = {
+    balance: "상·중·하정의 길이가 서로 크게 멀어지지 않고, 눈 사이와 양옆의 여백도 어느 한쪽으로 강하게 치우치지 않았습니다. 그래서 얼굴을 처음 봤을 때 특정 부위 하나보다 전체가 고르게 정돈된 인상이 먼저 들어옵니다. 이런 비례는 한 가지 주장만 앞세우기보다 여러 조건을 함께 놓고 조율하는 사람 같은 분위기로 이어질 수 있습니다.",
+    upper: "얼굴 메시 상단에서 미간까지 이어지는 위쪽 구역이 다른 구역보다 길게 나타나, 시선이 얼굴 위쪽에 조금 더 오래 머뭅니다. 그래서 즉각 반응하기보다 먼저 상황을 관찰하고, 그 의미와 가능성을 머릿속에서 정리하는 사람 같은 인상을 줄 수 있습니다.",
+    middle: "미간에서 코 아래까지 이어지는 얼굴 중심부가 세로 흐름의 중심을 잡고, 측면에서 보이는 코의 입체감도 그 축을 함께 받치고 있습니다. 그래서 생각을 오래 품기보다 현실적인 말과 행동으로 바꾸며 상황을 앞으로 밀어가는 사람처럼 읽힐 수 있습니다.",
+    lower: "코 아래에서 턱끝까지 이어지는 아래쪽 구역이 길고, 턱선도 광대 아래에서 얼굴을 안정적으로 받치고 있습니다. 그래서 순간적인 반응보다 자신이 정한 기준과 관계를 오래 유지하며, 한번 맡은 일을 끝까지 지탱하는 사람 같은 인상으로 이어질 수 있습니다.",
+    open: "두 눈 사이와 얼굴 양옆의 여백이 평균적인 눈 너비보다 비교적 넓게 펼쳐져, 시선이 중심 한 곳보다 주변으로 퍼지는 느낌을 만듭니다. 그래서 새로운 사람과 정보에 여지를 열어두고, 하나의 답보다 여러 가능성을 먼저 발견하는 사람처럼 보일 수 있습니다.",
+    focused: "두 눈 사이와 얼굴 양옆의 여백이 중심 쪽으로 응집되어, 시선이 얼굴 가운데에 오래 머무는 느낌을 만듭니다. 그래서 많은 자극에 동시에 반응하기보다 자신이 중요하다고 판단한 한 가지를 깊게 살피고 오래 집중하는 사람처럼 읽힐 수 있습니다.",
+    structure: "광대와 턱의 너비, 얼굴 중심의 입체감이 서로 따로 보이기보다 하나의 윤곽을 이루며 전체 구조를 또렷하게 잡고 있습니다. 그래서 역할과 경계를 분명히 하고, 정해진 틀 안에서 안정적으로 힘을 유지하는 사람 같은 인상을 줄 수 있습니다.",
+  };
+  return readings[typeKey] ?? `${derived.thirdEntries[0][0]}의 흐름이 얼굴의 첫인상을 이끌지만, 다른 구역과의 관계에 따라 그 분위기는 한 가지 의미로 고정되지 않습니다.`;
+}
+
+function renderInterpretiveReading(values, derived) {
+  const [primaryKey] = classifiedType.ranked[0];
+  const [secondaryKey] = classifiedType.ranked[1];
+  const profile = READING_PROFILES[primaryKey];
+  resultCopy.replaceChildren(
+    resultElement("p", "result-reading-lead", measurementInterpretation(primaryKey, values, derived)),
+    resultElement("p", "", profile.overview),
+    resultElement("p", "result-reading-note", `여기에 ${FACE_TYPES[secondaryKey].name}의 기운이 겹쳐 보입니다. ${SECONDARY_INFLUENCE[secondaryKey]}`),
+  );
+  const contexts = [
+    ["사람 사이에서", profile.relation],
+    ["결정해야 할 때", profile.decision],
+    ["마음이 급해질 때", profile.pressure],
+    ["변화 앞에서", profile.change],
+  ];
+  resultContexts.replaceChildren(...contexts.map(([labelText, copyText], index) => {
+    const article = resultElement("article", "context-reading");
+    const heading = resultElement("div", "context-reading-heading");
+    heading.append(
+      resultElement("span", "context-number", String(index + 1).padStart(2, "0")),
+      resultElement("strong", "", labelText),
+    );
+    article.append(heading, resultElement("p", "", copyText));
+    return article;
+  }));
+}
+
 function renderSynthesis(values, derived) {
   const top = classifiedType.ranked[0];
   const second = classifiedType.ranked[1];
   const gap = Math.round((top[1] - second[1]) * 100);
   const isMixed = gap <= 7;
+  const primary = FACE_TYPES[top[0]];
+  const secondary = FACE_TYPES[second[0]];
+  const profile = READING_PROFILES[top[0]];
   const box = resultElement("div", "synthesis-callout");
   box.append(
-    resultElement("span", "synthesis-label", isMixed ? "복합 경향" : "주요 경향"),
-    resultElement("h4", "", isMixed ? `${FACE_TYPES[top[0]].name}과 ${FACE_TYPES[second[0]].name}이 가깝습니다.` : `${FACE_TYPES[top[0]].name}이 가장 뚜렷합니다.`),
-    resultElement("p", "", primaryReason(top[0], values, derived)),
+    resultElement("span", "synthesis-label", isMixed ? "두 인상이 함께 보입니다" : "가장 먼저 읽히는 인상"),
+    resultElement("h4", "", isMixed ? `${primary.name}이 중심을 잡고, ${secondary.name}이 비슷한 힘으로 겹칩니다.` : `${primary.name}이 중심을 잡고, ${secondary.name}이 뒤에서 결을 바꿉니다.`),
+    resultElement("p", "", `전체적으로는 ${profile.core}으로 읽힐 수 있습니다. ${SECONDARY_INFLUENCE[second[0]]}`),
   );
   if (isMixed) {
-    box.append(resultElement("p", "synthesis-sub", `두 유형의 적합도 차이는 ${gap}점입니다. 하나의 유형으로 단정하기보다 두 측정 축이 함께 나타난 결과로 읽는 편이 자연스럽습니다.`));
+    box.append(resultElement("p", "synthesis-sub", "어떤 상황에서는 첫 번째 인상이, 다른 상황에서는 두 번째 인상이 더 선명하게 보일 수 있습니다. 하나의 유형으로 고정하기보다 두 분위기가 함께 움직인다고 보는 편이 자연스럽습니다."));
   } else {
-    box.append(resultElement("p", "synthesis-sub", `두 번째 유형과의 적합도 차이는 ${gap}점입니다. 아래 상세 분석에서 어떤 값이 이 차이를 만들었는지 확인할 수 있습니다.`));
+    box.append(resultElement("p", "synthesis-sub", `다만 ${secondary.name}의 인상도 사라지는 것은 아닙니다. 편안할 때와 압박을 받을 때처럼 상황이 달라지면 보조적인 분위기가 더 먼저 드러날 수 있습니다.`));
   }
   resultSynthesis.replaceChildren(box);
   resultFitList.replaceChildren(...classifiedType.ranked.slice(0, 3).map(([key, score], index) => createFitRow(key, score, index + 1)));
@@ -1116,19 +1235,14 @@ function renderSynthesis(values, derived) {
 function renderConnections(values, derived) {
   const top = classifiedType.ranked[0];
   const second = classifiedType.ranked[1];
-  const thirdAxis = derived.thirdEntries[0];
+  const profile = READING_PROFILES[top[0]];
   const cards = [
-    ["가장 강한 축", FACE_TYPES[top[0]].name, primaryReason(top[0], values, derived)],
-    ["함께 작동한 축", FACE_TYPES[second[0]].name, primaryReason(second[0], values, derived)],
+    ["강점처럼 보이는 순간", "자신의 리듬을 찾았을 때", `${profile.decision} 이때 얼굴의 주된 인상은 신뢰감이나 안정감으로 받아들여질 가능성이 큽니다.`],
+    ["같은 특성이 부담이 될 때", "마음의 여유가 줄어들었을 때", `${profile.pressure} ${profile.shadow}`],
     [
-      "엇갈림도 결과입니다",
-      `${thirdAxis[0]} ${thirdAxis[1].toFixed(1)}% · 오안 ${derived.openMeasure.toFixed(2)}배`,
-      "세로 비례, 가로 여백, 윤곽 깊이는 서로 다른 축이므로 한 방향으로 일치하지 않을 수 있습니다. 이 차이를 억지로 한 성격으로 합치지 않고 복합적인 시각 인상으로 남깁니다.",
-    ],
-    [
-      "판정에 넣지 않은 값",
-      "눈꼬리 · 입꼬리 · 눈썹",
-      "표정, 화장, 정리 방식, 순간적인 카메라 각도에 크게 흔들리는 항목은 측정값을 보여주더라도 일곱 유형의 점수에는 넣지 않았습니다.",
+      "보조 인상이 먼저 드러날 때",
+      `${FACE_TYPES[second[0]].name}이 앞에 나오는 순간`,
+      `${SECONDARY_INFLUENCE[second[0]]} 따라서 익숙한 관계와 낯선 환경에서 서로 조금 다른 사람처럼 보이는 것도 이 결과 안에서는 자연스러운 변화입니다.`,
     ],
   ];
   resultConnections.replaceChildren(...cards.map(([labelText, titleText, copyText], index) => {
@@ -1161,23 +1275,10 @@ function renderResult() {
     span.textContent = keyword;
     return span;
   }));
-  resultCopy.replaceChildren(...type.description.map((paragraph) => {
-    const p = document.createElement("p");
-    p.textContent = paragraph;
-    return p;
-  }));
   const derived = renderDetailedAnalysis(finalMeasurement);
+  renderInterpretiveReading(finalMeasurement, derived);
   renderSynthesis(finalMeasurement, derived);
   renderConnections(finalMeasurement, derived);
-  resultContexts.replaceChildren(...type.contexts.map(([labelText, copyText]) => {
-    const article = document.createElement("article");
-    const label = document.createElement("span");
-    const copy = document.createElement("p");
-    label.textContent = labelText;
-    copy.textContent = copyText;
-    article.append(label, copy);
-    return article;
-  }));
   resultEvidence.replaceChildren(...type.evidence.map((key) => {
     const article = document.createElement("article");
     const label = document.createElement("span");

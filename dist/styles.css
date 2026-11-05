@@ -696,9 +696,26 @@ button {
 .result-copy p {
   margin: 0 0 18px;
   color: #c7ccd4;
-  font-size: 14px;
-  line-height: 1.9;
+  font-size: 15px;
+  line-height: 1.95;
   word-break: keep-all;
+}
+
+.result-copy .result-reading-lead {
+  color: #eef2f7;
+  font-size: clamp(16px, 1.45vw, 19px);
+  line-height: 1.85;
+  letter-spacing: -.025em;
+}
+
+.result-copy .result-reading-note {
+  margin-top: 24px;
+  padding: 15px 16px;
+  color: #9eabc1;
+  border-left: 2px solid var(--blue);
+  background: rgba(103, 152, 255, .055);
+  font-size: 12px;
+  line-height: 1.8;
 }
 
 .result-synthesis-wrap {
@@ -739,19 +756,50 @@ button {
 .synthesis-callout p {
   margin: 0;
   color: #b7bec8;
-  font-size: 12px;
-  line-height: 1.8;
+  font-size: 13px;
+  line-height: 1.85;
   word-break: keep-all;
 }
 
 .synthesis-callout .synthesis-sub {
   margin-top: 10px;
   color: #7d8794;
-  font-size: 10px;
+  font-size: 11px;
+}
+
+.result-score-disclosure {
+  margin-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.result-score-disclosure > summary {
+  position: relative;
+  padding: 13px 26px 12px 0;
+  color: #798492;
+  cursor: pointer;
+  font-size: 9px;
+  list-style: none;
+}
+
+.result-score-disclosure > summary::-webkit-details-marker,
+.result-data-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.result-score-disclosure > summary::after {
+  content: "+";
+  position: absolute;
+  right: 2px;
+  color: var(--blue);
+  font: 12px/1 var(--mono);
+}
+
+.result-score-disclosure[open] > summary::after {
+  content: "−";
 }
 
 .result-fit-list {
-  margin-top: 12px;
+  margin-top: 0;
   border-top: 1px solid var(--line);
 }
 
@@ -847,24 +895,36 @@ button {
 
 .result-contexts article {
   display: grid;
-  grid-template-columns: 96px minmax(0, 1fr);
-  gap: 18px;
-  padding: 17px 0 18px;
+  grid-template-columns: 126px minmax(0, 1fr);
+  gap: 26px;
+  padding: 22px 0 23px;
   border-bottom: 1px solid var(--line);
 }
 
-.result-contexts span {
+.context-reading-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
   padding-top: 3px;
+}
+
+.context-reading-heading .context-number {
+  color: #4f5967;
+  font: 8px/1 var(--mono);
+}
+
+.context-reading-heading strong {
   color: var(--blue);
   font-size: 10px;
   font-weight: 600;
+  line-height: 1.4;
 }
 
 .result-contexts p {
   margin: 0;
-  color: #aab1bb;
-  font-size: 12px;
-  line-height: 1.78;
+  color: #b7bec7;
+  font-size: 13px;
+  line-height: 1.88;
   word-break: keep-all;
 }
 
@@ -1102,7 +1162,7 @@ button {
 
 .result-connections {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 1px;
   overflow: hidden;
   border: 1px solid var(--line);
@@ -1112,8 +1172,8 @@ button {
 
 .connection-card {
   position: relative;
-  min-height: 164px;
-  padding: 17px;
+  min-height: 0;
+  padding: 20px 46px 22px 20px;
   background: #0b0e12;
 }
 
@@ -1134,10 +1194,10 @@ button {
 
 .connection-card strong {
   display: block;
-  margin: 16px 0 10px;
+  margin: 12px 0 10px;
   padding-right: 22px;
   color: #dce2ea;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   line-height: 1.45;
   word-break: keep-all;
@@ -1145,10 +1205,61 @@ button {
 
 .connection-card p {
   margin: 0;
-  color: #78818e;
-  font-size: 9px;
-  line-height: 1.65;
+  color: #929ba7;
+  font-size: 11px;
+  line-height: 1.78;
   word-break: keep-all;
+}
+
+.result-data-disclosure {
+  margin-top: 42px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255,255,255,.012);
+}
+
+.result-data-disclosure > summary {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 17px 48px 17px 18px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.result-data-disclosure > summary::after {
+  content: "+";
+  position: absolute;
+  top: 50%;
+  right: 18px;
+  color: var(--blue);
+  font: 17px/1 var(--mono);
+  transform: translateY(-50%);
+}
+
+.result-data-disclosure[open] > summary::after {
+  content: "−";
+}
+
+.result-data-disclosure > summary span {
+  color: #cfd6df;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.result-data-disclosure > summary small {
+  color: #626c78;
+  font-size: 9px;
+}
+
+.result-data-body {
+  padding: 0 18px 20px;
+  border-top: 1px solid var(--line);
+}
+
+.result-data-body .result-evidence-wrap {
+  margin-top: 24px;
 }
 
 .result-method-wrap {
