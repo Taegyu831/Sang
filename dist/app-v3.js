@@ -51,6 +51,14 @@ const resultEvidence = $("#resultEvidence");
 const resultAnalysis = $("#resultAnalysis");
 const resultConnections = $("#resultConnections");
 const resultMethod = $("#resultMethod");
+const resultFrontFigure = $("#resultFrontFigure");
+const resultFrontImage = $("#resultFrontImage");
+const resultFrontOverlay = $("#resultFrontOverlay");
+const resultProfileGallery = $("#resultProfileGallery");
+const resultProfileAImage = $("#resultProfileAImage");
+const resultProfileBImage = $("#resultProfileBImage");
+const resultProfileAOverlay = $("#resultProfileAOverlay");
+const resultProfileBOverlay = $("#resultProfileBOverlay");
 const showAllTypes = $("#showAllTypes");
 const restartButton = $("#restartButton");
 const typeCatalog = $("#typeCatalog");
@@ -76,6 +84,7 @@ let earMarking = false;
 let earPoints = [];
 let earStageKey = null;
 let captured = { front: null, profileA: null, profileB: null, ears: {} };
+let capturedFrames = { front: null, profileA: null, profileB: null };
 let finalMeasurement = null;
 let classifiedType = null;
 let classificationComplete = false;
@@ -587,6 +596,7 @@ function resetClassification() {
   earPoints = [];
   earStageKey = null;
   captured = { front: null, profileA: null, profileB: null, ears: {} };
+  capturedFrames = { front: null, profileA: null, profileB: null };
   finalMeasurement = null;
   classifiedType = null;
   classificationComplete = false;
@@ -661,12 +671,12 @@ function resizeCanvas() {
 
 function drawFace(landmarks) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_TESSELATION, { color: "rgba(103, 152, 255, 0.14)", lineWidth: 0.65 });
-  drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_FACE_OVAL, { color: "rgba(255, 255, 255, 0.58)", lineWidth: 1.25 });
-  drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_LEFT_EYE, { color: "rgba(103, 152, 255, 0.9)", lineWidth: 1.45 });
-  drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_RIGHT_EYE, { color: "rgba(103, 152, 255, 0.9)", lineWidth: 1.45 });
-  drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_LIPS, { color: "rgba(114, 239, 176, 0.78)", lineWidth: 1.3 });
-  drawingUtils.drawLandmarks(Object.values(LANDMARK).map((index) => landmarks[index]), { color: "rgba(255,255,255,0.9)", fillColor: "rgba(103,152,255,0.95)", radius: 1.25 });
+  drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_TESSELATION, { color: "rgba(164, 122, 53, 0.17)", lineWidth: 0.65 });
+  drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_FACE_OVAL, { color: "rgba(239, 230, 214, 0.72)", lineWidth: 1.25 });
+  drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_LEFT_EYE, { color: "rgba(155, 61, 44, 0.92)", lineWidth: 1.45 });
+  drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_RIGHT_EYE, { color: "rgba(155, 61, 44, 0.92)", lineWidth: 1.45 });
+  drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_LIPS, { color: "rgba(49, 93, 82, 0.9)", lineWidth: 1.3 });
+  drawingUtils.drawLandmarks(Object.values(LANDMARK).map((index) => landmarks[index]), { color: "rgba(239,230,214,0.95)", fillColor: "rgba(155,61,44,0.95)", radius: 1.25 });
   drawEarPoints();
 }
 
@@ -675,7 +685,7 @@ function drawEarPoints() {
   for (const [index, pointValue] of earPoints.entries()) {
     ctx.beginPath();
     ctx.arc(pointValue.x, pointValue.y, 7, 0, Math.PI * 2);
-    ctx.fillStyle = index === 0 ? "#6798ff" : "#72efb0";
+    ctx.fillStyle = index === 0 ? "#9b3d2c" : "#315d52";
     ctx.fill();
     ctx.strokeStyle = "rgba(255,255,255,.9)";
     ctx.lineWidth = 2;
@@ -693,16 +703,61 @@ function drawEarPoints() {
   }
 }
 
+function capturePortraitFrame() {
+  if (!latestLandmarks?.length || !video.videoWidth || !video.videoHeight) return null;
+  const videoWidth = video.videoWidth;
+  const videoHeight = video.videoHeight;
+  const xs = latestLandmarks.map((item) => item.x * videoWidth);
+  const ys = latestLandmarks.map((item) => item.y * videoHeight);
+  const faceMinX = Math.min(...xs);
+  const faceMaxX = Math.max(...xs);
+  const faceMinY = Math.min(...ys);
+  const faceMaxY = Math.max(...ys);
+  const faceWidth = faceMaxX - faceMinX;
+  const faceHeight = faceMaxY - faceMinY;
+  let cropWidth = Math.max(faceWidth * 1.48, faceHeight * 1.48 * 0.8);
+  let cropHeight = cropWidth / 0.8;
+  if (cropHeight < faceHeight * 1.48) {
+    cropHeight = faceHeight * 1.48;
+    cropWidth = cropHeight * 0.8;
+  }
+  cropWidth = Math.min(cropWidth, videoWidth);
+  cropHeight = Math.min(cropHeight, videoHeight);
+  const centerX = (faceMinX + faceMaxX) / 2;
+  const centerY = (faceMinY + faceMaxY) / 2 - faceHeight * 0.035;
+  const cropX = clamp(centerX - cropWidth / 2, 0, videoWidth - cropWidth);
+  const cropY = clamp(centerY - cropHeight / 2, 0, videoHeight - cropHeight);
+  const output = document.createElement("canvas");
+  output.width = 640;
+  output.height = 800;
+  const outputContext = output.getContext("2d");
+  outputContext.save();
+  outputContext.translate(output.width, 0);
+  outputContext.scale(-1, 1);
+  outputContext.drawImage(video, cropX, cropY, cropWidth, cropHeight, 0, 0, output.width, output.height);
+  outputContext.restore();
+  const points = Object.fromEntries(Object.entries(LANDMARK).map(([key, index]) => {
+    const item = latestLandmarks[index];
+    return [key, {
+      x: 100 - ((item.x * videoWidth - cropX) / cropWidth) * 100,
+      y: ((item.y * videoHeight - cropY) / cropHeight) * 100,
+    }];
+  }));
+  return { src: output.toDataURL("image/jpeg", 0.86), points };
+}
+
 function captureCurrentStage() {
   const measurement = medianMeasurement(stageRecords);
   if (currentStage === 0) {
     captured.front = measurement;
+    capturedFrames.front = capturePortraitFrame();
     updateMetrics(measurement);
     beginStage(1);
     return;
   }
   const key = currentStage === 1 ? "profileA" : "profileB";
   captured[key] = measurement;
+  capturedFrames[key] = capturePortraitFrame();
   if (currentStage === 1) firstProfileSign = Math.sign(measurement.yawDegrees) || 1;
   beginEarMarking(key);
 }
@@ -989,6 +1044,111 @@ function resultElement(tag, className, text) {
   return element;
 }
 
+function svgNode(tag, attributes = {}, text) {
+  const node = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  for (const [key, value] of Object.entries(attributes)) node.setAttribute(key, value);
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+function overlayLine(svg, from, to, color, className = "annotation-line") {
+  if (!from || !to) return;
+  svg.append(svgNode("line", {
+    x1: from.x.toFixed(2), y1: from.y.toFixed(2),
+    x2: to.x.toFixed(2), y2: to.y.toFixed(2),
+    stroke: color, class: className,
+  }));
+}
+
+function overlayLabel(svg, pointValue, label, color, offsetX = 2.2, offsetY = -1.5) {
+  if (!pointValue) return;
+  const labelX = clamp(pointValue.x + offsetX, 5, 95);
+  const labelY = clamp(pointValue.y + offsetY, 5, 96);
+  svg.append(
+    svgNode("circle", { cx: pointValue.x.toFixed(2), cy: pointValue.y.toFixed(2), r: 1.15, fill: color, class: "annotation-point" }),
+    svgNode("text", { x: labelX.toFixed(2), y: labelY.toFixed(2), fill: color, class: "annotation-label" }, label),
+  );
+}
+
+function renderFrontAnnotation(svg, points) {
+  svg.replaceChildren();
+  if (!points) return;
+  const left = Math.min(points.faceLeft.x, points.faceRight.x);
+  const right = Math.max(points.faceLeft.x, points.faceRight.x);
+  const thirdColors = ["#9b3d2c", "#315d52", "#a47a35", "#6e4e61"];
+  [points.meshTop, points.glabella, points.noseBase, points.chin].forEach((pointValue, index) => {
+    overlayLine(svg, { x: left, y: pointValue.y }, { x: right, y: pointValue.y }, thirdColors[index], "annotation-line is-third");
+  });
+  const eyeY = mean(points.eyeLeftOuter.y, points.eyeLeftInner.y, points.eyeRightInner.y, points.eyeRightOuter.y);
+  const fiveX = [points.templeLeft.x, points.eyeLeftOuter.x, points.eyeLeftInner.x, points.eyeRightInner.x, points.eyeRightOuter.x, points.templeRight.x].sort((a, b) => a - b);
+  fiveX.forEach((x) => overlayLine(svg, { x, y: eyeY - 5.5 }, { x, y: eyeY + 5.5 }, "#a47a35", "annotation-line is-five"));
+  overlayLabel(svg, points.glabella, "미간", "#315d52", 2.2, -2.1);
+  overlayLabel(svg, points.noseTip, "코끝", "#9b3d2c", 2.4, -1.1);
+  overlayLabel(svg, points.upperLip, "인중", "#6e4e61", 2.4, -1.4);
+  overlayLabel(svg, points.chin, "턱", "#a47a35", 2.4, -1.6);
+  overlayLabel(svg, points.cheekLeft, "광대", "#315d52", -11.5, -1.4);
+}
+
+function renderProfileAnnotation(svg, points) {
+  svg.replaceChildren();
+  if (!points) return;
+  const profilePoints = [points.noseBridge, points.noseTip, points.noseBase, points.upperLip, points.chin];
+  const path = profilePoints.map((pointValue) => `${pointValue.x.toFixed(2)},${pointValue.y.toFixed(2)}`).join(" ");
+  svg.append(svgNode("polyline", { points: path, fill: "none", stroke: "#9b3d2c", class: "annotation-line is-profile-line" }));
+  overlayLabel(svg, points.noseBridge, "콧대", "#315d52", 2.3, -2);
+  overlayLabel(svg, points.noseTip, "코끝", "#9b3d2c", 2.3, -1.2);
+  overlayLabel(svg, points.chin, "턱끝", "#a47a35", 2.3, -1.5);
+}
+
+function renderCapturedFrames() {
+  const front = capturedFrames.front;
+  const profileA = capturedFrames.profileA;
+  const profileB = capturedFrames.profileB;
+  resultFrontFigure.hidden = !front;
+  if (front) {
+    resultFrontImage.src = front.src;
+    renderFrontAnnotation(resultFrontOverlay, front.points);
+  }
+  resultProfileGallery.hidden = !(profileA || profileB);
+  if (profileA) {
+    resultProfileAImage.src = profileA.src;
+    renderProfileAnnotation(resultProfileAOverlay, profileA.points);
+    resultProfileAImage.closest("figure").hidden = false;
+  } else {
+    resultProfileAImage.closest("figure").hidden = true;
+  }
+  if (profileB) {
+    resultProfileBImage.src = profileB.src;
+    renderProfileAnnotation(resultProfileBOverlay, profileB.points);
+    resultProfileBImage.closest("figure").hidden = false;
+  } else {
+    resultProfileBImage.closest("figure").hidden = true;
+  }
+}
+
+function createPreviewFrame(profile = false, mirrored = false) {
+  const portrait = profile
+    ? `<path d="M315 115 C370 150 390 225 374 300 C362 350 405 374 430 395 C405 414 384 431 384 468 C384 535 350 619 286 678 C245 715 190 704 157 666 C118 619 105 547 118 470 C130 397 143 324 163 252 C185 170 239 112 315 115Z" fill="#c9b79e" stroke="#5a4b3c" stroke-width="3"/><path d="M355 286 C379 309 391 342 398 374 C386 381 375 386 360 387" fill="none" stroke="#564538" stroke-width="4"/><path d="M352 428 C374 438 386 438 402 430" fill="none" stroke="#6f4a3b" stroke-width="4"/>`
+    : `<ellipse cx="320" cy="392" rx="178" ry="266" fill="#c9b79e" stroke="#5a4b3c" stroke-width="3"/><path d="M210 330 C245 307 276 308 302 331 M338 331 C366 307 400 309 430 333" fill="none" stroke="#5a4b3c" stroke-width="5"/><path d="M222 356 C249 371 277 370 299 356 M342 356 C370 372 400 370 421 355" fill="none" stroke="#3e372f" stroke-width="4"/><path d="M318 356 C306 420 302 455 320 470 C340 461 348 455 348 444" fill="none" stroke="#665446" stroke-width="4"/><path d="M264 523 C304 545 349 545 389 520" fill="none" stroke="#7b4639" stroke-width="4"/>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="800" viewBox="0 0 640 800"><rect width="640" height="800" fill="#dfd2bd"/><path d="M0 80H640M0 720H640" stroke="#bfae94" stroke-width="1" opacity=".6"/>${portrait}<text x="32" y="48" fill="#7b6b59" font-family="serif" font-size="18">LOCAL PREVIEW PLATE</text></svg>`;
+  const frontPoints = {
+    meshTop: { x: 50, y: 18 }, glabella: { x: 50, y: 39 }, noseBase: { x: 50, y: 59 }, chin: { x: 50, y: 82 },
+    faceLeft: { x: 22, y: 50 }, faceRight: { x: 78, y: 50 }, templeLeft: { x: 25, y: 40 }, templeRight: { x: 75, y: 40 },
+    cheekLeft: { x: 29, y: 56 }, cheekRight: { x: 71, y: 56 }, eyeLeftOuter: { x: 30, y: 43 }, eyeLeftInner: { x: 43, y: 43 },
+    eyeRightInner: { x: 57, y: 43 }, eyeRightOuter: { x: 70, y: 43 }, noseBridge: { x: 50, y: 40 }, noseTip: { x: 50, y: 55 },
+    upperLip: { x: 50, y: 65 }, mouthLeft: { x: 39, y: 67 }, mouthRight: { x: 61, y: 67 },
+  };
+  const profilePoints = {
+    ...frontPoints,
+    noseBridge: { x: mirrored ? 47 : 55, y: 39 },
+    noseTip: { x: mirrored ? 37 : 67, y: 49 },
+    noseBase: { x: mirrored ? 43 : 61, y: 55 },
+    upperLip: { x: mirrored ? 40 : 64, y: 62 },
+    chin: { x: mirrored ? 43 : 61, y: 80 },
+  };
+  return { src: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`, points: profile ? profilePoints : frontPoints };
+}
+
 function measurementBand(value, low, high, labels) {
   if (!Number.isFinite(value)) return "측정 제외";
   if (value < low) return labels[0];
@@ -1184,12 +1344,9 @@ function measurementInterpretation(typeKey, values, derived) {
 
 function renderInterpretiveReading(values, derived) {
   const [primaryKey] = classifiedType.ranked[0];
-  const [secondaryKey] = classifiedType.ranked[1];
   const profile = READING_PROFILES[primaryKey];
   resultCopy.replaceChildren(
     resultElement("p", "result-reading-lead", measurementInterpretation(primaryKey, values, derived)),
-    resultElement("p", "", profile.overview),
-    resultElement("p", "result-reading-note", `여기에 ${FACE_TYPES[secondaryKey].name}의 기운이 겹쳐 보입니다. ${SECONDARY_INFLUENCE[secondaryKey]}`),
   );
   const contexts = [
     ["사람 사이에서", profile.relation],
@@ -1221,12 +1378,13 @@ function renderSynthesis(values, derived) {
   box.append(
     resultElement("span", "synthesis-label", isMixed ? "두 인상이 함께 보입니다" : "가장 먼저 읽히는 인상"),
     resultElement("h4", "", isMixed ? `${primary.name}이 중심을 잡고, ${secondary.name}이 비슷한 힘으로 겹칩니다.` : `${primary.name}이 중심을 잡고, ${secondary.name}이 뒤에서 결을 바꿉니다.`),
-    resultElement("p", "", `전체적으로는 ${profile.core}으로 읽힐 수 있습니다. ${SECONDARY_INFLUENCE[second[0]]}`),
+    resultElement("p", "", `${profile.overview} 전체적으로는 ${profile.core}으로 읽힐 수 있습니다.`),
+    resultElement("p", "synthesis-secondary", SECONDARY_INFLUENCE[second[0]]),
   );
   if (isMixed) {
-    box.append(resultElement("p", "synthesis-sub", "어떤 상황에서는 첫 번째 인상이, 다른 상황에서는 두 번째 인상이 더 선명하게 보일 수 있습니다. 하나의 유형으로 고정하기보다 두 분위기가 함께 움직인다고 보는 편이 자연스럽습니다."));
+    box.append(resultElement("p", "synthesis-sub", "두 분위기의 힘이 비슷하므로 상황에 따라 먼저 보이는 인상이 달라질 수 있습니다."));
   } else {
-    box.append(resultElement("p", "synthesis-sub", `다만 ${secondary.name}의 인상도 사라지는 것은 아닙니다. 편안할 때와 압박을 받을 때처럼 상황이 달라지면 보조적인 분위기가 더 먼저 드러날 수 있습니다.`));
+    box.append(resultElement("p", "synthesis-sub", `${secondary.name}은 주 유형을 바꾸기보다 말투와 반응의 결을 조정하는 보조 인상으로 보았습니다.`));
   }
   resultSynthesis.replaceChildren(box);
   resultFitList.replaceChildren(...classifiedType.ranked.slice(0, 3).map(([key, score], index) => createFitRow(key, score, index + 1)));
@@ -1237,12 +1395,11 @@ function renderConnections(values, derived) {
   const second = classifiedType.ranked[1];
   const profile = READING_PROFILES[top[0]];
   const cards = [
-    ["강점처럼 보이는 순간", "자신의 리듬을 찾았을 때", `${profile.decision} 이때 얼굴의 주된 인상은 신뢰감이나 안정감으로 받아들여질 가능성이 큽니다.`],
-    ["같은 특성이 부담이 될 때", "마음의 여유가 줄어들었을 때", `${profile.pressure} ${profile.shadow}`],
+    ["같은 인상의 다른 면", "강점이 언제나 같은 방식으로 보이지는 않습니다", profile.shadow],
     [
-      "보조 인상이 먼저 드러날 때",
-      `${FACE_TYPES[second[0]].name}이 앞에 나오는 순간`,
-      `${SECONDARY_INFLUENCE[second[0]]} 따라서 익숙한 관계와 낯선 환경에서 서로 조금 다른 사람처럼 보이는 것도 이 결과 안에서는 자연스러운 변화입니다.`,
+      "측정과 실제 인상 사이",
+      "표정과 관계, 그날의 상태가 얼굴의 분위기를 바꿉니다",
+      `이 화면은 정지된 비율을 읽은 결과입니다. 익숙한 사람 앞에서는 ${FACE_TYPES[second[0]].name}의 인상이 더 먼저 드러날 수 있고, 웃음·긴장·조명·카메라 각도에 따라서도 실제로 마주한 인상은 달라질 수 있습니다.`,
     ],
   ];
   resultConnections.replaceChildren(...cards.map(([labelText, titleText, copyText], index) => {
@@ -1275,6 +1432,7 @@ function renderResult() {
     span.textContent = keyword;
     return span;
   }));
+  renderCapturedFrames();
   const derived = renderDetailedAnalysis(finalMeasurement);
   renderInterpretiveReading(finalMeasurement, derived);
   renderSynthesis(finalMeasurement, derived);
@@ -1431,6 +1589,11 @@ window.addEventListener("beforeunload", stopStream);
 
 const previewType = new URLSearchParams(window.location.search).get("preview");
 if (window.location.hostname === "127.0.0.1" && FACE_TYPES[previewType]) {
+  capturedFrames = {
+    front: createPreviewFrame(false),
+    profileA: createPreviewFrame(true, false),
+    profileB: createPreviewFrame(true, true),
+  };
   finalMeasurement = {
     upperThird: 33.4, middleThird: 33.1, lowerThird: 33.5,
     outerLeft: 1.03, leftEye: 0.98, eyeGap: 1.06, rightEye: 1.02, outerRight: 0.99,

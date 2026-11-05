@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#080a0d" />
+    <meta name="theme-color" content="#efe6d6" />
     <meta name="robots" content="noindex, nofollow, noarchive" />
     <meta
       name="description"
@@ -22,7 +22,7 @@
           <h1>FACE / MEASURE</h1>
         </div>
         <div class="topbar-right">
-          <span class="privacy">브라우저 내 처리 · 영상 저장 안 함</span>
+          <span class="privacy">브라우저 내 처리 · 서버 전송 안 함</span>
           <span class="system-state" id="systemState" data-state="loading">
             <i aria-hidden="true"></i>
             <span>측정 모델 불러오는 중</span>
@@ -99,6 +99,13 @@
             <div class="result-inner">
               <header class="result-hero">
                 <p class="result-index">DIGITAL FACE TYPE <span id="resultCode">F—01</span></p>
+                <figure class="result-face-figure result-front-figure" id="resultFrontFigure" hidden>
+                  <div class="face-plate">
+                    <img id="resultFrontImage" alt="측정 당시 정면 얼굴" />
+                    <svg id="resultFrontOverlay" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"></svg>
+                  </div>
+                  <figcaption><span>정면 도판</span><small>삼정 · 오안 · 오관</small></figcaption>
+                </figure>
                 <h2 id="resultName">균형의 상</h2>
                 <p class="result-tagline" id="resultTagline"></p>
                 <div class="result-keywords" id="resultKeywords"></div>
@@ -135,10 +142,28 @@
 
                 <section class="result-connections-wrap" aria-labelledby="connectionsTitle">
                   <div class="context-heading">
-                    <h3 id="connectionsTitle">같은 인상이 다르게 보일 때</h3>
-                    <span>CONTEXT CHANGES THE READING</span>
+                    <h3 id="connectionsTitle">해석과 함께 기억할 점</h3>
+                    <span>READ WITH CONTEXT</span>
                   </div>
-                  <div class="result-connections" id="resultConnections"></div>
+                  <div class="connections-layout">
+                    <div class="result-profile-gallery" id="resultProfileGallery" hidden>
+                      <figure class="result-face-figure is-profile">
+                        <div class="face-plate">
+                          <img id="resultProfileAImage" alt="측정 당시 첫 번째 측면 얼굴" />
+                          <svg id="resultProfileAOverlay" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"></svg>
+                        </div>
+                        <figcaption><span>측면 갑</span><small>콧대 · 코끝 · 턱끝</small></figcaption>
+                      </figure>
+                      <figure class="result-face-figure is-profile">
+                        <div class="face-plate">
+                          <img id="resultProfileBImage" alt="측정 당시 두 번째 측면 얼굴" />
+                          <svg id="resultProfileBOverlay" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"></svg>
+                        </div>
+                        <figcaption><span>측면 을</span><small>입체 비율 비교</small></figcaption>
+                      </figure>
+                    </div>
+                    <div class="result-connections" id="resultConnections"></div>
+                  </div>
                 </section>
 
                 <details class="result-data-disclosure">
@@ -178,6 +203,7 @@
                 <p class="result-disclaimer">
                   이 결과는 카메라에서 측정된 상대 비율을 전시적 언어로 번역한 것입니다.
                   전통 관상학의 공인 판정이나 성격·능력에 대한 과학적 진단이 아닙니다.
+                  결과 화면의 사진은 현재 브라우저 메모리에만 머물며 새로고침하면 사라집니다.
                   맞는 부분만큼 낯설거나 다른 부분을 발견하는 것 역시 이 체험의 일부입니다.
                 </p>
               </div>
