@@ -901,6 +901,19 @@ button {
       #090c10;
   }
 
+  .camera-frame.is-running #camera,
+  .camera-frame.is-running #overlay {
+    object-fit: contain;
+  }
+
+  .camera-frame.is-running #camera {
+    background: #05070a;
+  }
+
+  .camera-frame.is-running .frame-grid {
+    opacity: .42;
+  }
+
   .empty-state {
     align-items: flex-start;
     justify-content: flex-end;
