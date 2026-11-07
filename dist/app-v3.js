@@ -1,3 +1,11 @@
+import { estimatePose, frontalizePoints, poseFromMatrix } from "./pose.js";
+import { LANDMARK, getPoints, computeFrontFeatures, vertical, mean } from "./features.js";
+import { CALIBRATION, zScore, formatValue } from "./calibration.js";
+import { AXES, AXIS_ORDER, THRESHOLDS } from "./reading.js";
+import { StableCapture, GUIDANCE } from "./capture.js";
+import { interpret } from "./interpret.js";
+import { FACE_TYPES, READING_PROFILES } from "./frames.js";
+
 const MEDIAPIPE_VERSION = "1.1.1";
 const MEDIAPIPE_MODULE = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VERSION}/vision_bundle.mjs`;
 const MEDIAPIPE_WASM = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VERSION}/wasm`;
@@ -5,10 +13,10 @@ const FACE_MODEL = "https://storage.googleapis.com/mediapipe-models/face_landmar
 const PUBLIC_SITE_URL = "https://taegyu831.github.io/Sang/";
 const MODEL_LOAD_TIMEOUT = 18000;
 
-const REQUIRED_FRONT_SAMPLES = 42;
-const REQUIRED_PROFILE_SAMPLES = 34;
-const MIN_FRONT_QUALITY = 76;
-const MIN_PROFILE_QUALITY = 70;
+const SEARCH_PARAMS = new URLSearchParams(window.location.search);
+// ?pose=raw turns the head pose correction off, to compare against the old behaviour.
+const POSE_CORRECTION = SEARCH_PARAMS.get("pose") !== "raw";
+const DEBUG_MODE = SEARCH_PARAMS.get("debug") === "1";
 
 const $ = (selector) => document.querySelector(selector);
 const video = $("#camera");
@@ -26,14 +34,7 @@ const systemState = $("#systemState");
 const sampleCount = $("#sampleCount");
 const captureJourney = $("#captureJourney");
 const journeyProgress = $("#journeyProgress");
-const turnCue = $("#turnCue");
-const turnArrow = $("#turnArrow");
-const turnTitle = $("#turnTitle");
-const turnCopy = $("#turnCopy");
-const earMarker = $("#earMarker");
-const earMarkerTitle = $("#earMarkerTitle");
-const earMarkerCopy = $("#earMarkerCopy");
-const skipEarButton = $("#skipEarButton");
+const meterValue = $("#meterValue");
 const classificationReady = $("#classificationReady");
 const resultView = $("#resultView");
 const resultCode = $("#resultCode");
@@ -44,21 +45,17 @@ const resultFit = $("#resultFit");
 const resultSecondary = $("#resultSecondary");
 const resultConfidence = $("#resultConfidence");
 const resultCopy = $("#resultCopy");
+const resultThemes = $("#resultThemes");
+const resultLinksWrap = $("#resultLinksWrap");
+const resultLinks = $("#resultLinks");
+const resultTone = $("#resultTone");
 const resultSynthesis = $("#resultSynthesis");
-const resultFitList = $("#resultFitList");
-const resultContexts = $("#resultContexts");
 const resultEvidence = $("#resultEvidence");
 const resultAnalysis = $("#resultAnalysis");
-const resultConnections = $("#resultConnections");
 const resultMethod = $("#resultMethod");
 const resultFrontFigure = $("#resultFrontFigure");
 const resultFrontImage = $("#resultFrontImage");
 const resultFrontOverlay = $("#resultFrontOverlay");
-const resultProfileGallery = $("#resultProfileGallery");
-const resultProfileAImage = $("#resultProfileAImage");
-const resultProfileBImage = $("#resultProfileBImage");
-const resultProfileAOverlay = $("#resultProfileAOverlay");
-const resultProfileBOverlay = $("#resultProfileBOverlay");
 const showAllTypes = $("#showAllTypes");
 const restartButton = $("#restartButton");
 const typeCatalog = $("#typeCatalog");
@@ -73,54 +70,15 @@ let stream;
 let animationId;
 let running = false;
 let lastVideoTime = -1;
-let currentStage = 0;
-let stageStartedAt = 0;
-let stageRecords = [];
+let content = null;
+let capture = new StableCapture();
 let smoothed = null;
-let firstProfileSign = 0;
 let latestLandmarks = null;
-let latestReference = null;
-let earMarking = false;
-let earPoints = [];
-let earStageKey = null;
-let captured = { front: null, profileA: null, profileB: null, ears: {} };
-let capturedFrames = { front: null, profileA: null, profileB: null };
+let bestShot = null;
+let lastShotAt = 0;
 let finalMeasurement = null;
-let classifiedType = null;
+let reading = null;
 let classificationComplete = false;
-
-const LANDMARK = {
-  meshTop: 10,
-  glabella: 168,
-  chin: 152,
-  faceLeft: 234,
-  faceRight: 454,
-  templeLeft: 127,
-  templeRight: 356,
-  cheekLeft: 93,
-  cheekRight: 323,
-  jawLeft: 172,
-  jawRight: 397,
-  eyeLeftOuter: 33,
-  eyeLeftInner: 133,
-  eyeLeftTop: 159,
-  eyeLeftBottom: 145,
-  eyeRightInner: 362,
-  eyeRightOuter: 263,
-  eyeRightTop: 386,
-  eyeRightBottom: 374,
-  noseBridge: 168,
-  noseTip: 1,
-  noseBase: 2,
-  noseLeft: 98,
-  noseRight: 327,
-  upperLip: 0,
-  lowerLip: 17,
-  upperLipInner: 13,
-  lowerLipInner: 14,
-  mouthLeft: 61,
-  mouthRight: 291,
-};
 
 const metricNodes = Object.fromEntries(
   [...document.querySelectorAll(".metric")].map((node) => [
@@ -129,221 +87,11 @@ const metricNodes = Object.fromEntries(
   ]),
 );
 
-const METRIC_LABELS = {
-  upperThird: { label: "상정 비율", unit: "%" },
-  middleThird: { label: "중정 비율", unit: "%" },
-  lowerThird: { label: "하정 비율", unit: "%" },
-  outerLeft: { label: "왼쪽 바깥 구간", unit: "배" },
-  leftEye: { label: "왼쪽 눈 구간", unit: "배" },
-  eyeGap: { label: "눈 사이 구간", unit: "배" },
-  rightEye: { label: "오른쪽 눈 구간", unit: "배" },
-  outerRight: { label: "오른쪽 바깥 구간", unit: "배" },
-  noseWidth: { label: "코 너비 비율", unit: "%" },
-  philtrumLower: { label: "인중 / 하정", unit: "%" },
-  jawCheek: { label: "턱 / 광대 너비", unit: "%" },
-  faceRatio: { label: "얼굴 너비 비율", unit: "%" },
-  noseDepth: { label: "코끝 상대 깊이", unit: "%" },
-  earLength: { label: "귀 길이 비율", unit: "%" },
-  symmetry: { label: "좌우 상대 균형", unit: "점" },
-};
+const STRENGTH_TEXT = { light: "미세한 쪽", moderate: "완만한 강조", clear: "뚜렷한 강조" };
+const RELIABILITY_TEXT = { high: "근거 신뢰 높음", medium: "근거 신뢰 보통", low: "근거 신뢰 낮음" };
+const RELATION_TEXT = { above: "평균보다 큼", typical: "평균 범위", below: "평균보다 작음" };
 
-const FACE_TYPES = {
-  balance: {
-    code: "F—01",
-    name: "삼정 균형형",
-    tagline: "상·중·하 세 구역이 비슷한 호흡을 나누는 얼굴",
-    keywords: ["삼정", "균형", "조율"],
-    summary: "상정·중정·하정의 상대 길이가 비교적 고르게 나타난 유형입니다.",
-    description: [
-      "얼굴 메시 상단에서 미간, 코 아래, 턱끝으로 이어지는 세 구역이 한쪽으로 크게 치우치지 않습니다. 특정 구역 하나가 먼저 강조되기보다 얼굴 전체의 비례가 동시에 들어오는 구조에 가깝습니다.",
-      "전통 관상에서 삼정의 고른 배치는 삶의 여러 시기를 한쪽으로 몰지 않고 조율하는 이미지로 읽어왔습니다. 이 체험에서는 그것을 성격의 사실로 단정하지 않고, 얼굴의 세로 분할이 만들어내는 시각적 인상으로만 번역합니다.",
-    ],
-    contexts: [
-      ["관계에서", "한쪽의 말만 빠르게 고르기보다 서로 다른 입장을 함께 보려는 사람처럼 읽힐 수 있습니다. 다만 조율하는 시간이 길어지면 자신의 선호가 늦게 드러나는 인상을 줄 수도 있습니다."],
-      ["결정과 일에서", "전체 조건을 정리한 뒤 움직이는 안정적인 흐름으로 보일 수 있습니다. 명확한 기준이 생기면 일정한 속도를 오래 유지하는 이미지와 연결됩니다."],
-      ["변화의 시기에서", "급히 자신을 바꾸기보다 새로운 환경 안에서 균형점을 찾는 사람처럼 보일 수 있습니다. 이 해석은 비율의 은유이지 실제 행동을 예측하는 진단은 아닙니다."],
-    ],
-    evidence: ["upperThird", "middleThird", "lowerThird", "symmetry"],
-  },
-  upper: {
-    code: "F—02",
-    name: "상정 강조형",
-    tagline: "얼굴의 위쪽 여백이 먼저 시선을 붙잡는 구조",
-    keywords: ["상정", "관찰", "구상"],
-    summary: "추정된 상정 구역이 중정과 하정보다 상대적으로 길게 나타난 유형입니다.",
-    description: [
-      "얼굴 메시 상단을 임시 머리카락선으로 두었을 때, 그 지점에서 미간까지의 구역이 다른 두 구역보다 길게 측정되었습니다. 이 때문에 얼굴의 무게 중심이 위쪽으로 열리는 듯한 인상을 만듭니다.",
-      "전통 관상 언어에서는 상정을 생각과 구상, 초기의 기운과 연결해 설명하곤 합니다. 실제 머리카락선이 아니라 메시 상단을 사용한 MVP 추정이므로, 이 유형은 특히 낮은 강도의 참고 해석으로 읽어야 합니다.",
-    ],
-    contexts: [
-      ["관계에서", "말을 바로 꺼내기보다 먼저 관찰하고 머릿속에서 관계의 맥락을 정리하는 인상으로 읽힐 수 있습니다."],
-      ["결정과 일에서", "행동보다 설계와 구상의 단계가 먼저 보이는 유형처럼 느껴질 수 있습니다. 준비가 길어지면 시작이 늦다는 인상으로 바뀔 여지도 있습니다."],
-      ["변화의 시기에서", "새로운 상황을 곧장 받아들이기보다 의미를 해석하고 방향을 그린 뒤 움직이는 사람처럼 보일 수 있습니다."],
-    ],
-    evidence: ["upperThird", "middleThird", "lowerThird", "faceRatio"],
-  },
-  middle: {
-    code: "F—03",
-    name: "중정 강조형",
-    tagline: "미간에서 코 아래까지의 중심축이 또렷한 얼굴",
-    keywords: ["중정", "현실감", "추진"],
-    summary: "중정의 세로 길이와 코 중심부의 입체감이 상대적으로 강조된 유형입니다.",
-    description: [
-      "미간에서 코 아래까지 이어지는 중정이 상정과 하정보다 길거나, 측면 촬영에서 코 중심축의 상대 깊이가 함께 드러났습니다. 얼굴 가운데가 시각적 중심을 강하게 잡는 구조입니다.",
-      "전통 관상에서는 중정을 활동과 현실의 실행 구간으로 읽어왔습니다. 여기서는 코의 실제 높이나 골격을 재는 것이 아니라 카메라 메시 안의 상대 깊이를 사용하는 만큼, 실행력을 판정하기보다 중심부가 주는 인상을 설명합니다.",
-    ],
-    contexts: [
-      ["관계에서", "상대의 말에 현실적인 반응을 빠르게 돌려주는 사람처럼 읽힐 수 있습니다. 직접적인 태도가 상황에 따라 단호함으로 보일 수도 있습니다."],
-      ["결정과 일에서", "아이디어를 구체적인 행동으로 옮기는 구간이 선명한 인상과 연결됩니다. 결과와 과정의 실제 조건을 중요하게 보는 사람처럼 느껴질 수 있습니다."],
-      ["변화의 시기에서", "불확실함을 오래 두기보다 지금 할 수 있는 행동을 찾는 모습으로 번역될 수 있습니다."],
-    ],
-    evidence: ["middleThird", "noseWidth", "noseDepth", "symmetry"],
-  },
-  lower: {
-    code: "F—04",
-    name: "하정 강조형",
-    tagline: "코 아래에서 턱끝까지의 하관이 얼굴을 받치는 구조",
-    keywords: ["하정", "지속", "의지"],
-    summary: "하정의 길이와 턱·광대의 관계가 상대적으로 강하게 드러난 유형입니다.",
-    description: [
-      "코 아래에서 턱끝까지의 하정이 다른 구역보다 길거나, 턱 너비가 광대 너비에 가깝게 측정되었습니다. 얼굴 아래쪽의 선이 전체 인상을 안정적으로 받치는 형태입니다.",
-      "전통 관상 언어에서는 하정을 지속과 결실의 이미지로 다뤄왔습니다. 이 결과는 의지나 미래를 예언하는 판정이 아니라, 하관의 길이와 너비가 만드는 단단한 시각적 무게를 설명합니다.",
-    ],
-    contexts: [
-      ["관계에서", "약속과 경계를 분명히 유지하는 사람처럼 보일 수 있습니다. 단호한 표정이 실제 의도보다 강하게 전달될 가능성도 있습니다."],
-      ["결정과 일에서", "한번 정한 구조를 끝까지 지탱하는 이미지와 연결됩니다. 변화가 잦은 환경에서는 속도를 바꾸는 데 시간이 필요한 사람처럼 읽힐 수 있습니다."],
-      ["변화의 시기에서", "완전히 새로 시작하기보다 지켜야 할 기반을 남긴 뒤 움직이는 모습으로 번역될 수 있습니다."],
-    ],
-    evidence: ["lowerThird", "jawCheek", "philtrumLower", "faceRatio"],
-  },
-  open: {
-    code: "F—05",
-    name: "오안 개방형",
-    tagline: "다섯 가로 구간의 여백이 바깥으로 열리는 얼굴",
-    keywords: ["오안", "개방", "탐색"],
-    summary: "눈 사이와 양옆의 바깥 구간이 평균 눈 너비보다 넓게 나타난 유형입니다.",
-    description: [
-      "양쪽 관자에서 눈 바깥, 두 눈, 눈 사이로 이어지는 다섯 구간을 평균 눈 너비로 나누었을 때 중앙과 바깥 여백이 비교적 넓습니다. 시선이 한 점에 모이기보다 얼굴 전체로 퍼지는 인상을 만듭니다.",
-      "전통적인 오안 비례에서는 다섯 구간이 눈 하나의 너비에 가까운지를 살펴봅니다. 이 체험의 ‘개방’은 넓은 간격을 성격과 동일시하지 않고, 여러 방향으로 열린 듯 보이는 시각적 은유로만 사용합니다.",
-    ],
-    contexts: [
-      ["관계에서", "처음 만나는 사람에게도 대화의 여지를 남기고 주변의 분위기를 넓게 살피는 사람처럼 보일 수 있습니다."],
-      ["결정과 일에서", "하나의 답보다 여러 가능성을 먼저 펼치는 이미지와 연결됩니다. 선택지가 많아지면 집중 기준이 필요해 보일 수도 있습니다."],
-      ["변화의 시기에서", "새로운 환경의 자극을 폭넓게 받아들이는 모습으로 읽힐 수 있습니다. 실제 개방성의 측정값은 아닙니다."],
-    ],
-    evidence: ["outerLeft", "eyeGap", "outerRight", "symmetry"],
-  },
-  focused: {
-    code: "F—06",
-    name: "오안 응집형",
-    tagline: "다섯 가로 구간이 얼굴 중심으로 모이는 구조",
-    keywords: ["오안", "응집", "집중"],
-    summary: "눈 사이 또는 바깥 여백이 평균 눈 너비보다 좁아 중심부의 밀도가 높게 나타난 유형입니다.",
-    description: [
-      "오안의 다섯 구간 가운데 중앙이나 바깥 여백이 평균 눈 너비보다 좁게 측정되어, 시선이 얼굴 중심으로 모이는 듯한 인상을 만듭니다. 눈의 실제 크기보다 각 구간의 관계에서 생기는 효과입니다.",
-      "전통 관상 언어에서는 응축된 배치를 집중과 세밀함의 상징으로 읽기도 합니다. 이 체험은 그 상징을 차용하되, 내향성이나 성격을 단정하지 않고 중심부의 시각적 밀도만 설명합니다.",
-    ],
-    contexts: [
-      ["관계에서", "넓은 관계보다 신뢰가 생긴 몇 사람에게 주의를 오래 두는 사람처럼 보일 수 있습니다. 첫인상에서는 신중함이 거리감으로 읽힐 수도 있습니다."],
-      ["결정과 일에서", "한 문제를 세밀하게 파고드는 이미지와 연결됩니다. 동시에 여러 일을 전환할 때는 평소보다 긴장감이 커 보일 수 있습니다."],
-      ["변화의 시기에서", "충분한 근거를 확인한 뒤 움직이는 사람처럼 느껴질 수 있습니다. 납득한 뒤에는 방향이 선명해지는 인상과도 연결됩니다."],
-    ],
-    evidence: ["outerLeft", "eyeGap", "outerRight", "symmetry"],
-  },
-  structure: {
-    code: "F—07",
-    name: "오악 구조형",
-    tagline: "이마·광대·코·턱의 관계가 입체적인 골격감을 만드는 얼굴",
-    keywords: ["오악", "윤곽", "구조"],
-    summary: "광대와 턱의 너비, 코와 턱의 상대 깊이가 함께 구조적인 인상을 만든 유형입니다.",
-    description: [
-      "정면의 광대·턱 너비 관계와 양측면의 코끝·턱끝 상대 깊이를 함께 보았을 때, 얼굴의 주요 구역이 분명한 입체적 연결을 보입니다. 실제 뼈의 높이를 측정한 오악 판정은 아니며, 카메라 메시가 제공하는 구역별 균형 추정입니다.",
-      "전통 관상에서는 이마, 코, 양 광대, 턱의 호응을 산의 배치에 비유해 설명해왔습니다. 이 결과는 그 공간적 언어를 빌려 얼굴 윤곽의 지지와 연결을 표현할 뿐, 기질이나 운을 예측하지 않습니다.",
-    ],
-    contexts: [
-      ["관계에서", "경계와 기준이 분명하고, 가까운 사람에게 일관된 태도를 보이는 인상으로 읽힐 수 있습니다."],
-      ["결정과 일에서", "역할과 구조가 명확할 때 안정적으로 힘을 유지하는 이미지와 연결됩니다. 기준이 자주 바뀌면 단단함이 경직됨으로 보일 여지도 있습니다."],
-      ["변화의 시기에서", "지켜야 할 기반을 먼저 정한 뒤 새로운 구조를 세우는 사람처럼 보일 수 있습니다. 이는 윤곽 비율의 상징적 번역입니다."],
-    ],
-    evidence: ["jawCheek", "faceRatio", "noseDepth", "earLength"],
-  },
-};
-
-const READING_PROFILES = {
-  balance: {
-    core: "한쪽을 앞세우기보다 여러 조건을 함께 놓고 조율하는 인상",
-    overview: "얼굴의 세로 구역과 가로 여백에서 어느 한 부분이 강하게 앞서지 않아, 특정 성향 하나보다 전체의 정돈감이 먼저 들어옵니다. 그래서 처음에는 차분하고 안정적으로 보이지만, 가까이에서는 서로 다른 입장을 동시에 살피는 섬세함이 드러나는 얼굴로 읽힐 수 있습니다.",
-    relation: "사람 사이에서는 한쪽의 감정에 바로 편승하기보다, 서로 다른 말을 한 번 더 나란히 놓아보는 사람처럼 보일 수 있습니다. 갈등이 생겨도 곧장 편을 고르기보다 모두가 납득할 수 있는 지점을 찾으려는 인상을 줄 수 있습니다.",
-    decision: "결정해야 할 때는 눈앞의 한 가지 장점보다 전체 조건이 어떻게 맞물리는지를 먼저 살피는 편으로 해석될 수 있습니다. 기준이 충분히 정리되면 급격한 방향 전환보다 일정한 속도로 오래 밀고 가는 모습이 자연스럽게 연결됩니다.",
-    pressure: "마음이 급해질수록 오히려 쉽게 단정하지 않고 균형을 되찾으려는 태도가 먼저 보일 수 있습니다. 다만 모든 조건을 놓치지 않으려는 모습이 때로는 결정을 늦추거나 자신의 선호를 뒤로 미루는 것처럼 비칠 수도 있습니다.",
-    change: "변화 앞에서는 기존의 것을 전부 버리기보다, 새 환경 안에서 다시 균형점을 찾아가는 사람처럼 읽힐 수 있습니다. 낯선 상황에서도 자신의 리듬을 크게 흔들지 않으면서 조금씩 자리를 조정하는 이미지에 가깝습니다.",
-    shadow: "조율하는 능력은 안정감이 되지만, 분명한 선택을 요구받는 순간에는 지나치게 신중하거나 속마음을 알기 어려운 사람처럼 보일 수 있습니다.",
-  },
-  upper: {
-    core: "행동하기 전에 상황의 의미와 가능성을 먼저 그려보는 인상",
-    overview: "얼굴 위쪽의 여백이 먼저 시선을 붙잡기 때문에, 즉각 반응하기보다 잠시 관찰하고 생각을 정리하는 사람 같은 분위기가 만들어집니다. 실제 성격을 단정할 수는 없지만, 무엇을 시작하기 전에 머릿속에서 여러 장면을 미리 그려보는 인상으로 읽힐 수 있습니다.",
-    relation: "사람 사이에서는 말을 곧바로 꺼내기보다 상대의 표정과 대화의 맥락을 먼저 살피는 사람처럼 보일 수 있습니다. 처음에는 조용해 보여도 관계의 흐름을 오래 기억하고, 뒤늦게 정확한 말을 건네는 이미지와 연결됩니다.",
-    decision: "결정할 때는 ‘지금 무엇을 할까’보다 ‘이 선택이 어디로 이어질까’를 먼저 생각하는 편으로 해석될 수 있습니다. 실행 전에 방향과 의미를 충분히 그려보려는 모습은 기획력으로 보이지만, 상황에 따라서는 시작을 오래 망설이는 듯한 인상을 줄 수도 있습니다.",
-    pressure: "마음이 급해질수록 바로 움직이기보다 머릿속 검토가 더 길어질 수 있는 사람처럼 보입니다. 불확실한 상태에서 섣불리 답을 내기보다, 이해할 수 있는 설명을 찾고 나서야 안심하는 이미지에 가깝습니다.",
-    change: "변화 앞에서는 새 환경을 곧장 받아들이기보다 그 변화가 자신에게 어떤 의미인지 해석한 뒤 움직이는 사람처럼 읽힐 수 있습니다. 납득할 만한 방향이 생기면 이전보다 훨씬 선명하게 움직이는 모습으로 이어질 수 있습니다.",
-    shadow: "생각의 폭이 넓다는 인상은 장점이지만, 빠른 반응이 필요한 순간에는 현실보다 가능성 속에 오래 머무는 사람처럼 보일 수 있습니다.",
-  },
-  middle: {
-    core: "상황을 구체적인 행동과 현실의 언어로 바꾸는 인상",
-    overview: "얼굴 가운데의 축이 분명하게 들어와, 생각이나 감정보다 지금 눈앞에서 벌어지는 상황에 먼저 반응하는 듯한 분위기가 생깁니다. 그래서 추상적인 가능성을 오래 품기보다 실제로 할 수 있는 일을 찾아 움직이는 사람처럼 읽힐 수 있습니다.",
-    relation: "사람 사이에서는 상대의 말에 현실적인 답을 빠르게 돌려주는 사람처럼 보일 수 있습니다. 애매한 위로나 돌려 말하기보다 지금 필요한 도움이나 해결책을 제시하는 이미지가 강하며, 그 직접성이 때로는 단호함으로 느껴질 수도 있습니다.",
-    decision: "결정해야 할 때는 복잡한 생각을 실행 가능한 단계로 나누고, 가장 먼저 할 수 있는 일부터 잡는 사람처럼 해석될 수 있습니다. 결과가 손에 잡히는 순간 집중력이 더 선명해지는 인상과도 연결됩니다.",
-    pressure: "마음이 급해질수록 문제를 빨리 구체화하고 답을 내리려는 모습이 앞설 수 있습니다. 이때 추진력은 분명해 보이지만, 상대가 아직 감정을 정리하는 중이라면 속도를 재촉하는 사람처럼 비칠 여지도 있습니다.",
-    change: "변화 앞에서는 불확실함을 오래 바라보기보다, 새로운 상황에서 당장 가능한 행동을 찾는 사람처럼 읽힐 수 있습니다. 작은 실행을 통해 상황을 이해하고 방향을 수정하는 이미지에 가깝습니다.",
-    shadow: "현실적인 태도는 신뢰감을 주지만, 충분히 머물러야 하는 감정이나 아직 답이 없는 질문까지 너무 빨리 해결하려는 사람처럼 보일 수 있습니다.",
-  },
-  lower: {
-    core: "한번 세운 기준과 관계를 오래 지탱하는 인상",
-    overview: "얼굴 아래쪽이 전체 인상을 받쳐 주어, 순간적인 반응보다 오래 유지되는 의지와 생활의 리듬이 먼저 느껴질 수 있습니다. 그래서 쉽게 방향을 바꾸기보다 자신이 중요하다고 여긴 것을 꾸준히 지켜가는 사람 같은 인상으로 읽힐 수 있습니다.",
-    relation: "사람 사이에서는 가까워지기까지 시간이 걸리더라도, 한번 맺은 관계와 약속을 가볍게 여기지 않는 사람처럼 보일 수 있습니다. 표현이 크지 않아도 행동으로 책임을 보여주는 이미지와 연결됩니다.",
-    decision: "결정해야 할 때는 새로움 자체보다 그 선택을 끝까지 감당할 수 있는지를 먼저 보는 편으로 해석될 수 있습니다. 한번 방향을 정하면 외부의 작은 흔들림에도 쉽게 포기하지 않는 모습이 자연스럽게 떠오릅니다.",
-    pressure: "마음이 급해질수록 이미 세워둔 기준과 경계를 더 단단히 붙잡는 사람처럼 보일 수 있습니다. 버티는 힘은 커 보이지만, 상황이 달라졌는데도 방식을 바꾸지 않는 완고함으로 읽힐 가능성도 있습니다.",
-    change: "변화 앞에서는 모든 것을 새로 시작하기보다 지켜야 할 기반을 남겨두고 조금씩 옮겨가는 사람처럼 읽힐 수 있습니다. 충분한 이유가 생기면 느리지만 확실하게 움직이는 이미지에 가깝습니다.",
-    shadow: "꾸준함과 책임감은 강점으로 보이지만, 빠른 수정이 필요한 순간에는 자신의 방식과 익숙한 질서를 너무 오래 고수하는 사람처럼 보일 수 있습니다.",
-  },
-  open: {
-    core: "하나의 답에 머물기보다 주변의 가능성을 넓게 받아들이는 인상",
-    overview: "눈 사이와 양옆의 여백이 바깥으로 열려 보여, 시선이 한 지점에만 머물지 않고 주변까지 넓게 살피는 듯한 분위기가 생깁니다. 그래서 새로운 사람과 정보에 비교적 여지를 열어두고 여러 가능성을 함께 탐색하는 사람처럼 읽힐 수 있습니다.",
-    relation: "사람 사이에서는 처음 만난 상대에게도 대화의 공간을 남기고, 낯선 분위기를 비교적 자연스럽게 받아들이는 사람처럼 보일 수 있습니다. 여러 사람의 차이를 흥미롭게 바라보는 이미지와도 연결됩니다.",
-    decision: "결정해야 할 때는 정답 하나를 빨리 고르기보다 가능한 선택지를 충분히 펼쳐보는 편으로 해석될 수 있습니다. 예상하지 못한 연결을 발견하는 데 강점이 있어 보이지만, 선택지가 많아질수록 자신만의 기준이 필요해 보일 수도 있습니다.",
-    pressure: "마음이 급해질수록 한 문제에 집중하기보다 주변의 다른 가능성까지 동시에 보려는 모습이 나타날 수 있습니다. 폭넓은 시야가 도움이 되기도 하지만, 에너지가 여러 방향으로 흩어지는 인상으로 바뀔 수 있습니다.",
-    change: "변화 앞에서는 낯선 자극을 일단 받아들이고, 직접 경험하면서 자신에게 맞는 방향을 찾는 사람처럼 읽힐 수 있습니다. 완성된 계획보다 열린 시작에서 힘을 얻는 이미지에 가깝습니다.",
-    shadow: "열린 태도는 유연함으로 보이지만, 한 가지에 오래 집중해야 하는 순간에는 관심이 쉽게 옮겨가거나 결정을 미루는 사람처럼 느껴질 수 있습니다.",
-  },
-  focused: {
-    core: "넓게 펼치기보다 중요한 한 지점에 오래 주의를 두는 인상",
-    overview: "눈 주변의 구간이 얼굴 중심으로 응집되어 보여, 주변을 넓게 훑기보다 자신이 중요하다고 판단한 대상에 집중하는 듯한 분위기가 생깁니다. 그래서 많은 것에 동시에 반응하기보다 충분히 납득한 한 가지를 깊게 파고드는 사람처럼 읽힐 수 있습니다.",
-    relation: "사람 사이에서는 넓은 관계보다 신뢰가 생긴 몇 사람에게 주의를 오래 두는 사람처럼 보일 수 있습니다. 처음에는 조심스럽고 거리가 있어 보여도, 가까워진 뒤에는 상대의 작은 변화까지 기억하는 이미지와 연결됩니다.",
-    decision: "결정해야 할 때는 충분한 근거를 확인하고 핵심을 좁힌 뒤 움직이는 편으로 해석될 수 있습니다. 방향을 납득한 뒤에는 주변의 작은 방해에도 집중을 오래 유지하는 모습이 떠오릅니다.",
-    pressure: "마음이 급해질수록 익숙한 문제나 이미 중요하다고 여긴 한 지점에 더 깊이 파고들 수 있습니다. 집중력은 높아 보이지만, 다른 가능성을 받아들일 여유가 줄어든 사람처럼 비칠 수도 있습니다.",
-    change: "변화 앞에서는 먼저 안전한 근거와 예측 가능한 기준을 찾고, 그것이 확인된 뒤 선명하게 움직이는 사람처럼 읽힐 수 있습니다. 변화 자체보다 변화의 이유가 분명할 때 힘을 얻는 이미지입니다.",
-    shadow: "깊이 보는 태도는 신뢰감을 주지만, 시야를 넓혀야 하는 순간에는 한 가지 해석을 너무 오래 붙잡는 사람처럼 보일 수 있습니다.",
-  },
-  structure: {
-    core: "분명한 기준과 역할 안에서 안정적으로 힘을 유지하는 인상",
-    overview: "광대와 턱, 코와 얼굴 중심의 관계가 또렷하게 느껴져, 여러 요소가 하나의 구조를 이루고 있는 듯한 분위기가 생깁니다. 그래서 자신이 맡은 역할과 지켜야 할 경계를 분명히 알고, 그 틀 안에서 일관성을 유지하는 사람처럼 읽힐 수 있습니다.",
-    relation: "사람 사이에서는 가까움의 정도와 서로의 역할을 분명히 하려는 사람처럼 보일 수 있습니다. 한 번 신뢰한 상대에게는 일관된 태도를 보여 주지만, 기준이 맞지 않을 때는 선을 확실히 긋는 이미지와 연결됩니다.",
-    decision: "결정해야 할 때는 무엇을 할지뿐 아니라 누가 어떤 책임을 맡고 어떤 순서로 움직일지를 정리하는 편으로 해석될 수 있습니다. 구조가 분명할수록 안정적으로 힘을 발휘하는 인상에 가깝습니다.",
-    pressure: "마음이 급해질수록 상황을 통제 가능한 틀 안에 넣고 기준을 더 분명히 하려는 모습이 보일 수 있습니다. 혼란을 정리하는 힘이 되기도 하지만, 예상 밖의 움직임을 불편해하는 사람처럼 비칠 수도 있습니다.",
-    change: "변화 앞에서는 지켜야 할 핵심을 먼저 정한 뒤, 그 위에 새로운 구조를 세우는 사람처럼 읽힐 수 있습니다. 무작정 흔들리기보다 새로운 질서를 만들어 적응하는 이미지입니다.",
-    shadow: "분명한 기준은 든든함으로 보이지만, 유연한 타협이 필요한 순간에는 정해진 틀을 쉽게 놓지 못하는 사람처럼 느껴질 수 있습니다.",
-  },
-};
-
-const SECONDARY_INFLUENCE = {
-  balance: "균형형이 함께 나타나면 주된 인상이 한쪽으로 과하게 기울기보다, 상황에 맞춰 속도를 조절하는 결이 더해집니다.",
-  upper: "상정 강조형이 함께 나타나면 행동이나 반응 앞에 한 번 더 의미를 생각하고 방향을 그려보는 결이 더해집니다.",
-  middle: "중정 강조형이 함께 나타나면 생각에 머물기보다 지금 할 수 있는 행동을 찾아 구체화하는 결이 더해집니다.",
-  lower: "하정 강조형이 함께 나타나면 선택한 관계와 기준을 오래 지키려는 꾸준한 결이 더해집니다.",
-  open: "오안 개방형이 함께 나타나면 하나의 답에 고정되기보다 주변의 다른 가능성을 받아들이는 결이 더해집니다.",
-  focused: "오안 응집형이 함께 나타나면 여러 자극 가운데 중요한 한 지점을 골라 오래 집중하는 결이 더해집니다.",
-  structure: "오악 구조형이 함께 나타나면 자신의 역할과 경계를 분명히 하며 질서를 세우는 결이 더해집니다.",
-};
+function clamp(value, minimum = 0, maximum = 1) { return Math.min(maximum, Math.max(minimum, value)); }
 
 function setSystemState(state, label) {
   systemState.dataset.state = state;
@@ -370,189 +118,12 @@ function showLocalFileNotice() {
   $(".permission-note").textContent = "카메라 측정은 file:// 주소에서 실행할 수 없습니다. 버튼을 눌러 HTTPS 웹 버전으로 이동해주세요.";
 }
 
-function point(landmarks, index) {
-  const item = landmarks[index];
-  return { x: item.x * video.videoWidth, y: item.y * video.videoHeight, z: item.z * video.videoWidth };
-}
-
-function distance(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
-function horizontal(a, b) { return Math.abs(a.x - b.x); }
-function vertical(a, b) { return Math.abs(a.y - b.y); }
-function mean(...values) {
-  const finite = values.flat().filter(Number.isFinite);
-  return finite.length ? finite.reduce((sum, value) => sum + value, 0) / finite.length : NaN;
-}
-function median(values) {
-  const finite = values.filter(Number.isFinite).sort((a, b) => a - b);
-  if (!finite.length) return NaN;
-  const middle = Math.floor(finite.length / 2);
-  return finite.length % 2 ? finite[middle] : (finite[middle - 1] + finite[middle]) / 2;
-}
-function medianMeasurement(records) {
-  const keys = [...new Set(records.flatMap((record) => Object.keys(record)))];
-  return Object.fromEntries(keys.map((key) => [key, median(records.map((record) => record[key]))]));
-}
-function clamp(value, minimum = 0, maximum = 1) { return Math.min(maximum, Math.max(minimum, value)); }
-function scale(value, low, high) { return clamp((value - low) / (high - low)); }
-function degrees(radians) { return radians * (180 / Math.PI); }
-function signedEyeTilt(outer, inner) { return degrees(Math.atan2(inner.y - outer.y, Math.abs(inner.x - outer.x))); }
 function blendshapeMap(result) {
   const categories = result.faceBlendshapes?.[0]?.categories ?? [];
   return Object.fromEntries(categories.map((item) => [item.categoryName, item.score]));
 }
 
-function getYawDegrees(result, landmarks) {
-  const matrix = result.facialTransformationMatrixes?.[0]?.data;
-  if (matrix?.length >= 16) {
-    const candidate = degrees(Math.atan2(matrix[8], matrix[10]));
-    if (Number.isFinite(candidate) && Math.abs(candidate) <= 70) return candidate;
-  }
-  const left = point(landmarks, LANDMARK.faceLeft);
-  const right = point(landmarks, LANDMARK.faceRight);
-  const nose = point(landmarks, LANDMARK.noseTip);
-  const midX = (left.x + right.x) / 2;
-  return degrees(Math.atan2((nose.x - midX) * 3.2, Math.max(1, horizontal(left, right))));
-}
-
-function getPoints(landmarks) {
-  return Object.fromEntries(Object.entries(LANDMARK).map(([name, index]) => [name, point(landmarks, index)]));
-}
-
-function calculateSymmetry(p, faceWidth, faceHeight, leftEyeWidth, rightEyeWidth) {
-  const faceMidX = mean(p.faceLeft.x, p.faceRight.x);
-  const leftEyeCenter = { x: mean(p.eyeLeftOuter.x, p.eyeLeftInner.x), y: mean(p.eyeLeftOuter.y, p.eyeLeftInner.y) };
-  const rightEyeCenter = { x: mean(p.eyeRightOuter.x, p.eyeRightInner.x), y: mean(p.eyeRightOuter.y, p.eyeRightInner.y) };
-  const mouthCenterX = mean(p.mouthLeft.x, p.mouthRight.x);
-  const eyeWidthDiff = Math.abs(leftEyeWidth - rightEyeWidth) / Math.max(1, mean(leftEyeWidth, rightEyeWidth));
-  const eyeLevelDiff = Math.abs(leftEyeCenter.y - rightEyeCenter.y) / faceHeight;
-  const noseOffset = Math.abs(p.noseTip.x - faceMidX) / faceWidth;
-  const mouthOffset = Math.abs(mouthCenterX - faceMidX) / faceWidth;
-  const chinOffset = Math.abs(p.chin.x - faceMidX) / faceWidth;
-  const cheekBalance = Math.abs(distance(p.cheekLeft, p.noseTip) - distance(p.cheekRight, p.noseTip)) / faceWidth;
-  const penalty = eyeWidthDiff * 0.22 + eyeLevelDiff * 2.4 * 0.16 + noseOffset * 2.8 * 0.19 + mouthOffset * 2.5 * 0.16 + chinOffset * 2.5 * 0.14 + cheekBalance * 1.8 * 0.13;
-  return clamp(100 - penalty * 100, 0, 100);
-}
-
-function frontQuality(p, blendshapes, yawDegrees) {
-  const faceHeight = vertical(p.meshTop, p.chin);
-  const faceFill = faceHeight / video.videoHeight;
-  const centerOffset = Math.abs(p.noseTip.x / video.videoWidth - 0.5);
-  const smileScore = mean(blendshapes.mouthSmileLeft ?? 0, blendshapes.mouthSmileRight ?? 0);
-  const centeredScore = Math.max(0, 1 - centerOffset / 0.15);
-  const yawScore = Math.max(0, 1 - Math.abs(yawDegrees) / 15);
-  const sizeScore = faceFill < 0.3 ? Math.max(0, faceFill / 0.3) : faceFill > 0.84 ? Math.max(0, 1 - (faceFill - 0.84) / 0.16) : 1;
-  const neutralScore = Math.max(0, 1 - smileScore / 0.5);
-  const quality = Math.round((centeredScore * 0.28 + yawScore * 0.36 + sizeScore * 0.22 + neutralScore * 0.14) * 100);
-  let guidance = "정면과 편한 무표정을 잠시 유지해주세요";
-  if (faceFill < 0.3) guidance = "카메라에 조금 더 가까이 와주세요";
-  else if (faceFill > 0.84) guidance = "카메라에서 조금 멀어져 주세요";
-  else if (centerOffset > 0.11) guidance = "얼굴을 화면 중앙에 맞춰주세요";
-  else if (Math.abs(yawDegrees) > 10) guidance = "얼굴을 정면으로 돌려주세요";
-  else if (smileScore > 0.32) guidance = "표정 영향을 줄이기 위해 편하게 입을 다물어주세요";
-  return { quality, guidance, faceFill };
-}
-
-function calculateFrontMetrics(landmarks, blendshapes, yawDegrees) {
-  const p = getPoints(landmarks);
-  const faceHeight = vertical(p.meshTop, p.chin);
-  const faceWidth = horizontal(p.faceLeft, p.faceRight);
-  const cheekWidthPx = horizontal(p.cheekLeft, p.cheekRight);
-  const jawWidthPx = horizontal(p.jawLeft, p.jawRight);
-  const leftEyeWidthPx = horizontal(p.eyeLeftOuter, p.eyeLeftInner);
-  const rightEyeWidthPx = horizontal(p.eyeRightInner, p.eyeRightOuter);
-  const averageEyeWidth = mean(leftEyeWidthPx, rightEyeWidthPx);
-  const upperPx = vertical(p.meshTop, p.glabella);
-  const middlePx = vertical(p.glabella, p.noseBase);
-  const lowerPx = vertical(p.noseBase, p.chin);
-  const thirdsTotal = upperPx + middlePx + lowerPx;
-  const noseWidthPx = horizontal(p.noseLeft, p.noseRight);
-  const mouthWidthPx = horizontal(p.mouthLeft, p.mouthRight);
-  const lowerThirdPx = Math.max(1, lowerPx);
-  const philtrumPx = vertical(p.noseBase, p.upperLip);
-  const leftTilt = signedEyeTilt(p.eyeLeftOuter, p.eyeLeftInner);
-  const rightTilt = signedEyeTilt(p.eyeRightOuter, p.eyeRightInner);
-  const mouthCenterY = mean(p.upperLip.y, p.lowerLip.y);
-  const cornerY = mean(p.mouthLeft.y, p.mouthRight.y);
-  const quality = frontQuality(p, blendshapes, yawDegrees);
-  return {
-    values: {
-      upperThird: (upperPx / thirdsTotal) * 100,
-      middleThird: (middlePx / thirdsTotal) * 100,
-      lowerThird: (lowerPx / thirdsTotal) * 100,
-      outerLeft: horizontal(p.templeLeft, p.eyeLeftOuter) / averageEyeWidth,
-      leftEye: leftEyeWidthPx / averageEyeWidth,
-      eyeGap: horizontal(p.eyeLeftInner, p.eyeRightInner) / averageEyeWidth,
-      rightEye: rightEyeWidthPx / averageEyeWidth,
-      outerRight: horizontal(p.eyeRightOuter, p.templeRight) / averageEyeWidth,
-      noseWidth: (noseWidthPx / faceWidth) * 100,
-      noseEyeGap: noseWidthPx / Math.max(1, horizontal(p.eyeLeftInner, p.eyeRightInner)),
-      philtrumLower: (philtrumPx / lowerThirdPx) * 100,
-      mouthNose: mouthWidthPx / Math.max(1, noseWidthPx),
-      jawCheek: (jawWidthPx / cheekWidthPx) * 100,
-      cheekWidth: (cheekWidthPx / faceHeight) * 100,
-      faceRatio: (faceWidth / faceHeight) * 100,
-      eyeTilt: mean(leftTilt, rightTilt),
-      mouthLift: ((mouthCenterY - cornerY) / Math.max(1, mouthWidthPx)) * 100,
-      symmetry: calculateSymmetry(p, faceWidth, faceHeight, leftEyeWidthPx, rightEyeWidthPx),
-      faceHeightPx: faceHeight,
-      captureQuality: quality.quality,
-    },
-    quality: quality.quality,
-    guidance: quality.guidance,
-    reference: {
-      faceHeight,
-      faceWidth,
-      browY: p.glabella.y,
-      subnasaleY: p.noseBase.y,
-      chinY: p.chin.y,
-    },
-  };
-}
-
-function profileQuality(p, yawDegrees, expectedSign) {
-  const faceHeight = vertical(p.meshTop, p.chin);
-  const faceFill = faceHeight / video.videoHeight;
-  const centerOffset = Math.abs(p.noseTip.x / video.videoWidth - 0.5);
-  const absoluteYaw = Math.abs(yawDegrees);
-  const targetScore = absoluteYaw < 14 ? absoluteYaw / 14 : absoluteYaw > 42 ? Math.max(0, 1 - (absoluteYaw - 42) / 20) : 1;
-  const directionScore = expectedSign && Math.sign(yawDegrees) === expectedSign ? 0 : 1;
-  const centerScore = Math.max(0, 1 - centerOffset / 0.23);
-  const sizeScore = faceFill < 0.27 ? faceFill / 0.27 : faceFill > 0.88 ? Math.max(0, 1 - (faceFill - 0.88) / 0.12) : 1;
-  const quality = Math.round((targetScore * 0.48 + directionScore * 0.2 + centerScore * 0.17 + sizeScore * 0.15) * 100);
-  let guidance = "약 30° 각도를 잠시 유지해주세요";
-  if (expectedSign && Math.sign(yawDegrees) === expectedSign && absoluteYaw > 8) guidance = "이전과 반대쪽으로 고개를 돌려주세요";
-  else if (absoluteYaw < 14) guidance = "고개를 조금 더 옆으로 돌려주세요";
-  else if (absoluteYaw > 42) guidance = "얼굴 기준점이 보이도록 조금만 정면 쪽으로 돌아와주세요";
-  else if (centerOffset > 0.19) guidance = "옆모습을 유지한 채 화면 중앙에 맞춰주세요";
-  return { quality, guidance };
-}
-
-function calculateProfileMetrics(landmarks, yawDegrees, expectedSign) {
-  const p = getPoints(landmarks);
-  const faceHeight = vertical(p.meshTop, p.chin);
-  const faceWidth = Math.max(1, horizontal(p.faceLeft, p.faceRight));
-  const cheekPlaneZ = mean(p.cheekLeft.z, p.cheekRight.z);
-  const quality = profileQuality(p, yawDegrees, expectedSign);
-  return {
-    values: {
-      noseDepth: ((cheekPlaneZ - p.noseTip.z) / faceWidth) * 100,
-      bridgeDepth: ((cheekPlaneZ - p.noseBridge.z) / faceWidth) * 100,
-      chinDepth: ((cheekPlaneZ - p.chin.z) / faceWidth) * 100,
-      cheekDepthBalance: (Math.abs(p.cheekLeft.z - p.cheekRight.z) / faceWidth) * 100,
-      yawDegrees,
-      faceHeightPx: faceHeight,
-      captureQuality: quality.quality,
-    },
-    quality: quality.quality,
-    guidance: quality.guidance,
-    reference: {
-      faceHeight,
-      browY: p.glabella.y,
-      subnasaleY: p.noseBase.y,
-      chinY: p.chin.y,
-    },
-  };
-}
+// ---------- live numbers ----------
 
 function smoothValues(next) {
   if (!smoothed) { smoothed = { ...next }; return smoothed; }
@@ -563,16 +134,11 @@ function smoothValues(next) {
   return smoothed;
 }
 
-function formatMetric(key, value) {
-  if (!Number.isFinite(value)) return "—";
-  if (["outerLeft", "leftEye", "eyeGap", "rightEye", "outerRight"].includes(key)) return value.toFixed(2);
-  return value.toFixed(1);
-}
-
 function updateMetrics(values) {
   for (const [key, item] of Object.entries(metricNodes)) {
     if (!Number.isFinite(values[key])) continue;
-    item.value.textContent = formatMetric(key, values[key]);
+    const digits = CALIBRATION[key]?.digits ?? 1;
+    item.value.textContent = values[key].toFixed(digits);
     item.node.classList.add("is-live");
   }
 }
@@ -580,66 +146,34 @@ function updateMetrics(values) {
 function resetMetrics() {
   smoothed = null;
   sampleCount.textContent = "WAITING";
-  qualityValue.textContent = "—";
+  qualityValue.textContent = "-";
   for (const item of Object.values(metricNodes)) {
-    item.value.textContent = "—";
+    item.value.textContent = "-";
     item.node.classList.remove("is-live");
   }
 }
 
 function resetClassification() {
-  currentStage = 0;
-  stageStartedAt = performance.now();
-  stageRecords = [];
-  firstProfileSign = 0;
-  earMarking = false;
-  earPoints = [];
-  earStageKey = null;
-  captured = { front: null, profileA: null, profileB: null, ears: {} };
-  capturedFrames = { front: null, profileA: null, profileB: null };
+  capture = new StableCapture();
+  bestShot = null;
+  lastShotAt = 0;
   finalMeasurement = null;
-  classifiedType = null;
+  reading = null;
   classificationComplete = false;
   classificationReady.hidden = true;
   resultView.hidden = true;
-  frame.classList.remove("is-result", "is-ear-marking");
-  earMarker.hidden = true;
-  turnCue.hidden = true;
-  updateJourney();
+  frame.classList.remove("is-result");
+  updateMeter(0);
 }
 
-function updateJourney(progress = 0) {
-  const labels = ["정면 1/3", "측면 A 2/3", "측면 B 3/3"];
-  stageLabel.textContent = labels[currentStage] ?? "분석 완료";
-  document.querySelectorAll(".journey-step").forEach((step, index) => {
-    step.classList.toggle("is-active", index === currentStage);
-    step.classList.toggle("is-complete", index < currentStage || classificationComplete);
-  });
-  const overall = clamp((currentStage + progress) / 3) * 100;
-  journeyProgress.style.setProperty("--journey-progress", `${overall}%`);
-  captureJourney.style.setProperty("--journey-progress", `${overall}%`);
+function updateMeter(progress) {
+  const percent = Math.round(clamp(progress) * 100);
+  journeyProgress.style.setProperty("--journey-progress", `${percent}%`);
+  captureJourney.style.setProperty("--journey-progress", `${percent}%`);
+  meterValue.textContent = `${percent}%`;
 }
 
-function beginStage(index) {
-  currentStage = index;
-  stageRecords = [];
-  smoothed = null;
-  stageStartedAt = performance.now();
-  updateJourney(0);
-  if (index === 1) {
-    turnCue.hidden = false;
-    turnArrow.textContent = "↔";
-    turnTitle.textContent = "편한 방향으로 고개를 돌려주세요";
-    turnCopy.textContent = "정면에서 약 30°만 천천히 돌립니다.";
-    statusMessage.textContent = "첫 번째 측면 각도를 찾는 중입니다";
-  } else if (index === 2) {
-    turnCue.hidden = false;
-    turnArrow.textContent = firstProfileSign > 0 ? "→" : "←";
-    turnTitle.textContent = "이제 반대쪽으로 돌려주세요";
-    turnCopy.textContent = "반대쪽도 약 30°에서 자동으로 포착합니다.";
-    statusMessage.textContent = "반대쪽 측면 각도를 찾는 중입니다";
-  }
-}
+// ---------- canvas ----------
 
 function resizeCanvas() {
   if (!video.videoWidth || !video.videoHeight) return;
@@ -677,31 +211,27 @@ function drawFace(landmarks) {
   drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_RIGHT_EYE, { color: "rgba(155, 61, 44, 0.92)", lineWidth: 1.45 });
   drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_LIPS, { color: "rgba(49, 93, 82, 0.9)", lineWidth: 1.3 });
   drawingUtils.drawLandmarks(Object.values(LANDMARK).map((index) => landmarks[index]), { color: "rgba(239,230,214,0.95)", fillColor: "rgba(155,61,44,0.95)", radius: 1.25 });
-  drawEarPoints();
+  if (DEBUG_MODE) drawDebugLabels(landmarks);
 }
 
-function drawEarPoints() {
-  if (!earPoints.length) return;
-  for (const [index, pointValue] of earPoints.entries()) {
-    ctx.beginPath();
-    ctx.arc(pointValue.x, pointValue.y, 7, 0, Math.PI * 2);
-    ctx.fillStyle = index === 0 ? "#9b3d2c" : "#315d52";
-    ctx.fill();
-    ctx.strokeStyle = "rgba(255,255,255,.9)";
-    ctx.lineWidth = 2;
-    ctx.stroke();
+// With ?debug=1 every measured point is named on the video, so the team can see
+// which landmark each ratio really uses (the canvas is mirrored, so text is flipped back).
+function drawDebugLabels(landmarks) {
+  ctx.save();
+  ctx.font = `${Math.max(10, canvas.width / 90)}px ui-monospace, monospace`;
+  ctx.fillStyle = "rgba(255, 230, 150, 0.95)";
+  for (const [name, index] of Object.entries(LANDMARK)) {
+    const item = landmarks[index];
+    ctx.save();
+    ctx.translate(item.x * canvas.width + 4, item.y * canvas.height - 3);
+    ctx.scale(-1, 1);
+    ctx.fillText(`${name} ${index}`, 0, 0);
+    ctx.restore();
   }
-  if (earPoints.length === 2) {
-    ctx.beginPath();
-    ctx.moveTo(earPoints[0].x, earPoints[0].y);
-    ctx.lineTo(earPoints[1].x, earPoints[1].y);
-    ctx.strokeStyle = "rgba(255,255,255,.82)";
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([6, 5]);
-    ctx.stroke();
-    ctx.setLineDash([]);
-  }
+  ctx.restore();
 }
+
+// ---------- portrait for the result screen ----------
 
 function capturePortraitFrame() {
   if (!latestLandmarks?.length || !video.videoWidth || !video.videoHeight) return null;
@@ -746,208 +276,85 @@ function capturePortraitFrame() {
   return { src: output.toDataURL("image/jpeg", 0.86), points };
 }
 
-function captureCurrentStage() {
-  const measurement = medianMeasurement(stageRecords);
-  if (currentStage === 0) {
-    captured.front = measurement;
-    capturedFrames.front = capturePortraitFrame();
-    updateMetrics(measurement);
-    beginStage(1);
-    return;
+// ---------- continuous capture ----------
+
+function handleFace(landmarks, blend, matrixData) {
+  latestLandmarks = landmarks;
+  frame.classList.add("has-face");
+  drawFace(landmarks);
+  const raw = getPoints(landmarks, video.videoWidth, video.videoHeight);
+  // Head pose from the 3D landmarks, then the same landmarks rotated back to a
+  // straight-on view. Ratios come from the straight-on copy so they stay the
+  // same when the person turns, nods or tilts the head (see dist/pose.js).
+  const pose = estimatePose(raw);
+  const rawValues = computeFrontFeatures(raw);
+  const correctedValues = computeFrontFeatures(frontalizePoints(raw, pose));
+  const values = POSE_CORRECTION ? correctedValues : rawValues;
+  if (DEBUG_MODE) {
+    window.__sangDebug?.frame({
+      t: performance.now(),
+      pose,
+      matrixPose: poseFromMatrix(matrixData),
+      rawValues,
+      correctedValues,
+    });
   }
-  const key = currentStage === 1 ? "profileA" : "profileB";
-  captured[key] = measurement;
-  capturedFrames[key] = capturePortraitFrame();
-  if (currentStage === 1) firstProfileSign = Math.sign(measurement.yawDegrees) || 1;
-  beginEarMarking(key);
-}
+  updateMetrics(smoothValues(values));
+  if (classificationComplete) return;
 
-function beginEarMarking(key) {
-  earMarking = true;
-  earStageKey = key;
-  earPoints = [];
-  frame.classList.add("is-ear-marking");
-  turnCue.hidden = true;
-  earMarker.hidden = false;
-  earMarkerTitle.textContent = "보이는 귀의 위쪽을 눌러주세요";
-  earMarkerCopy.textContent = "위쪽과 아래쪽 두 점만 지정합니다. 가려졌다면 건너뛰세요.";
-  statusMessage.textContent = "귀의 위쪽과 아래쪽을 화면에서 지정해주세요";
-  qualityValue.textContent = "2 POINTS";
-  video.pause();
-}
-
-function mapPointerToVideo(event) {
-  const rect = canvas.getBoundingClientRect();
-  const visualX = ((event.clientX - rect.left) / rect.width) * video.videoWidth;
-  const visualY = ((event.clientY - rect.top) / rect.height) * video.videoHeight;
-  return { x: video.videoWidth - visualX, y: visualY };
-}
-
-function handleEarPoint(event) {
-  if (!earMarking || event.target.closest("button")) return;
-  const mapped = mapPointerToVideo(event);
-  if (mapped.x < 0 || mapped.x > video.videoWidth || mapped.y < 0 || mapped.y > video.videoHeight) return;
-  earPoints.push(mapped);
-  drawEarPoints();
-  if (earPoints.length === 1) {
-    earMarkerTitle.textContent = "이제 같은 귀의 아래쪽을 눌러주세요";
-    earMarkerCopy.textContent = "귓불의 가장 아래 지점을 지정합니다.";
-  } else if (earPoints.length === 2) {
-    const top = earPoints[0].y <= earPoints[1].y ? earPoints[0] : earPoints[1];
-    const bottom = earPoints[0].y > earPoints[1].y ? earPoints[0] : earPoints[1];
-    const reference = latestReference;
-    captured.ears[earStageKey] = {
-      earLength: (Math.abs(bottom.y - top.y) / reference.faceHeight) * 100,
-      earTopToBrow: ((top.y - reference.browY) / reference.faceHeight) * 100,
-      earBottomToNose: ((bottom.y - reference.subnasaleY) / reference.faceHeight) * 100,
-      manual: 1,
-    };
-    earMarkerTitle.textContent = "귀의 두 지점을 기록했습니다";
-    earMarkerCopy.textContent = "다음 측정으로 곧 이어집니다.";
-    setTimeout(() => finishEarMarking(false), 520);
+  const faceFill = vertical(raw.meshTop, raw.chin) / video.videoHeight;
+  const centerOffset = Math.abs(raw.noseTip.x / video.videoWidth - 0.5);
+  const verdict = capture.assess({ pose, blend, faceFill, centerOffset });
+  if (verdict.ok) {
+    capture.add(values, verdict.weight, pose);
+    if (verdict.weight > (bestShot?.weight ?? 0) + 0.03 && performance.now() - lastShotAt > 400) {
+      bestShot = { weight: verdict.weight, shot: capturePortraitFrame() };
+      lastShotAt = performance.now();
+    }
+    const progress = capture.progress;
+    updateMeter(progress);
+    qualityValue.textContent = `${Math.round(progress * 100)}%`;
+    sampleCount.textContent = `${capture.frames.length} FRAMES`;
+    statusMessage.textContent = `움직여도 괜찮아요. 안정값을 모으는 중 · ${Math.round(progress * 100)}%`;
+    if (capture.isDone(CALIBRATION)) completeClassification();
+  } else if (verdict.reason && GUIDANCE[verdict.reason]) {
+    statusMessage.textContent = GUIDANCE[verdict.reason];
   }
 }
 
-async function finishEarMarking(skipped) {
-  if (!earMarking) return;
-  if (skipped) captured.ears[earStageKey] = { manual: 0 };
-  earMarking = false;
-  earPoints = [];
-  frame.classList.remove("is-ear-marking");
-  earMarker.hidden = true;
-  await video.play();
-  lastVideoTime = -1;
-  if (currentStage === 1) beginStage(2);
-  else completeClassification();
-}
-
-function classifyMeasurement(values) {
-  const thirdsDeviation = mean(
-    Math.abs(values.upperThird - 33.33),
-    Math.abs(values.middleThird - 33.33),
-    Math.abs(values.lowerThird - 33.33),
-  );
-  const fiveValues = [values.outerLeft, values.leftEye, values.eyeGap, values.rightEye, values.outerRight];
-  const fiveDeviation = mean(...fiveValues.map((value) => Math.abs(value - 1)));
-  const outerAverage = mean(values.outerLeft, values.outerRight);
-  const openMeasure = mean(values.eyeGap, outerAverage);
-  const upperLead = values.upperThird - Math.max(values.middleThird, values.lowerThird);
-  const middleLead = values.middleThird - Math.max(values.upperThird, values.lowerThird);
-  const lowerLead = values.lowerThird - Math.max(values.upperThird, values.middleThird);
-  const scores = {
-    balance: 0.22 + (1 - scale(thirdsDeviation, 1.2, 7.5)) * 0.58 + (1 - scale(fiveDeviation, 0.08, 0.34)) * 0.2,
-    upper: 0.18 + scale(upperLead, 0.8, 7.5) * 0.75 + scale(values.upperThird, 33, 41) * 0.07,
-    middle: 0.18 + scale(middleLead, 0.8, 7.5) * 0.68 + scale(values.noseDepth, 2.5, 9) * 0.14,
-    lower: 0.18 + scale(lowerLead, 0.8, 7.5) * 0.62 + scale(values.jawCheek, 72, 92) * 0.2,
-    open: 0.16 + scale(openMeasure, 1.02, 1.34) * 0.72 + scale(values.faceRatio, 68, 84) * 0.12,
-    focused: 0.16 + (1 - scale(openMeasure, 0.72, 1.03)) * 0.72 + (1 - scale(values.faceRatio, 64, 80)) * 0.12,
-    structure: 0.16 + scale(values.jawCheek, 72, 94) * 0.42 + scale(values.faceRatio, 68, 86) * 0.2 + scale(values.noseDepth, 2.5, 9) * 0.14 + scale(values.symmetry, 82, 98) * 0.08,
-  };
-  const ranked = Object.entries(scores).sort((a, b) => b[1] - a[1]);
-  return { key: ranked[0][0], score: ranked[0][1], scores, ranked };
+function noFace() {
+  frame.classList.remove("has-face");
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  statusMessage.textContent = "얼굴이 보이도록 화면 중앙에 맞춰주세요";
+  qualityValue.textContent = "-";
 }
 
 function completeClassification() {
-  if (classificationComplete || !captured.front || !captured.profileA || !captured.profileB) return;
-  const earValues = Object.values(captured.ears).filter((item) => Number.isFinite(item.earLength));
-  const earLength = mean(earValues.map((item) => item.earLength));
-  const earTopToBrow = mean(earValues.map((item) => item.earTopToBrow));
-  const earBottomToNose = mean(earValues.map((item) => item.earBottomToNose));
-  const earBalance = earValues.length === 2
-    ? clamp(100 - (Math.abs(earValues[0].earLength - earValues[1].earLength) / mean(earValues[0].earLength, earValues[1].earLength)) * 100, 0, 100)
-    : NaN;
-  const profileDepth = mean(captured.profileA.noseDepth, captured.profileB.noseDepth);
-  const profileDepthSpread = Math.abs(captured.profileA.noseDepth - captured.profileB.noseDepth);
-  const captureQuality = mean(captured.front.captureQuality, captured.profileA.captureQuality, captured.profileB.captureQuality);
-  const completeness = earValues.length === 2 ? 100 : earValues.length === 1 ? 88 : 76;
-  finalMeasurement = {
-    ...captured.front,
-    noseDepth: profileDepth,
-    bridgeDepth: mean(captured.profileA.bridgeDepth, captured.profileB.bridgeDepth),
-    chinDepth: mean(captured.profileA.chinDepth, captured.profileB.chinDepth),
-    cheekDepthBalance: mean(captured.profileA.cheekDepthBalance, captured.profileB.cheekDepthBalance),
-    profileDepthSpread,
-    earLength,
-    earTopToBrow,
-    earBottomToNose,
-    earBalance,
-    confidence: Math.round(captureQuality * 0.88 + completeness * 0.12),
-    earCount: earValues.length,
-  };
-  if (Number.isFinite(earBalance)) finalMeasurement.symmetry = mean(finalMeasurement.symmetry, earBalance);
-  classifiedType = classifyMeasurement(finalMeasurement);
+  if (classificationComplete || !content) return;
+  const snapshot = capture.snapshot(CALIBRATION);
+  const confidence = Math.round(60 * snapshot.stability + 40 * clamp(snapshot.totalWeight / capture.options.targetWeight));
+  finalMeasurement = { ...snapshot.values, confidence, frames: snapshot.frames, stability: snapshot.stability, coverage: snapshot.coverage };
+  reading = interpret(finalMeasurement, content);
   classificationComplete = true;
   updateMetrics(finalMeasurement);
-  updateJourney(1);
-  sampleCount.textContent = "3 / 3 CAPTURED";
+  updateMeter(1);
+  sampleCount.textContent = `${snapshot.frames} FRAMES`;
   statusMessage.textContent = "측정 완료 · 결과 안내를 눌러주세요";
-  qualityValue.textContent = `${finalMeasurement.confidence}%`;
-  setSystemState("ready", "유형 분류 완료");
+  qualityValue.textContent = `${confidence}%`;
+  setSystemState("ready", "읽기 분류 완료");
   classificationReady.hidden = false;
   captureJourney.hidden = true;
-}
-
-function acceptStageSample(calculated, required) {
-  const values = smoothValues(calculated.values);
-  stageRecords.push({ ...values });
-  updateMetrics(values);
-  const progress = clamp(stageRecords.length / required);
-  updateJourney(progress);
-  sampleCount.textContent = `${String(stageRecords.length).padStart(2, "0")} / ${required}`;
-  statusMessage.textContent = `안정값을 수집하고 있습니다 · ${Math.round(progress * 100)}%`;
-  if (stageRecords.length >= required) captureCurrentStage();
 }
 
 async function predict() {
   if (!running) return;
   resizeCanvas();
-  if (!earMarking && video.readyState >= 2 && video.currentTime !== lastVideoTime) {
+  if (video.readyState >= 2 && video.currentTime !== lastVideoTime) {
     lastVideoTime = video.currentTime;
     const result = faceLandmarker.detectForVideo(video, performance.now());
     const landmarks = result.faceLandmarks?.[0];
-    if (landmarks) {
-      latestLandmarks = landmarks;
-      frame.classList.add("has-face");
-      drawFace(landmarks);
-      const yawDegrees = getYawDegrees(result, landmarks);
-      const blendshapes = blendshapeMap(result);
-      let calculated;
-      if (currentStage === 0) {
-        calculated = calculateFrontMetrics(landmarks, blendshapes, yawDegrees);
-        qualityValue.textContent = `${calculated.quality}%`;
-        latestReference = calculated.reference;
-        updateMetrics(smoothValues(calculated.values));
-        if (calculated.quality >= MIN_FRONT_QUALITY && Math.abs(yawDegrees) <= 11 && performance.now() - stageStartedAt > 650) {
-          acceptStageSample(calculated, REQUIRED_FRONT_SAMPLES);
-        } else {
-          stageRecords = [];
-          updateJourney(0);
-          statusMessage.textContent = calculated.guidance;
-        }
-      } else if (!classificationComplete) {
-        const expectedSign = currentStage === 2 ? firstProfileSign : 0;
-        calculated = calculateProfileMetrics(landmarks, yawDegrees, expectedSign);
-        qualityValue.textContent = `${calculated.quality}%`;
-        latestReference = calculated.reference;
-        updateMetrics({ noseDepth: calculated.values.noseDepth });
-        const correctDirection = currentStage === 1 || Math.sign(yawDegrees) !== firstProfileSign;
-        const targetAngle = Math.abs(yawDegrees) >= 14 && Math.abs(yawDegrees) <= 42;
-        if (calculated.quality >= MIN_PROFILE_QUALITY && correctDirection && targetAngle && performance.now() - stageStartedAt > 700) {
-          turnCue.hidden = true;
-          acceptStageSample(calculated, REQUIRED_PROFILE_SAMPLES);
-        } else {
-          stageRecords = [];
-          updateJourney(0);
-          statusMessage.textContent = calculated.guidance;
-        }
-      }
-    } else {
-      frame.classList.remove("has-face");
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      statusMessage.textContent = "얼굴이 보이도록 화면 중앙에 맞춰주세요";
-      qualityValue.textContent = "—";
-      stageRecords = [];
-    }
+    if (landmarks) handleFace(landmarks, blendshapeMap(result), result.facialTransformationMatrixes?.[0]?.data);
+    else noFace();
   }
   animationId = requestAnimationFrame(predict);
 }
@@ -959,7 +366,7 @@ function stopStream() {
   stream = null;
   video.srcObject = null;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  frame.classList.remove("is-running", "has-face", "is-ear-marking");
+  frame.classList.remove("is-running", "has-face");
 }
 
 async function startCamera() {
@@ -986,10 +393,11 @@ async function startCamera() {
     captureJourney.hidden = false;
     stopButton.hidden = false;
     frame.classList.add("is-running");
-    setSystemState("running", "3단계 측정 중");
+    stageLabel.textContent = "연속 측정";
+    setSystemState("running", "연속 측정 중");
     resetMetrics();
     resetClassification();
-    statusMessage.textContent = "정면을 보고 편하게 입을 다물어주세요";
+    statusMessage.textContent = "편하게 정면을 보고 입을 다물어주세요. 고개를 조금 움직여도 됩니다";
     predict();
   } catch (error) {
     console.error(error);
@@ -1007,8 +415,6 @@ function stopCamera() {
   emptyState.hidden = false;
   captureStatus.hidden = true;
   captureJourney.hidden = true;
-  turnCue.hidden = true;
-  earMarker.hidden = true;
   stopButton.hidden = true;
   cameraButton.disabled = false;
   cameraButton.querySelector("span:first-child").textContent = "카메라 시작";
@@ -1017,25 +423,7 @@ function stopCamera() {
   resetClassification();
 }
 
-function evidenceNote(key, typeKey) {
-  const value = finalMeasurement[key];
-  const notes = {
-    upperThird: typeKey === "upper" ? "추정 상정이 다른 두 구역보다 상대적으로 길게 나타났습니다." : "추정 상정이 삼정 전체에서 차지하는 비율입니다.",
-    middleThird: typeKey === "middle" ? "중정이 얼굴 중심축에서 가장 긴 구역으로 나타났습니다." : "미간에서 코 아래까지의 중정 비율입니다.",
-    lowerThird: typeKey === "lower" ? "코 아래에서 턱끝까지의 하정이 상대적으로 강조되었습니다." : "하정이 삼정 전체에서 차지하는 비율입니다.",
-    outerLeft: "오안의 왼쪽 바깥 구간을 평균 눈 너비와 비교했습니다.",
-    eyeGap: typeKey === "open" ? "중앙 간격이 평균 눈 너비보다 넓게 나타났습니다." : "두 눈 사이를 평균 눈 너비와 비교한 값입니다.",
-    outerRight: "오안의 오른쪽 바깥 구간을 평균 눈 너비와 비교했습니다.",
-    noseWidth: "콧방울의 정면 너비를 얼굴 전체 너비와 비교했습니다.",
-    philtrumLower: "인중 길이를 하정 전체 길이 안에서 비교했습니다.",
-    jawCheek: "턱 너비가 광대 너비에 얼마나 가까운지 보여줍니다.",
-    faceRatio: "정면 얼굴의 가로와 세로 관계를 보여줍니다.",
-    noseDepth: "양측면 메시에서 코끝과 볼 평면의 상대 깊이를 평균했습니다.",
-    earLength: Number.isFinite(value) ? "직접 지정한 귀 위·아래 두 점을 얼굴 길이와 비교했습니다." : "귀가 가려졌거나 건너뛰어 유형 판정에서 제외했습니다.",
-    symmetry: "눈·코·입·턱 중심의 좌우 차이를 합성한 상대 균형 점수입니다.",
-  };
-  return notes[key] ?? "얼굴 내부의 상대값입니다.";
-}
+// ---------- result: small DOM helpers ----------
 
 function resultElement(tag, className, text) {
   const element = document.createElement(tag);
@@ -1082,136 +470,177 @@ function renderFrontAnnotation(svg, points) {
   const eyeY = mean(points.eyeLeftOuter.y, points.eyeLeftInner.y, points.eyeRightInner.y, points.eyeRightOuter.y);
   const fiveX = [points.templeLeft.x, points.eyeLeftOuter.x, points.eyeLeftInner.x, points.eyeRightInner.x, points.eyeRightOuter.x, points.templeRight.x].sort((a, b) => a - b);
   fiveX.forEach((x) => overlayLine(svg, { x, y: eyeY - 5.5 }, { x, y: eyeY + 5.5 }, "#a47a35", "annotation-line is-five"));
+  if (points.foreheadLeft && points.foreheadRight) overlayLine(svg, points.foreheadLeft, points.foreheadRight, "#6e4e61", "annotation-line is-width");
+  if (points.jawLeft && points.jawRight) overlayLine(svg, points.jawLeft, points.jawRight, "#6e4e61", "annotation-line is-width");
   overlayLabel(svg, points.glabella, "미간", "#315d52", 2.2, -2.1);
   overlayLabel(svg, points.noseTip, "코끝", "#9b3d2c", 2.4, -1.1);
   overlayLabel(svg, points.upperLip, "인중", "#6e4e61", 2.4, -1.4);
   overlayLabel(svg, points.chin, "턱", "#a47a35", 2.4, -1.6);
-  overlayLabel(svg, points.cheekLeft, "광대", "#315d52", -11.5, -1.4);
+  overlayLabel(svg, points.faceLeft, "광대", "#315d52", -11.5, -1.4);
 }
 
-function renderProfileAnnotation(svg, points) {
-  svg.replaceChildren();
-  if (!points) return;
-  const profilePoints = [points.noseBridge, points.noseTip, points.noseBase, points.upperLip, points.chin];
-  const path = profilePoints.map((pointValue) => `${pointValue.x.toFixed(2)},${pointValue.y.toFixed(2)}`).join(" ");
-  svg.append(svgNode("polyline", { points: path, fill: "none", stroke: "#9b3d2c", class: "annotation-line is-profile-line" }));
-  overlayLabel(svg, points.noseBridge, "콧대", "#315d52", 2.3, -2);
-  overlayLabel(svg, points.noseTip, "코끝", "#9b3d2c", 2.3, -1.2);
-  overlayLabel(svg, points.chin, "턱끝", "#a47a35", 2.3, -1.5);
-}
-
-function renderCapturedFrames() {
-  const front = capturedFrames.front;
-  const profileA = capturedFrames.profileA;
-  const profileB = capturedFrames.profileB;
-  resultFrontFigure.hidden = !front;
-  if (front) {
-    resultFrontImage.src = front.src;
-    renderFrontAnnotation(resultFrontOverlay, front.points);
-  }
-  resultProfileGallery.hidden = !(profileA || profileB);
-  if (profileA) {
-    resultProfileAImage.src = profileA.src;
-    renderProfileAnnotation(resultProfileAOverlay, profileA.points);
-    resultProfileAImage.closest("figure").hidden = false;
-  } else {
-    resultProfileAImage.closest("figure").hidden = true;
-  }
-  if (profileB) {
-    resultProfileBImage.src = profileB.src;
-    renderProfileAnnotation(resultProfileBOverlay, profileB.points);
-    resultProfileBImage.closest("figure").hidden = false;
-  } else {
-    resultProfileBImage.closest("figure").hidden = true;
+function renderCapturedFrame(shot) {
+  resultFrontFigure.hidden = !shot;
+  if (shot) {
+    resultFrontImage.src = shot.src;
+    renderFrontAnnotation(resultFrontOverlay, shot.points);
   }
 }
 
-function createPreviewFrame(profile = false, mirrored = false) {
-  const portrait = profile
-    ? `<path d="M315 115 C370 150 390 225 374 300 C362 350 405 374 430 395 C405 414 384 431 384 468 C384 535 350 619 286 678 C245 715 190 704 157 666 C118 619 105 547 118 470 C130 397 143 324 163 252 C185 170 239 112 315 115Z" fill="#c9b79e" stroke="#5a4b3c" stroke-width="3"/><path d="M355 286 C379 309 391 342 398 374 C386 381 375 386 360 387" fill="none" stroke="#564538" stroke-width="4"/><path d="M352 428 C374 438 386 438 402 430" fill="none" stroke="#6f4a3b" stroke-width="4"/>`
-    : `<ellipse cx="320" cy="392" rx="178" ry="266" fill="#c9b79e" stroke="#5a4b3c" stroke-width="3"/><path d="M210 330 C245 307 276 308 302 331 M338 331 C366 307 400 309 430 333" fill="none" stroke="#5a4b3c" stroke-width="5"/><path d="M222 356 C249 371 277 370 299 356 M342 356 C370 372 400 370 421 355" fill="none" stroke="#3e372f" stroke-width="4"/><path d="M318 356 C306 420 302 455 320 470 C340 461 348 455 348 444" fill="none" stroke="#665446" stroke-width="4"/><path d="M264 523 C304 545 349 545 389 520" fill="none" stroke="#7b4639" stroke-width="4"/>`;
+function createPreviewFrame() {
+  const portrait = `<ellipse cx="320" cy="392" rx="178" ry="266" fill="#c9b79e" stroke="#5a4b3c" stroke-width="3"/><path d="M210 330 C245 307 276 308 302 331 M338 331 C366 307 400 309 430 333" fill="none" stroke="#5a4b3c" stroke-width="5"/><path d="M222 356 C249 371 277 370 299 356 M342 356 C370 372 400 370 421 355" fill="none" stroke="#3e372f" stroke-width="4"/><path d="M318 356 C306 420 302 455 320 470 C340 461 348 455 348 444" fill="none" stroke="#665446" stroke-width="4"/><path d="M264 523 C304 545 349 545 389 520" fill="none" stroke="#7b4639" stroke-width="4"/>`;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="800" viewBox="0 0 640 800"><rect width="640" height="800" fill="#dfd2bd"/><path d="M0 80H640M0 720H640" stroke="#bfae94" stroke-width="1" opacity=".6"/>${portrait}<text x="32" y="48" fill="#7b6b59" font-family="serif" font-size="18">LOCAL PREVIEW PLATE</text></svg>`;
-  const frontPoints = {
+  const points = {
     meshTop: { x: 50, y: 18 }, glabella: { x: 50, y: 39 }, noseBase: { x: 50, y: 59 }, chin: { x: 50, y: 82 },
     faceLeft: { x: 22, y: 50 }, faceRight: { x: 78, y: 50 }, templeLeft: { x: 25, y: 40 }, templeRight: { x: 75, y: 40 },
-    cheekLeft: { x: 29, y: 56 }, cheekRight: { x: 71, y: 56 }, eyeLeftOuter: { x: 30, y: 43 }, eyeLeftInner: { x: 43, y: 43 },
-    eyeRightInner: { x: 57, y: 43 }, eyeRightOuter: { x: 70, y: 43 }, noseBridge: { x: 50, y: 40 }, noseTip: { x: 50, y: 55 },
-    upperLip: { x: 50, y: 65 }, mouthLeft: { x: 39, y: 67 }, mouthRight: { x: 61, y: 67 },
+    foreheadLeft: { x: 30, y: 27 }, foreheadRight: { x: 70, y: 27 }, jawLeft: { x: 33, y: 71 }, jawRight: { x: 67, y: 71 },
+    eyeLeftOuter: { x: 30, y: 43 }, eyeLeftInner: { x: 43, y: 43 }, eyeRightInner: { x: 57, y: 43 }, eyeRightOuter: { x: 70, y: 43 },
+    noseTip: { x: 50, y: 55 }, upperLip: { x: 50, y: 65 },
   };
-  const profilePoints = {
-    ...frontPoints,
-    noseBridge: { x: mirrored ? 47 : 55, y: 39 },
-    noseTip: { x: mirrored ? 37 : 67, y: 49 },
-    noseBase: { x: mirrored ? 43 : 61, y: 55 },
-    upperLip: { x: mirrored ? 40 : 64, y: 62 },
-    chin: { x: mirrored ? 43 : 61, y: 80 },
-  };
-  return { src: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`, points: profile ? profilePoints : frontPoints };
+  return { src: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`, points };
 }
 
-function measurementBand(value, low, high, labels) {
-  if (!Number.isFinite(value)) return "측정 제외";
-  if (value < low) return labels[0];
-  if (value > high) return labels[2];
-  return labels[1];
+// ---------- result: five themes ----------
+
+function createThemeCard(theme, index) {
+  const card = resultElement("article", `theme-card is-${theme.state}${theme.soft ? " is-soft" : ""}`);
+  const head = resultElement("header", "theme-head");
+  head.append(
+    resultElement("span", "theme-index", `${String(index + 1).padStart(2, "0")} · ${theme.tag}`),
+    resultElement("h4", "", theme.title),
+  );
+  const chips = resultElement("div", "theme-chips");
+  chips.append(resultElement("b", "theme-state", theme.label));
+  if (theme.tier) chips.append(resultElement("span", "", STRENGTH_TEXT[theme.tier]));
+  if (theme.soft) chips.append(resultElement("span", "is-warn", "약한 경향"));
+  if (theme.near) chips.append(resultElement("span", "is-warn", "경계 근처"));
+  chips.append(resultElement("span", "is-quiet", RELIABILITY_TEXT[theme.reliability]));
+
+  const steps = resultElement("div", "theme-steps");
+  const factList = resultElement("ul", "theme-facts");
+  for (const row of theme.rows) {
+    const item = resultElement("li", row.supporting ? "is-supporting" : "");
+    item.append(
+      resultElement("span", "", row.fact),
+      resultElement("i", "", RELATION_TEXT[row.relation]),
+    );
+    factList.append(item);
+  }
+  const step = (labelText, bodyNode, className = "") => {
+    const wrap = resultElement("section", `theme-step ${className}`.trim());
+    wrap.append(resultElement("small", "", labelText));
+    wrap.append(bodyNode);
+    return wrap;
+  };
+  steps.append(
+    step("측정된 사실", factList),
+    step("전통 관상에서 보는 영역", resultElement("p", "", theme.area)),
+    step("이 얼굴의 읽기", resultElement("p", "", theme.reading), "is-reading"),
+    step("읽을 때의 한계", resultElement("p", "", theme.limit), "is-limit"),
+  );
+  card.append(head, chips, steps);
+  return card;
+}
+
+function renderThemes() {
+  resultThemes.replaceChildren(...reading.themes.map((theme, index) => createThemeCard(theme, index)));
+}
+
+function renderLinksAndTone() {
+  const nodes = [];
+  for (const link of reading.links) {
+    const names = link.themes.map((id) => reading.themes.find((t) => t.id === id)?.short ?? id).join(" × ");
+    const card = resultElement("article", "link-card");
+    card.append(resultElement("small", "", names), resultElement("p", "", link.text));
+    nodes.push(card);
+  }
+  resultLinks.replaceChildren(...nodes);
+  resultLinks.hidden = nodes.length === 0;
+  if (reading.tone) {
+    resultTone.hidden = false;
+    resultTone.replaceChildren(
+      resultElement("small", "", reading.tone.title),
+      resultElement("p", "", reading.tone.intro),
+      resultElement("strong", "", reading.tone.text),
+      resultElement("p", "tone-limit", reading.tone.limit),
+    );
+  } else {
+    resultTone.hidden = true;
+  }
+  resultLinksWrap.hidden = nodes.length === 0 && !reading.tone;
+}
+
+// ---------- result: three frames ----------
+
+function frameEntries() {
+  return AXIS_ORDER.map((axis) => {
+    const result = reading.frames.axes[axis];
+    if (!result) return null;
+    return { axis, meta: AXES[axis], result, key: result.key, type: FACE_TYPES[result.key], profile: READING_PROFILES[result.key] };
+  }).filter(Boolean);
+}
+
+function frameReason(entry, values) {
+  const { axis, key, result } = entry;
+  const step = (z) => `${z >= 0 ? "+" : ""}${z.toFixed(1)}단계`;
+  if (axis === "sanjeong") {
+    const names = { upper: "상정", middle: "중정", lower: "하정" };
+    const keys = { upper: "upperThird", middle: "middleThird", lower: "lowerThird" };
+    const leader = result.detail.leader;
+    const value = values[keys[leader]];
+    const typical = CALIBRATION[keys[leader]].center;
+    if (key === "balance") {
+      return `가장 높은 ${names[leader]}이 ${value.toFixed(1)}%로 평균 ${typical}%보다 ${step(result.detail.z)}라, 강조로 보는 기준 +${THRESHOLDS.thirdsLead}단계에 닿지 않았습니다.`;
+    }
+    return `${names[leader]}이 ${value.toFixed(1)}%로 평균 ${typical}%보다 ${step(result.detail.z)} 길고, 다음 구역보다 ${result.detail.gapZ.toFixed(1)}단계 앞섭니다.`;
+  }
+  if (axis === "ogan") {
+    const where = key === "open" ? "열린 쪽" : key === "focused" ? "모인 쪽" : "평균 범위";
+    return `눈 사이와 좌우 바깥 여백의 평균이 눈 하나 너비의 ${result.detail.measure.toFixed(2)}배로, 평균 ${CALIBRATION.openMeasure.center}배보다 ${step(result.detail.z)}, ${where}입니다.`;
+  }
+  return `턱 너비 ${values.jawCheek.toFixed(1)}%, 광대 너비/얼굴 길이 ${values.faceRatio.toFixed(1)}%를 합친 윤곽 점수가 ${step(result.detail.score)}로, 0단계 이상이면 구조형입니다.`;
+}
+
+function createFrameCard(entry, values) {
+  const { meta, type, profile, result } = entry;
+  const card = resultElement("article", "axis-card");
+  const head = resultElement("div", "axis-card-head");
+  head.append(
+    resultElement("span", "axis-card-label", `${meta.label} · ${meta.english}`),
+    resultElement("span", "axis-card-code", type.code),
+  );
+  const title = resultElement("h4", "", type.name);
+  if (result.tier) title.append(resultElement("em", "axis-tier", STRENGTH_TEXT[result.tier]));
+  card.append(
+    head,
+    title,
+    resultElement("p", "axis-card-tagline", type.tagline),
+    resultElement("p", "axis-card-reason", frameReason(entry, values)),
+  );
+  if (result.near) card.append(resultElement("p", "axis-card-near", "이 틀은 판정 경계에 가까워, 자세나 표정에 따라 인접한 읽기로 보일 수도 있습니다."));
+  const more = resultElement("details", "axis-card-more");
+  more.append(resultElement("summary", "", "이 틀의 전통적인 설명 보기"), resultElement("p", "axis-card-body", profile.overview), resultElement("p", "axis-card-shadow", profile.shadow));
+  card.append(more);
+  return card;
+}
+
+function renderFrames() {
+  const wrap = resultElement("div", "axis-cards");
+  wrap.append(...frameEntries().map((entry) => createFrameCard(entry, finalMeasurement)));
+  resultSynthesis.replaceChildren(wrap);
+}
+
+// ---------- result: measurement detail ----------
+
+function measurementBand(key, value, labels) {
+  const z = zScore(key, value);
+  if (!Number.isFinite(z)) return "측정 제외";
+  return z < -0.5 ? labels[0] : z > 0.5 ? labels[2] : labels[1];
 }
 
 function signedValue(value, digits = 1) {
-  if (!Number.isFinite(value)) return "—";
+  if (!Number.isFinite(value)) return "-";
   return `${value > 0 ? "+" : ""}${value.toFixed(digits)}`;
-}
-
-function deriveResultValues(values) {
-  const thirds = [values.upperThird, values.middleThird, values.lowerThird];
-  const thirdsDeviation = mean(...thirds.map((value) => Math.abs(value - 33.33)));
-  const thirdEntries = [
-    ["상정", values.upperThird],
-    ["중정", values.middleThird],
-    ["하정", values.lowerThird],
-  ].sort((a, b) => b[1] - a[1]);
-  const five = [values.outerLeft, values.leftEye, values.eyeGap, values.rightEye, values.outerRight];
-  const fiveDeviation = mean(...five.map((value) => Math.abs(value - 1)));
-  const outerAverage = mean(values.outerLeft, values.outerRight);
-  const openMeasure = mean(values.eyeGap, outerAverage);
-  return {
-    thirdsDeviation,
-    thirdEntries,
-    thirdLead: thirdEntries[0][1] - thirdEntries[1][1],
-    fiveDeviation,
-    outerAverage,
-    openMeasure,
-  };
-}
-
-function primaryReason(typeKey, values, derived) {
-  const thirdLeader = derived.thirdEntries[0];
-  const reasons = {
-    balance: `삼정의 평균 편차가 ${derived.thirdsDeviation.toFixed(1)}%p이고 오안의 기준 편차가 ${derived.fiveDeviation.toFixed(2)}배로, 세로와 가로 비례가 함께 비교적 고르게 나타났습니다.`,
-    upper: `상정이 ${values.upperThird.toFixed(1)}%로 가장 길고, 다음 구역보다 ${derived.thirdLead.toFixed(1)}%p 앞서 상부의 세로 비중이 유형 점수를 높였습니다.`,
-    middle: `중정이 ${values.middleThird.toFixed(1)}%로 가장 길며, 코끝 상대 깊이 ${values.noseDepth.toFixed(1)}%가 얼굴 중심축의 강조를 함께 지지했습니다.`,
-    lower: `하정이 ${values.lowerThird.toFixed(1)}%로 가장 길고 턱/광대 비율이 ${values.jawCheek.toFixed(1)}%로 나타나 하관의 세로·가로 지지가 함께 반영되었습니다.`,
-    open: `눈 사이와 양옆 바깥 구간의 평균이 눈 하나 너비의 ${derived.openMeasure.toFixed(2)}배로, 오안의 여백이 바깥으로 열리는 방향에 가까웠습니다.`,
-    focused: `눈 사이와 양옆 바깥 구간의 평균이 눈 하나 너비의 ${derived.openMeasure.toFixed(2)}배로, 오안의 여백이 중심 쪽으로 응집되는 방향에 가까웠습니다.`,
-    structure: `턱/광대 비율 ${values.jawCheek.toFixed(1)}%, 얼굴 너비/길이 ${values.faceRatio.toFixed(1)}%, 코끝 상대 깊이 ${values.noseDepth.toFixed(1)}%가 함께 윤곽의 구조 점수를 높였습니다.`,
-  };
-  return reasons[typeKey] ?? `${thirdLeader[0]} ${thirdLeader[1].toFixed(1)}%가 현재 분류에서 가장 강한 측정 축으로 작동했습니다.`;
-}
-
-function createFitRow(typeKey, score, rank) {
-  const type = FACE_TYPES[typeKey];
-  const scoreValue = Math.round(clamp(score) * 100);
-  const row = resultElement("div", "fit-row");
-  const label = resultElement("div", "fit-label");
-  label.append(
-    resultElement("span", "fit-rank", String(rank).padStart(2, "0")),
-    resultElement("strong", "", type.name),
-  );
-  const track = resultElement("div", "fit-track");
-  const fill = resultElement("i", "fit-fill");
-  fill.style.setProperty("--fit", `${scoreValue}%`);
-  track.append(fill);
-  row.append(label, track, resultElement("b", "fit-value", `${scoreValue}점`));
-  return row;
 }
 
 function createRatioVisual(items, variant) {
@@ -1235,11 +664,7 @@ function createAnalysisFact(labelText, valueText, stateText, copyText, tone = "n
     resultElement("span", "", labelText),
     resultElement("b", `analysis-state is-${tone}`, stateText),
   );
-  article.append(
-    heading,
-    resultElement("strong", "analysis-value", valueText),
-    resultElement("p", "", copyText),
-  );
+  article.append(heading, resultElement("strong", "analysis-value", valueText), resultElement("p", "", copyText));
   return article;
 }
 
@@ -1247,10 +672,7 @@ function createAnalysisPanel(index, title, summary, visual, facts, note) {
   const panel = resultElement("article", "analysis-panel");
   const heading = resultElement("header", "analysis-panel-heading");
   const titleBlock = resultElement("div", "");
-  titleBlock.append(
-    resultElement("span", "analysis-index", index),
-    resultElement("h4", "", title),
-  );
+  titleBlock.append(resultElement("span", "analysis-index", index), resultElement("h4", "", title));
   heading.append(titleBlock, resultElement("p", "", summary));
   panel.append(heading);
   if (visual) panel.append(visual);
@@ -1261,203 +683,85 @@ function createAnalysisPanel(index, title, summary, visual, facts, note) {
   return panel;
 }
 
-function renderDetailedAnalysis(values) {
-  const derived = deriveResultValues(values);
-  const thirdsState = derived.thirdsDeviation <= 1.5 ? "고른 편" : derived.thirdsDeviation <= 3.2 ? "완만한 차이" : "강조 구역 있음";
-  const fiveState = derived.fiveDeviation <= 0.1 ? "기준에 가까움" : derived.fiveDeviation <= 0.24 ? "완만한 차이" : "구간 차이 큼";
-  const spaceState = measurementBand(derived.openMeasure, 0.96, 1.08, ["응집 방향", "중간 범위", "개방 방향"]);
-  const upperEstimated = `상정 ${values.upperThird.toFixed(1)} · 중정 ${values.middleThird.toFixed(1)} · 하정 ${values.lowerThird.toFixed(1)}%`;
-
-  const thirdsVisual = createRatioVisual([
-    { label: "상정", value: values.upperThird, unit: "%" },
-    { label: "중정", value: values.middleThird, unit: "%" },
-    { label: "하정", value: values.lowerThird, unit: "%" },
-  ], "is-thirds");
+function renderDetailedAnalysis(v) {
+  const thirds = [["상정", v.upperThird], ["중정", v.middleThird], ["하정", v.lowerThird]];
+  const thirdsLeader = [...thirds].sort((a, b) => b[1] - a[1])[0];
+  const stepOf = (key) => zScore(key, v[key]);
+  const thirdsVisual = createRatioVisual(thirds.map(([label, value]) => ({ label, value, unit: "%" })), "is-thirds");
   const thirdsFacts = [
-    createAnalysisFact("세 구역 분포", upperEstimated, thirdsState, `가장 긴 구역은 ${derived.thirdEntries[0][0]}이며, 두 번째 구역과의 차이는 ${derived.thirdLead.toFixed(1)}%p입니다.`, derived.thirdsDeviation <= 1.5 ? "balanced" : "accent"),
-    createAnalysisFact("삼정 평균 편차", `${derived.thirdsDeviation.toFixed(1)}%p`, "33.3% 기준", "각 구역이 전체의 3분의 1에서 평균적으로 얼마나 떨어졌는지를 계산한 내부 비교값입니다."),
+    createAnalysisFact("세 구역 분포", `상정 ${v.upperThird.toFixed(1)} · 중정 ${v.middleThird.toFixed(1)} · 하정 ${v.lowerThird.toFixed(1)}%`, "측정 틀 기준", `얼굴 메시에서는 평균 얼굴도 상정 ${CALIBRATION.upperThird.center}, 중정 ${CALIBRATION.middleThird.center}, 하정 ${CALIBRATION.lowerThird.center}%로 나옵니다. 그래서 33.3%가 아니라 이 평균을 기준으로 비교합니다.`),
+    createAnalysisFact("평균과의 차이", `${signedValue(stepOf("upperThird"))} / ${signedValue(stepOf("middleThird"))} / ${signedValue(stepOf("lowerThird"))}단계`, thirdsLeader[0], "상정, 중정, 하정이 평균 얼굴에서 몇 단계 떨어졌는지 보여줍니다. 한 단계는 사람 사이의 보통 차이 정도로 잡은 값입니다."),
   ];
-
   const fiveVisual = createRatioVisual([
-    { label: "좌외", value: values.outerLeft, unit: "×", digits: 2 },
-    { label: "좌안", value: values.leftEye, unit: "×", digits: 2 },
-    { label: "미간", value: values.eyeGap, unit: "×", digits: 2 },
-    { label: "우안", value: values.rightEye, unit: "×", digits: 2 },
-    { label: "우외", value: values.outerRight, unit: "×", digits: 2 },
+    { label: "좌외", value: v.outerLeft, unit: "×", digits: 2 },
+    { label: "좌안", value: v.leftEye, unit: "×", digits: 2 },
+    { label: "미간", value: v.eyeGap, unit: "×", digits: 2 },
+    { label: "우안", value: v.rightEye, unit: "×", digits: 2 },
+    { label: "우외", value: v.outerRight, unit: "×", digits: 2 },
   ], "is-five");
   const fiveFacts = [
-    createAnalysisFact("중앙·바깥 여백", `${derived.openMeasure.toFixed(2)}배`, spaceState, "눈 사이와 양옆 바깥 구간을 평균 눈 너비와 비교해 개방·응집 방향을 판단합니다.", spaceState === "중간 범위" ? "balanced" : "accent"),
-    createAnalysisFact("오안 평균 편차", `${derived.fiveDeviation.toFixed(2)}배`, fiveState, "다섯 구간이 각각 눈 하나 너비인 1.00에 얼마나 가까운지를 평균한 값입니다."),
-    createAnalysisFact("양쪽 눈 크기 관계", `${values.leftEye.toFixed(2)} / ${values.rightEye.toFixed(2)}배`, Math.abs(values.leftEye - values.rightEye) <= 0.08 ? "가까운 편" : "차이 있음", "왼쪽과 오른쪽 눈 너비를 두 눈의 평균값으로 나눈 상대 비교입니다."),
+    createAnalysisFact("세 여백의 평균", `${v.openMeasure.toFixed(2)}배`, measurementBand("openMeasure", v.openMeasure, ["모인 쪽", "평균 범위", "열린 쪽"]), `왼쪽 바깥, 눈 사이, 오른쪽 바깥 세 여백을 같은 비중으로 평균했습니다. 평균 얼굴은 ${CALIBRATION.openMeasure.center}배입니다.`),
+    createAnalysisFact("눈 사이", `${v.eyeGap.toFixed(2)}배`, measurementBand("eyeGap", v.eyeGap, ["좁은 편", "평균 범위", "넓은 편"]), "두 눈 안쪽 사이를 평균 눈 너비와 비교했습니다."),
+    createAnalysisFact("양쪽 눈 크기 관계", `${v.leftEye.toFixed(2)} / ${v.rightEye.toFixed(2)}배`, Math.abs(v.leftEye - v.rightEye) <= 0.08 ? "가까운 편" : "차이 있음", "왼쪽과 오른쪽 눈 너비를 두 눈의 평균값으로 나눈 상대 비교입니다."),
   ];
-
   const featureFacts = [
-    createAnalysisFact("코 너비 / 얼굴 너비", `${values.noseWidth.toFixed(1)}%`, measurementBand(values.noseWidth, 20, 26, ["좁은 구간", "중간 구간", "넓은 구간"]), "콧방울 양끝의 정면 너비가 얼굴 너비에서 차지하는 비율입니다."),
-    createAnalysisFact("코 너비 / 눈 사이", `${values.noseEyeGap.toFixed(2)}배`, measurementBand(values.noseEyeGap, 0.85, 1.15, ["눈 사이보다 좁음", "서로 가까움", "눈 사이보다 넓음"]), "코 너비를 두 눈 안쪽 사이 거리와 직접 비교한 값입니다."),
-    createAnalysisFact("입 너비 / 코 너비", `${values.mouthNose.toFixed(2)}배`, measurementBand(values.mouthNose, 1.35, 1.65, ["가까운 비율", "중간 비율", "입 너비 우세"]), "입꼬리 사이 너비가 콧방울 너비의 몇 배인지 보여줍니다."),
-    createAnalysisFact("인중 / 하정", `${values.philtrumLower.toFixed(1)}%`, measurementBand(values.philtrumLower, 20, 28, ["짧은 구간", "중간 구간", "긴 구간"]), "코 아래에서 윗입술까지가 하정 전체에서 차지하는 비율입니다."),
-    createAnalysisFact("눈꼬리 평균 기울기", `${signedValue(values.eyeTilt)}°`, "표정 영향 큼", "정면 한 장의 기울기이며 눈썹·표정·촬영 각도 때문에 유형 점수에는 사용하지 않습니다.", "caution"),
-    createAnalysisFact("입꼬리 상대 높이", `${signedValue(values.mouthLift)}%`, "표정 영향 큼", "입 중심과 양쪽 입꼬리의 높이 차이이며 표정에 민감해 설명용으로만 표시합니다.", "caution"),
+    createAnalysisFact("코 너비 / 얼굴 너비", formatValue("noseWidth", v.noseWidth), measurementBand("noseWidth", v.noseWidth, ["좁은 편", "평균 범위", "넓은 편"]), "콧방울 양끝의 정면 너비가 얼굴 너비에서 차지하는 비율입니다."),
+    createAnalysisFact("코 너비 / 눈 사이", formatValue("noseEyeGap", v.noseEyeGap), measurementBand("noseEyeGap", v.noseEyeGap, ["눈 사이보다 좁음", "평균 범위", "눈 사이보다 넓음"]), "코 너비를 두 눈 안쪽 사이 거리와 직접 비교한 값입니다."),
+    createAnalysisFact("입 너비 / 코 너비", formatValue("mouthNose", v.mouthNose), measurementBand("mouthNose", v.mouthNose, ["코 쪽 우세", "평균 범위", "입 쪽 우세"]), "입꼬리 사이 너비가 콧방울 너비의 몇 배인지 보여줍니다."),
+    createAnalysisFact("인중 / 하정", formatValue("philtrumLower", v.philtrumLower), measurementBand("philtrumLower", v.philtrumLower, ["짧은 편", "평균 범위", "긴 편"]), "코 아래에서 윗입술까지가 하정 전체에서 차지하는 비율입니다. 깊이는 측정하지 않았습니다."),
+    createAnalysisFact("눈꼬리 기울기", `${signedValue(v.eyeTilt)}°`, "표정 영향 있음", "눈 안쪽 점과 바깥쪽 점을 잇는 선의 각도이며, 고개 기울기는 보정했습니다. 표정에 민감해 말투 보정에만 사용했습니다.", "caution"),
+    createAnalysisFact("입꼬리 상대 높이", `${signedValue(v.mouthLift)}%`, "표정 영향 있음", "입 중심과 양쪽 입꼬리의 높이 차이입니다. 무표정에 가까운 프레임만 모았고 말투 보정에만 사용했습니다.", "caution"),
   ];
-
   const contourFacts = [
-    createAnalysisFact("턱 너비 / 광대 너비", `${values.jawCheek.toFixed(1)}%`, measurementBand(values.jawCheek, 76, 87, ["광대 우세", "중간 구조", "턱 지지 강함"]), "정면에서 광대 폭에 비해 턱 폭이 어느 정도인지 나타냅니다."),
-    createAnalysisFact("광대 너비 / 얼굴 길이", `${values.cheekWidth.toFixed(1)}%`, measurementBand(values.cheekWidth, 41, 49, ["세로감 우세", "중간 범위", "가로감 우세"]), "광대 사이 너비를 얼굴 메시의 세로 길이와 비교했습니다."),
-    createAnalysisFact("얼굴 너비 / 길이", `${values.faceRatio.toFixed(1)}%`, measurementBand(values.faceRatio, 68, 82, ["세로형 방향", "중간 범위", "가로형 방향"]), "정면 얼굴 전체의 가로와 세로 관계를 나타내는 내부 비율입니다."),
-    createAnalysisFact("코끝 상대 깊이", `${values.noseDepth.toFixed(1)}%`, measurementBand(values.noseDepth, 4, 7, ["낮은 구간", "중간 구간", "높은 구간"]), "좌우 측면에서 볼 평면과 코끝의 메시 깊이 차이를 평균했습니다."),
-    createAnalysisFact("콧대 / 턱끝 상대 깊이", `${values.bridgeDepth.toFixed(1)} / ${values.chinDepth.toFixed(1)}%`, "측면 평균", "두 측면에서 콧대와 턱끝이 볼 평면에서 떨어진 정도를 같은 기준으로 비교했습니다."),
-    createAnalysisFact("양측면 코깊이 차이", `${values.profileDepthSpread.toFixed(1)}%p`, values.profileDepthSpread <= 2 ? "가까운 편" : "차이 있음", "왼쪽·오른쪽 측면에서 얻은 코끝 상대 깊이의 차이로, 촬영 일관성을 함께 확인하는 값입니다."),
-    createAnalysisFact("볼 평면 깊이 차이", `${values.cheekDepthBalance.toFixed(1)}%`, "설명용", "측면 촬영에서 양 볼 메시의 깊이 차이를 평균한 값이며 유형 점수에는 직접 사용하지 않습니다."),
-    createAnalysisFact("좌우 상대 균형", `${values.symmetry.toFixed(1)}점`, measurementBand(values.symmetry, 86, 94, ["차이 감지", "중간 범위", "가까운 편"]), "눈·코·입·턱 중심의 정면 차이와, 양쪽 귀가 모두 있으면 귀 길이 차이를 함께 반영합니다."),
+    createAnalysisFact("턱 너비 / 광대 너비", formatValue("jawCheek", v.jawCheek), measurementBand("jawCheek", v.jawCheek, ["좁은 턱", "평균 범위", "넓은 턱"]), "광대 너비는 얼굴 윤곽이 가장 넓은 지점으로 잡았습니다."),
+    createAnalysisFact("이마 너비 / 광대 너비", formatValue("foreheadFace", v.foreheadFace), measurementBand("foreheadFace", v.foreheadFace, ["좁은 이마", "평균 범위", "넓은 이마"]), "이마 위쪽 윤곽점 사이를 광대 너비와 비교했습니다. 머리카락과 앞머리의 영향을 받을 수 있습니다."),
+    createAnalysisFact("광대 너비 / 얼굴 길이", formatValue("faceRatio", v.faceRatio), measurementBand("faceRatio", v.faceRatio, ["세로형 방향", "평균 범위", "가로형 방향"]), "정면 얼굴 전체의 가로와 세로 관계를 나타냅니다."),
+    createAnalysisFact("좌우 상대 균형", formatValue("symmetry", v.symmetry), measurementBand("symmetry", v.symmetry, ["차이 감지", "평균 범위", "가까운 편"]), "눈, 코, 입, 턱 중심의 정면 차이를 합성한 점수입니다."),
+    createAnalysisFact("코끝 상대 깊이", Number.isFinite(v.noseDepth) ? `${v.noseDepth.toFixed(1)}%` : "측정 제외", "읽기에 사용 안 함", "깊이값은 모델이 추정한 값이라 기준이 아직 없어 해석에 쓰지 않았습니다. 기록용으로만 표시합니다.", "caution"),
   ];
-  if (Number.isFinite(values.earLength)) {
-    contourFacts.push(
-      createAnalysisFact("귀 길이 / 얼굴 길이", `${values.earLength.toFixed(1)}%`, measurementBand(values.earLength, 27, 35, ["짧은 구간", "중간 구간", "긴 구간"]), `수동으로 지정한 ${values.earCount}면의 귀 위·아래 점을 얼굴 길이와 비교했습니다.`, "manual"),
-      createAnalysisFact("귀 위·아래 정렬", `${signedValue(values.earTopToBrow)} / ${signedValue(values.earBottomToNose)}%`, "수동 기준", "첫 값은 귀 윗점과 미간 높이, 두 번째 값은 귀 아랫점과 코 아래 높이의 차이입니다.", "manual"),
-    );
-    if (Number.isFinite(values.earBalance)) {
-      contourFacts.push(createAnalysisFact("양쪽 귀 길이 균형", `${values.earBalance.toFixed(1)}점`, "두 귀 비교", "좌우 귀 길이의 상대 차이를 100점 기준으로 환산해 정면 균형 점수와 함께 사용했습니다.", "manual"));
+  resultAnalysis.replaceChildren(
+    createAnalysisPanel("01", "삼정 · 얼굴의 세로 분할", `${thirdsLeader[0]} ${thirdsLeader[1].toFixed(1)}%가 가장 크게 측정되었습니다.`, thirdsVisual, thirdsFacts, "상정은 실제 머리카락선이 아니라 얼굴 메시 상단을 사용한 추정값입니다."),
+    createAnalysisPanel("02", "오안 · 얼굴의 다섯 가로 구간", "평균 눈 너비를 기준으로 다섯 구간을 나란히 비교합니다.", fiveVisual, fiveFacts, "바깥 여백은 얼굴 윤곽점에 닿아 있어 다른 값보다 흔들림이 큽니다."),
+    createAnalysisPanel("03", "오관 · 코·입·인중의 관계", "각 부위의 단독 크기보다 서로의 비례를 읽습니다.", null, featureFacts, "눈꼬리와 입꼬리 값은 표정에 민감해 다섯 읽기 대신 말투 보정에만 썼습니다."),
+    createAnalysisPanel("04", "윤곽과 균형 · 정면", "이마, 광대, 턱의 너비와 얼굴의 가로세로 관계를 함께 봅니다.", null, contourFacts, "정면 윤곽점으로 잰 상대 비율이며 뼈의 높이는 측정하지 않습니다."),
+  );
+}
+
+function renderEvidence() {
+  const rows = new Map();
+  for (const theme of reading.themes) {
+    for (const row of theme.rows) {
+      if (!rows.has(row.key)) rows.set(row.key, { row, themes: [] });
+      rows.get(row.key).themes.push(theme.short);
     }
   }
-
-  resultAnalysis.replaceChildren(
-    createAnalysisPanel("01", "삼정 · 얼굴의 세로 분할", `${derived.thirdEntries[0][0]} ${derived.thirdEntries[0][1].toFixed(1)}%가 가장 크게 측정되었습니다.`, thirdsVisual, thirdsFacts, "상정은 실제 머리카락선이 아니라 얼굴 메시 상단을 사용한 추정값입니다."),
-    createAnalysisPanel("02", "오안 · 얼굴의 다섯 가로 구간", `평균 눈 너비 1.00을 기준으로 다섯 구간을 나란히 비교합니다.`, fiveVisual, fiveFacts, "오안의 1.00은 절대적인 정상값이 아니라 이 프로토타입이 사용하는 비교 기준입니다."),
-    createAnalysisPanel("03", "오관 · 코·입·인중의 관계", "각 부위의 단독 크기보다 서로의 비례를 읽습니다.", null, featureFacts, "눈꼬리와 입꼬리 값은 표정에 민감해 유형 결정에서 제외했습니다."),
-    createAnalysisPanel("04", "윤곽과 입체 · 정면과 양측면", "광대·턱의 너비와 코·콧대·턱끝의 상대 깊이를 함께 봅니다.", null, contourFacts, "깊이값은 밀리미터 단위의 3D 실측이 아니라 카메라 메시 안의 상대 좌표입니다."),
-  );
-  return derived;
-}
-
-function measurementInterpretation(typeKey, values, derived) {
-  const readings = {
-    balance: "상·중·하정의 길이가 서로 크게 멀어지지 않고, 눈 사이와 양옆의 여백도 어느 한쪽으로 강하게 치우치지 않았습니다. 그래서 얼굴을 처음 봤을 때 특정 부위 하나보다 전체가 고르게 정돈된 인상이 먼저 들어옵니다. 이런 비례는 한 가지 주장만 앞세우기보다 여러 조건을 함께 놓고 조율하는 사람 같은 분위기로 이어질 수 있습니다.",
-    upper: "얼굴 메시 상단에서 미간까지 이어지는 위쪽 구역이 다른 구역보다 길게 나타나, 시선이 얼굴 위쪽에 조금 더 오래 머뭅니다. 그래서 즉각 반응하기보다 먼저 상황을 관찰하고, 그 의미와 가능성을 머릿속에서 정리하는 사람 같은 인상을 줄 수 있습니다.",
-    middle: "미간에서 코 아래까지 이어지는 얼굴 중심부가 세로 흐름의 중심을 잡고, 측면에서 보이는 코의 입체감도 그 축을 함께 받치고 있습니다. 그래서 생각을 오래 품기보다 현실적인 말과 행동으로 바꾸며 상황을 앞으로 밀어가는 사람처럼 읽힐 수 있습니다.",
-    lower: "코 아래에서 턱끝까지 이어지는 아래쪽 구역이 길고, 턱선도 광대 아래에서 얼굴을 안정적으로 받치고 있습니다. 그래서 순간적인 반응보다 자신이 정한 기준과 관계를 오래 유지하며, 한번 맡은 일을 끝까지 지탱하는 사람 같은 인상으로 이어질 수 있습니다.",
-    open: "두 눈 사이와 얼굴 양옆의 여백이 평균적인 눈 너비보다 비교적 넓게 펼쳐져, 시선이 중심 한 곳보다 주변으로 퍼지는 느낌을 만듭니다. 그래서 새로운 사람과 정보에 여지를 열어두고, 하나의 답보다 여러 가능성을 먼저 발견하는 사람처럼 보일 수 있습니다.",
-    focused: "두 눈 사이와 얼굴 양옆의 여백이 중심 쪽으로 응집되어, 시선이 얼굴 가운데에 오래 머무는 느낌을 만듭니다. 그래서 많은 자극에 동시에 반응하기보다 자신이 중요하다고 판단한 한 가지를 깊게 살피고 오래 집중하는 사람처럼 읽힐 수 있습니다.",
-    structure: "광대와 턱의 너비, 얼굴 중심의 입체감이 서로 따로 보이기보다 하나의 윤곽을 이루며 전체 구조를 또렷하게 잡고 있습니다. 그래서 역할과 경계를 분명히 하고, 정해진 틀 안에서 안정적으로 힘을 유지하는 사람 같은 인상을 줄 수 있습니다.",
-  };
-  return readings[typeKey] ?? `${derived.thirdEntries[0][0]}의 흐름이 얼굴의 첫인상을 이끌지만, 다른 구역과의 관계에 따라 그 분위기는 한 가지 의미로 고정되지 않습니다.`;
-}
-
-function renderInterpretiveReading(values, derived) {
-  const [primaryKey] = classifiedType.ranked[0];
-  const profile = READING_PROFILES[primaryKey];
-  resultCopy.replaceChildren(
-    resultElement("p", "result-reading-lead", measurementInterpretation(primaryKey, values, derived)),
-  );
-  const contexts = [
-    ["사람 사이에서", profile.relation],
-    ["결정해야 할 때", profile.decision],
-    ["마음이 급해질 때", profile.pressure],
-    ["변화 앞에서", profile.change],
-  ];
-  resultContexts.replaceChildren(...contexts.map(([labelText, copyText], index) => {
-    const article = resultElement("article", "context-reading");
-    const heading = resultElement("div", "context-reading-heading");
-    heading.append(
-      resultElement("span", "context-number", String(index + 1).padStart(2, "0")),
-      resultElement("strong", "", labelText),
-    );
-    article.append(heading, resultElement("p", "", copyText));
-    return article;
-  }));
-}
-
-function renderSynthesis(values, derived) {
-  const top = classifiedType.ranked[0];
-  const second = classifiedType.ranked[1];
-  const gap = Math.round((top[1] - second[1]) * 100);
-  const isMixed = gap <= 7;
-  const primary = FACE_TYPES[top[0]];
-  const secondary = FACE_TYPES[second[0]];
-  const profile = READING_PROFILES[top[0]];
-  const box = resultElement("div", "synthesis-callout");
-  box.append(
-    resultElement("span", "synthesis-label", isMixed ? "두 인상이 함께 보입니다" : "가장 먼저 읽히는 인상"),
-    resultElement("h4", "", isMixed ? `${primary.name}이 중심을 잡고, ${secondary.name}이 비슷한 힘으로 겹칩니다.` : `${primary.name}이 중심을 잡고, ${secondary.name}이 뒤에서 결을 바꿉니다.`),
-    resultElement("p", "", `${profile.overview} 전체적으로는 ${profile.core}으로 읽힐 수 있습니다.`),
-    resultElement("p", "synthesis-secondary", SECONDARY_INFLUENCE[second[0]]),
-  );
-  if (isMixed) {
-    box.append(resultElement("p", "synthesis-sub", "두 분위기의 힘이 비슷하므로 상황에 따라 먼저 보이는 인상이 달라질 수 있습니다."));
-  } else {
-    box.append(resultElement("p", "synthesis-sub", `${secondary.name}은 주 유형을 바꾸기보다 말투와 반응의 결을 조정하는 보조 인상으로 보았습니다.`));
-  }
-  resultSynthesis.replaceChildren(box);
-  resultFitList.replaceChildren(...classifiedType.ranked.slice(0, 3).map(([key, score], index) => createFitRow(key, score, index + 1)));
-}
-
-function renderConnections(values, derived) {
-  const top = classifiedType.ranked[0];
-  const second = classifiedType.ranked[1];
-  const profile = READING_PROFILES[top[0]];
-  const cards = [
-    ["같은 인상의 다른 면", "강점이 언제나 같은 방식으로 보이지는 않습니다", profile.shadow],
-    [
-      "측정과 실제 인상 사이",
-      "표정과 관계, 그날의 상태가 얼굴의 분위기를 바꿉니다",
-      `이 화면은 정지된 비율을 읽은 결과입니다. 익숙한 사람 앞에서는 ${FACE_TYPES[second[0]].name}의 인상이 더 먼저 드러날 수 있고, 웃음·긴장·조명·카메라 각도에 따라서도 실제로 마주한 인상은 달라질 수 있습니다.`,
-    ],
-  ];
-  resultConnections.replaceChildren(...cards.map(([labelText, titleText, copyText], index) => {
-    const article = resultElement("article", "connection-card");
-    article.append(
-      resultElement("span", "connection-index", `0${index + 1}`),
-      resultElement("small", "", labelText),
-      resultElement("strong", "", titleText),
-      resultElement("p", "", copyText),
-    );
-    return article;
-  }));
-}
-
-function renderResult() {
-  if (!classifiedType || !finalMeasurement) return;
-  const type = FACE_TYPES[classifiedType.key];
-  const secondaryTypes = classifiedType.ranked
-    .filter(([key]) => key !== classifiedType.key)
-    .slice(0, 2)
-    .map(([key]) => FACE_TYPES[key].name);
-  resultCode.textContent = type.code;
-  resultName.textContent = type.name;
-  resultTagline.textContent = type.tagline;
-  resultFit.textContent = `${Math.round(clamp(classifiedType.score) * 100)}점`;
-  resultSecondary.textContent = secondaryTypes.join(" · ");
-  resultConfidence.textContent = `${finalMeasurement.confidence}%`;
-  resultKeywords.replaceChildren(...type.keywords.map((keyword) => {
-    const span = document.createElement("span");
-    span.textContent = keyword;
-    return span;
-  }));
-  renderCapturedFrames();
-  const derived = renderDetailedAnalysis(finalMeasurement);
-  renderInterpretiveReading(finalMeasurement, derived);
-  renderSynthesis(finalMeasurement, derived);
-  renderConnections(finalMeasurement, derived);
-  resultEvidence.replaceChildren(...type.evidence.map((key) => {
+  resultEvidence.replaceChildren(...[...rows.values()].map(({ row, themes }) => {
     const article = document.createElement("article");
     const label = document.createElement("span");
     const value = document.createElement("strong");
     const copy = document.createElement("p");
-    label.textContent = METRIC_LABELS[key].label;
-    value.textContent = Number.isFinite(finalMeasurement[key])
-      ? `${formatMetric(key, finalMeasurement[key])}${METRIC_LABELS[key].unit}`
-      : "측정 제외";
-    copy.textContent = evidenceNote(key, classifiedType.key);
+    label.textContent = row.label;
+    value.textContent = formatValue(row.key, row.value);
+    const c = CALIBRATION[row.key];
+    copy.textContent = `평균 ${c.center}${c.unit}에서 ${signedValue(row.z)}단계. ${themes.join(", ")} 읽기에 사용했습니다.`;
     article.append(label, value, copy);
     return article;
   }));
-  const methodItems = [
-    ["적합도 · 내부 점수", "일곱 유형의 현재 규칙에 얼마나 가까운지를 0–100점으로 환산했습니다. 성격이나 미래가 맞을 확률이 아닙니다."],
+}
+
+function renderMethod() {
+  const coverage = finalMeasurement.coverage;
+  const items = [
+    ["연속 측정 · 여러 프레임", `${finalMeasurement.frames}개 프레임을 모아 각 비율의 가중 중앙값을 사용했습니다.${coverage ? ` 고개 좌우 ${Math.round(coverage.yaw[0])}~${Math.round(coverage.yaw[1])}도, 상하 ${Math.round(coverage.pitch[0])}~${Math.round(coverage.pitch[1])}도 범위의 프레임이 쓰였습니다.` : ""} 표정이 풀린 프레임과 눈을 깜빡인 프레임은 제외했습니다.`],
+    ["자세 보정 · 정면 환산", POSE_CORRECTION
+      ? "3D 메시에서 고개의 좌우, 상하, 기울기 각도를 추정하고, 얼굴을 정면으로 되돌린 좌표에서 비율을 계산했습니다. 각도가 클수록 모델이 추정한 깊이값의 오차가 남을 수 있어 정면에 가까운 프레임에 더 큰 비중을 두었습니다."
+      : "자세 보정을 끈 비교 모드입니다. 화면에 보이는 2D 좌표 그대로 비율을 계산했습니다."],
+    ["기준 · 평균 얼굴", "얼굴 메시에서 측정한 평균 얼굴의 값을 기준으로 얼마나 떨어졌는지(단계)를 봅니다. 기준값과 단계의 크기는 전시 프로토타입의 첫 추정이며 실제 관람객 데이터로 조정할 수 있습니다."],
+    ["다섯 읽기 · 판정 규칙", "한 주제는 여러 비율을 모아 읽고, 근거가 두 가지 이상 같은 방향일 때만 뚜렷하게 읽습니다. 하나뿐이면 약한 경향으로, 평균 가까이에서는 균형으로 표시합니다."],
     ["상정 · 추정값", "실제 머리카락선을 찾지 않고 얼굴 메시 상단을 임시 기준으로 사용했습니다."],
-    ["코·윤곽 · 상대 깊이", "좌우 약 30° 촬영의 메시 좌표를 합쳤으며, 밀리미터 단위의 보정된 3D 측정은 아닙니다."],
-    ["귀 · 수동 지정", finalMeasurement.earCount ? `보이는 귀 ${finalMeasurement.earCount}면의 위·아래 지점을 직접 지정해 반영했습니다.` : "귀가 가려졌거나 건너뛰어 결과에서 제외했습니다."],
-    ["눈썹 · 판정 제외", "눈썹 모양은 표정·화장·정리 방식의 영향을 크게 받아 이번 MVP 유형 분류에서 사용하지 않았습니다."],
+    ["측정하지 않은 것", "눈썹, 귀, 콧구멍, 입술 두께, 인중의 깊이, 눈꺼풀 모양은 측정하지 않았습니다."],
   ];
-  resultMethod.replaceChildren(...methodItems.map(([title, copy]) => {
+  resultMethod.replaceChildren(...items.map(([title, copy]) => {
     const article = document.createElement("article");
     const strong = document.createElement("strong");
     const p = document.createElement("p");
@@ -1466,6 +770,51 @@ function renderResult() {
     article.append(strong, p);
     return article;
   }));
+}
+
+function renderLead() {
+  const strong = reading.themes.filter((t) => t.state !== "neutral" && !t.soft).sort((a, b) => Math.abs(b.pull) - Math.abs(a.pull));
+  let lead;
+  if (strong.length) {
+    const top = strong[0];
+    lead = `가장 또렷하게 읽힌 주제는 ${top.title}이며, ${top.label}입니다. ${top.reading}`;
+  } else {
+    lead = "이 얼굴은 다섯 주제 모두 평균 범위에 가깝거나 약한 경향으로만 읽혀, 어느 한쪽으로 크게 기울지 않은 고른 읽기가 나왔습니다.";
+  }
+  resultCopy.replaceChildren(
+    resultElement("p", "result-reading-lead", lead),
+    resultElement("p", "result-reading-sub", content.general.closing),
+  );
+}
+
+function renderResult() {
+  if (!reading || !finalMeasurement) return;
+  const frames = frameEntries();
+  const nearFrames = frames.filter((e) => e.result.near).map((e) => e.meta.label);
+  const nearThemes = reading.themes.filter((t) => t.near).map((t) => t.short);
+  resultCode.textContent = frames.map((e) => e.type.code).join(" · ");
+  resultName.replaceChildren(...reading.themes.map((theme) => {
+    const line = resultElement("span", `axis-line${theme.soft ? " is-soft" : ""}`);
+    line.append(resultElement("small", "", theme.short), document.createTextNode(theme.label));
+    return line;
+  }));
+  resultTagline.textContent = content.general.lead;
+  resultFit.textContent = "5주제 · 3틀";
+  resultSecondary.textContent = [...nearThemes, ...nearFrames].join(" · ") || "없음";
+  resultConfidence.textContent = `${finalMeasurement.confidence}%`;
+  resultKeywords.replaceChildren(...frames.flatMap((e) => e.type.keywords.slice(1)).map((keyword) => {
+    const span = document.createElement("span");
+    span.textContent = keyword;
+    return span;
+  }));
+  renderCapturedFrame(bestShot?.shot ?? null);
+  renderLead();
+  renderThemes();
+  renderLinksAndTone();
+  renderFrames();
+  renderEvidence();
+  renderDetailedAnalysis(finalMeasurement);
+  renderMethod();
 }
 
 function showResult() {
@@ -1479,7 +828,7 @@ function showResult() {
   emptyState.hidden = true;
   resultView.hidden = false;
   frame.classList.add("is-result");
-  setSystemState("ready", "유형 결과 열람 중");
+  setSystemState("ready", "읽기 결과 열람 중");
   resultView.scrollTop = 0;
 }
 
@@ -1490,21 +839,29 @@ function restartMeasurement() {
   startCamera();
 }
 
+// ---------- catalog of the nine frame results ----------
+
 function renderCatalog() {
-  catalogList.replaceChildren(...Object.entries(FACE_TYPES).map(([key, type]) => {
-    const article = document.createElement("article");
-    article.className = "catalog-card";
-    if (classifiedType?.key === key) article.classList.add("is-current");
-    const code = document.createElement("span");
-    const title = document.createElement("h3");
-    const summary = document.createElement("p");
-    const keywords = document.createElement("div");
-    code.textContent = classifiedType?.key === key ? `${type.code} · 나의 유형` : type.code;
-    title.textContent = type.name;
-    summary.textContent = type.summary;
-    keywords.textContent = type.keywords.join(" · ");
-    article.append(code, title, summary, keywords);
-    return article;
+  const current = new Set(AXIS_ORDER.map((axis) => reading?.frames.axes[axis]?.key).filter(Boolean));
+  catalogList.replaceChildren(...AXIS_ORDER.map((axis) => {
+    const group = resultElement("section", "catalog-group");
+    const title = resultElement("h3", "catalog-group-title");
+    title.append(document.createTextNode(AXES[axis].label), resultElement("span", "", AXES[axis].english));
+    const list = resultElement("div", "catalog-group-list");
+    list.append(...AXES[axis].options.map((key) => {
+      const type = FACE_TYPES[key];
+      const article = resultElement("article", "catalog-card");
+      if (current.has(key)) article.classList.add("is-current");
+      article.append(
+        resultElement("span", "", current.has(key) ? `${type.code} · 나의 읽기` : type.code),
+        resultElement("h3", "", type.name),
+        resultElement("p", "", type.summary),
+        resultElement("div", "", type.keywords.join(" · ")),
+      );
+      return article;
+    }));
+    group.append(title, list);
+    return group;
   }));
 }
 
@@ -1512,6 +869,14 @@ function openCatalog() {
   renderCatalog();
   if (typeof typeCatalog.showModal === "function") typeCatalog.showModal();
   else typeCatalog.setAttribute("open", "");
+}
+
+// ---------- start up ----------
+
+async function loadContent() {
+  const response = await fetch("./content.json", { cache: "no-cache" });
+  if (!response.ok) throw new Error("해석 문구 파일을 불러오지 못했습니다.");
+  content = await response.json();
 }
 
 async function initialize() {
@@ -1527,6 +892,7 @@ async function initialize() {
   try {
     setSystemState("loading", "측정 모델 불러오는 중");
     setCameraButton("측정 모델 준비 중", "loading", true);
+    await loadContent();
     const module = await withTimeout(
       import(MEDIAPIPE_MODULE),
       MODEL_LOAD_TIMEOUT,
@@ -1583,37 +949,58 @@ restartButton.addEventListener("click", restartMeasurement);
 showAllTypes.addEventListener("click", openCatalog);
 catalogClose.addEventListener("click", () => typeCatalog.close());
 typeCatalog.addEventListener("click", (event) => { if (event.target === typeCatalog) typeCatalog.close(); });
-frame.addEventListener("pointerdown", handleEarPoint);
-skipEarButton.addEventListener("click", () => finishEarMarking(true));
 window.addEventListener("beforeunload", stopStream);
 
-const previewType = new URLSearchParams(window.location.search).get("preview");
-if (window.location.hostname === "127.0.0.1" && FACE_TYPES[previewType]) {
-  capturedFrames = {
-    front: createPreviewFrame(false),
-    profileA: createPreviewFrame(true, false),
-    profileB: createPreviewFrame(true, true),
-  };
-  finalMeasurement = {
-    upperThird: 33.4, middleThird: 33.1, lowerThird: 33.5,
-    outerLeft: 1.03, leftEye: 0.98, eyeGap: 1.06, rightEye: 1.02, outerRight: 0.99,
-    noseWidth: 23.8, noseEyeGap: 0.94, mouthNose: 1.52, philtrumLower: 22.4,
-    jawCheek: 81.6, cheekWidth: 45.8, faceRatio: 75.2, eyeTilt: 1.8, mouthLift: -0.7,
-    noseDepth: 5.8, bridgeDepth: 2.9, chinDepth: 1.7, cheekDepthBalance: 1.4, profileDepthSpread: 0.8,
-    earLength: 31.2, earTopToBrow: -1.8, earBottomToNose: 2.4, earBalance: 95.4,
-    symmetry: 92.5, confidence: 89, earCount: 2,
-  };
-  classifiedType = classifyMeasurement(finalMeasurement);
-  classifiedType.key = previewType;
-  classifiedType.score = classifiedType.scores[previewType];
-  classifiedType.ranked = [
-    [previewType, classifiedType.scores[previewType]],
-    ...classifiedType.ranked.filter(([key]) => key !== previewType),
-  ];
+if (DEBUG_MODE) import("./debug.js").catch((error) => console.error(error));
+
+// ---------- local preview and simulation (127.0.0.1 only) ----------
+// Preview the result screen without a camera, overriding any ratio:
+//   http://127.0.0.1:8000/?preview=1&v=lowerThird:47,jawCheek:84,philtrumLower:23
+// Without v every ratio sits at the average face.
+// ?sim=1 exposes the measurement pipeline to tests (see tests/flow.test.html).
+
+const isLocal = window.location.hostname === "127.0.0.1";
+
+function parseOverrides(text) {
+  const out = {};
+  for (const pair of (text ?? "").split(",")) {
+    const [key, value] = pair.split(":");
+    if (key && Number.isFinite(Number(value))) out[key] = Number(value);
+  }
+  return out;
+}
+
+async function startPreview() {
+  await loadContent();
+  const base = Object.fromEntries(Object.entries(CALIBRATION).map(([key, c]) => [key, c.center]));
+  const values = { ...base, leftEye: 1, rightEye: 1, outerLeft: 1.27, outerRight: 1.27, eyeGap: 1.43, noseDepth: 64, bridgeDepth: 50, chinDepth: 44, ...parseOverrides(SEARCH_PARAMS.get("v")) };
+  finalMeasurement = { ...values, confidence: 88, frames: 96, stability: 0.9, coverage: { yaw: [-18, 20], pitch: [-9, 11] } };
+  reading = interpret(finalMeasurement, content);
+  bestShot = { weight: 1, shot: createPreviewFrame() };
   classificationComplete = true;
   updateMetrics(finalMeasurement);
-  sampleCount.textContent = "3 / 3 CAPTURED";
+  sampleCount.textContent = "96 FRAMES";
   showResult();
+}
+
+if (isLocal && SEARCH_PARAMS.get("sim") === "1") {
+  // Test hook: feed landmark arrays through the real pipeline without a camera.
+  loadContent().then(() => {
+    drawingUtils = { drawConnectors() {}, drawLandmarks() {} };
+    FaceLandmarker = { FACE_LANDMARKS_TESSELATION: [], FACE_LANDMARKS_FACE_OVAL: [], FACE_LANDMARKS_LEFT_EYE: [], FACE_LANDMARKS_RIGHT_EYE: [], FACE_LANDMARKS_LIPS: [] };
+    Object.defineProperty(video, "videoWidth", { value: 1280, configurable: true });
+    Object.defineProperty(video, "videoHeight", { value: 720, configurable: true });
+    captureStatus.hidden = false;
+    captureJourney.hidden = false;
+    window.__sang = {
+      feed: (landmarks, blend = {}) => handleFace(landmarks, blend, null),
+      state: () => ({ done: classificationComplete, progress: capture.progress, frames: capture.frames.length, reading, finalMeasurement, status: statusMessage.textContent }),
+      show: showResult,
+    };
+    window.__sangReady = true;
+  });
+} else if (isLocal && SEARCH_PARAMS.get("preview")) {
+  startPreview();
 } else {
   initialize();
 }

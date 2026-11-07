@@ -1,0 +1,190 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>engine tests</title>
+<pre id="out">RUNNING</pre>
+<script type="module">
+import { estimatePose, frontalizePoints, canonicalPoints } from "../dist/pose.js";
+import { computeFrontFeatures } from "../dist/features.js";
+import { CALIBRATION } from "../dist/calibration.js";
+import { classifyAxes, classifySanjeong, classifyOgan, classifyOak } from "../dist/reading.js";
+import { StableCapture, weightedMedian } from "../dist/capture.js";
+import { interpret, evaluateTheme, buildTone } from "../dist/interpret.js";
+
+const lines = [];
+let failed = 0;
+const check = (name, ok, detail = "") => { if (!ok) failed += 1; lines.push(`${ok ? "PASS" : "FAIL"} ${name}${detail ? "  " + detail : ""}`); };
+const near = (a, b, tol) => Math.abs(a - b) <= tol;
+
+const content = await (await fetch("../dist/content.json")).json();
+
+// ---------- content file ----------
+{
+  const raw = JSON.stringify(content);
+  check("content has no em dash or en dash", !/[—–]/.test(raw));
+  check("five themes", content.themes.length === 5);
+  let ok = true;
+  const problems = [];
+  for (const theme of content.themes) {
+    for (const s of ["pos", "neg", "neutral"]) if (!theme.states[s]?.label || !theme.states[s]?.reading) { ok = false; problems.push(`${theme.id}.${s}`); }
+    for (const s of ["pos", "neg"]) if (!theme.states[s]?.soft) { ok = false; problems.push(`${theme.id}.${s}.soft`); }
+    for (const f of theme.features) {
+      if (!CALIBRATION[f.key]) { ok = false; problems.push(`calibration ${f.key}`); }
+      if (!content.factTemplates[f.key]) { ok = false; problems.push(`fact ${f.key}`); }
+    }
+  }
+  check("every theme has labels, texts, calibration and fact templates", ok, problems.join(", "));
+  const ids = new Set(content.themes.map((t) => t.id));
+  check("links point at real themes", content.links.every((l) => l.when.every(([id, d]) => ids.has(id) && ["pos", "neg"].includes(d))));
+}
+
+// ---------- features on the canonical face ----------
+const rad = (d) => (d * Math.PI) / 180;
+const yawR = (p, a) => ({ x: p.x * Math.cos(a) - p.z * Math.sin(a), y: p.y, z: p.x * Math.sin(a) + p.z * Math.cos(a) });
+const pitchR = (p, a) => ({ x: p.x, y: p.y * Math.cos(a) + p.z * Math.sin(a), z: -p.y * Math.sin(a) + p.z * Math.cos(a) });
+const rollR = (p, a) => ({ x: p.x * Math.cos(a) - p.y * Math.sin(a), y: p.x * Math.sin(a) + p.y * Math.cos(a), z: p.z });
+const canonical = canonicalPoints(14);
+function pose3(points, yaw, pitch, roll, noise = 0, rng = Math.random) {
+  const out = {};
+  for (const [k, p] of Object.entries(points)) {
+    const q = rollR(pitchR(yawR(p, rad(yaw)), rad(pitch)), rad(roll));
+    out[k] = { x: q.x + 640 + (rng() - 0.5) * noise, y: q.y + 360 + (rng() - 0.5) * noise, z: q.z - 40 + (rng() - 0.5) * noise * 2 };
+  }
+  return out;
+}
+const truth = computeFrontFeatures(canonical);
+const featureKeys = Object.keys(CALIBRATION);
+
+check("canonical thirds match the calibration centers", near(truth.upperThird, CALIBRATION.upperThird.center, 0.1) && near(truth.lowerThird, CALIBRATION.lowerThird.center, 0.1),
+  `${truth.upperThird.toFixed(1)}/${truth.middleThird.toFixed(1)}/${truth.lowerThird.toFixed(1)}`);
+{
+  let worst = 0;
+  let worstKey = "";
+  for (const key of featureKeys) {
+    if (key === "symmetry") continue;
+    const z = Math.abs(truth[key] - CALIBRATION[key].center) / CALIBRATION[key].scale;
+    if (z > worst) { worst = z; worstKey = key; }
+  }
+  check("canonical face sits at the center of every calibrated ratio", worst < 0.12, `worst ${worstKey} ${worst.toFixed(3)} steps`);
+}
+
+// full pipeline: rotate, frontalize, measure
+for (const [yaw, pitch, roll] of [[22, 0, 0], [-24, 12, 0], [0, -18, 0], [15, 15, 6], [-20, -10, -8]]) {
+  const rotated = pose3(canonical, yaw, pitch, roll);
+  const fixed = computeFrontFeatures(frontalizePoints(rotated, estimatePose(rotated)));
+  const raw = computeFrontFeatures(rotated);
+  const stepErr = (f) => Math.max(...featureKeys.filter((k) => !["symmetry", "eyeTilt", "mouthLift"].includes(k)).map((k) => Math.abs(f[k] - truth[k]) / CALIBRATION[k].scale));
+  check(`pose ${yaw}/${pitch}/${roll}: corrected within 0.05 steps, raw is off`, stepErr(fixed) < 0.05 && stepErr(raw) > 0.2, `corrected ${stepErr(fixed).toFixed(3)} raw ${stepErr(raw).toFixed(2)} steps`);
+  check(`pose ${yaw}/${pitch}/${roll}: eye tilt and mouth lift survive head tilt`, near(fixed.eyeTilt, truth.eyeTilt, 0.5) && near(fixed.mouthLift, truth.mouthLift, 0.3), `eyeTilt ${fixed.eyeTilt.toFixed(2)} vs ${truth.eyeTilt.toFixed(2)}, raw ${raw.eyeTilt.toFixed(2)}`);
+}
+
+// ---------- frames ----------
+{
+  const avg = classifyAxes(truth);
+  check("average face: 삼정 balance, 오안 even", avg.axes.sanjeong.key === "balance" && avg.axes.ogan.key === "even", avg.signature);
+  check("long upper third", classifySanjeong({ ...truth, upperThird: 33, middleThird: 28.5, lowerThird: 38.5 }).key === "upper");
+  check("long middle third", classifySanjeong({ ...truth, upperThird: 26, middleThird: 36, lowerThird: 38 }).key === "middle");
+  check("long lower third", classifySanjeong({ ...truth, upperThird: 25, middleThird: 28, lowerThird: 47 }).key === "lower");
+  const tiers = ["light", "moderate", "clear"].map((_, i) => classifySanjeong({ ...truth, upperThird: 28.3 + [2.6, 4, 5.8][i], middleThird: 30.3, lowerThird: 41.4 - [2.6, 4, 5.8][i] }).tier);
+  check("삼정 intensity tiers rise with the lead", tiers.join() === "light,moderate,clear", tiers.join());
+  check("open eyes", classifyOgan({ ...truth, openMeasure: 1.5 }).key === "open");
+  check("focused eyes", classifyOgan({ ...truth, openMeasure: 1.15 }).key === "focused");
+  check("wide face and jaw: structure", classifyOak({ ...truth, jawCheek: 84, faceRatio: 93 }).key === "structure");
+  check("narrow face and jaw: soft", classifyOak({ ...truth, jawCheek: 71, faceRatio: 80 }).key === "soft");
+  const edge = classifySanjeong({ ...truth, upperThird: 28.3 + 0.8 * 3.0 + 0.05, middleThird: 30.3 - 1, lowerThird: 41.4 - 1.5 });
+  check("boundary flagged as near", edge.near === true, `margin ${edge.margin.toFixed(2)}`);
+}
+
+// ---------- themes ----------
+{
+  const avg = interpret(truth, content);
+  check("average face reads balanced on all five themes", avg.themes.every((t) => t.state === "neutral"), avg.themes.map((t) => t.state).join());
+  check("no cross links for an average face", avg.links.length === 0);
+
+  const strong = interpret({ ...truth, lowerThird: 47, jawCheek: 84, philtrumLower: 23 }, content);
+  const per = strong.themes.find((t) => t.id === "persistence");
+  check("three ratios agree: persistence reads strongly", per.state === "pos" && !per.soft && per.supports === 3, `pull ${per.pull.toFixed(2)} supports ${per.supports}`);
+
+  const weak = interpret({ ...truth, lowerThird: 46.5 }, content).themes.find((t) => t.id === "persistence");
+  check("one ratio alone reads as a soft tendency", weak.state === "pos" && weak.soft === true && weak.supports === 1, `pull ${weak.pull.toFixed(2)} supports ${weak.supports}`);
+  check("soft tendency uses the soft sentence", weak.reading.includes("약한 경향"));
+
+  const outlier = interpret({ ...truth, lowerThird: 80 }, content).themes.find((t) => t.id === "persistence");
+  check("one extreme ratio cannot make a strong reading", outlier.soft === true);
+
+  const mixed = interpret({ ...truth, lowerThird: 47, jawCheek: 84, philtrumLower: 23, mouthNose: 2.1, mouthLift: 3.0 }, content);
+  check("persistence and expression both positive picks the matching link", mixed.links.length >= 1 && mixed.links[0].themes.join() === "persistence,expression", mixed.links.map((l) => l.themes.join("+")).join(" | "));
+  check("every theme always has a sentence", interpret({ ...truth, upperThird: 20 }, content).themes.every((t) => t.reading.length > 10));
+  check("rows carry fact text with numbers", per.rows.every((r) => /\d/.test(r.fact)));
+
+  const tone = buildTone({ ...truth, eyeTilt: 6, mouthLift: -2 }, content.tone);
+  check("tone combines eye and mouth", tone.eye === "up" && tone.mouth === "down" && tone.text.includes("눈꼬리") && tone.text.includes("입꼬리"));
+}
+
+// ---------- continuous capture ----------
+{
+  // A face away from every decision line: wider jaw, longer lower part.
+  const variant = canonicalPoints(14);
+  variant.jawLeft.x *= 1.14;
+  variant.jawRight.x *= 1.14;
+  variant.chin.y *= 1.06;
+  const variantTruth = computeFrontFeatures(variant);
+  let seed = 11;
+  const rng = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const good = { pose: { yaw: 0, pitch: 0, roll: 0 }, blend: {}, faceFill: 0.5, centerOffset: 0.02 };
+  const cap = new StableCapture();
+  check("accepts a clean frontal frame", cap.assess(good).ok);
+  check("rejects a smile", cap.assess({ ...good, blend: { mouthSmileLeft: 0.6, mouthSmileRight: 0.6 } }).reason === "smile");
+  check("rejects an open mouth", cap.assess({ ...good, blend: { jawOpen: 0.4 } }).reason === "mouth-open");
+  check("ignores a blink without scolding", cap.assess({ ...good, blend: { eyeBlinkLeft: 0.9, eyeBlinkRight: 0.9 } }).reason === "blink");
+  check("rejects a large turn", cap.assess({ ...good, pose: { yaw: 40, pitch: 0, roll: 0 } }).reason === "yaw");
+  check("rejects head too far up", cap.assess({ ...good, pose: { yaw: 0, pitch: 30, roll: 0 } }).reason === "pitch-up");
+  check("rejects a tiny face", cap.assess({ ...good, faceFill: 0.1 }).reason === "far");
+  check("a turned head counts less than a frontal one", cap.assess({ ...good, pose: { yaw: 20, pitch: 0, roll: 0 } }).weight < cap.assess(good).weight);
+  check("weighted median ignores outliers", weightedMedian([[1, 1], [1.1, 1], [0.9, 1], [50, 1], [1.05, 1]]) < 1.2);
+
+  function sweep(kind) {
+    const c = new StableCapture();
+    let frames = 0;
+    while (!c.isDone(CALIBRATION) && frames < 900) {
+      const t = frames / 20;
+      const yaw = kind === "turn" ? 24 * Math.sin(t) : 8 * Math.sin(t * 0.7);
+      const pitch = kind === "turn" ? 6 * Math.sin(t * 1.3) : 17 * Math.sin(t);
+      const roll = 6 * Math.sin(t * 0.5);
+      const smiling = frames % 17 === 0;
+      const rotated = pose3(variant, yaw, pitch, roll, 1.2, rng);
+      const pose = estimatePose(rotated);
+      const verdict = c.assess({ pose, blend: smiling ? { mouthSmileLeft: 0.7, mouthSmileRight: 0.7 } : {}, faceFill: 0.5, centerOffset: 0.03 });
+      if (verdict.ok) c.add(computeFrontFeatures(frontalizePoints(rotated, pose)), verdict.weight, pose);
+      frames += 1;
+    }
+    return { c, frames };
+  }
+  const a = sweep("turn");
+  const b = sweep("nod");
+  const sa = a.c.snapshot(CALIBRATION);
+  const sb = b.c.snapshot(CALIBRATION);
+  check("sweeping left and right finishes by itself", a.c.isDone(CALIBRATION), `${a.frames} frames, stability ${sa.stability.toFixed(2)}`);
+  check("nodding up and down finishes by itself", b.c.isDone(CALIBRATION), `${b.frames} frames, stability ${sb.stability.toFixed(2)}`);
+  const stepGap = (x, y) => Math.max(...["upperThird", "middleThird", "lowerThird", "openMeasure", "noseWidth", "mouthNose", "jawCheek", "faceRatio"].map((k) => Math.abs(x.values[k] - y.values[k]) / CALIBRATION[k].scale));
+  check("two different head movements give the same ratios", stepGap(sa, sb) < 0.2, `largest gap ${stepGap(sa, sb).toFixed(3)} steps`);
+  const toTruth = Math.max(...["upperThird", "middleThird", "lowerThird", "openMeasure", "noseWidth", "mouthNose", "jawCheek", "faceRatio"].map((k) => Math.abs(sa.values[k] - variantTruth[k]) / CALIBRATION[k].scale));
+  check("pooled ratios stay close to the straight-on truth", toTruth < 0.2, `${toTruth.toFixed(3)} steps`);
+  const ra = interpret(sa.values, content);
+  const rb = interpret(sb.values, content);
+  check("variant face reads as a wide jaw", ra.frames.axes.oak.key === "structure" && !ra.frames.axes.oak.near, `${ra.frames.signature}`);
+  const settled = (r, o) => r.themes.every((x, i) => x.near || o.themes[i].near || x.state === o.themes[i].state);
+  check("same face, same readings after both movements, except themes flagged as near a boundary",
+    ra.frames.signature === rb.frames.signature && settled(ra, rb),
+    `${ra.frames.signature} A:${ra.themes.map((x) => x.state + (x.near ? "*" : "")).join(" ")} B:${rb.themes.map((x) => x.state + (x.near ? "*" : "")).join(" ")}`);
+  check("themes far from a boundary are identical", ra.themes.filter((x, i) => !x.near && !rb.themes[i].near).length >= 4);
+  check("snapshot reports the angles covered", sa.coverage.yaw[1] - sa.coverage.yaw[0] > 20 && sb.coverage.pitch[1] - sb.coverage.pitch[0] > 15);
+}
+
+{
+  const edgeFace = classifyAxes(truth);
+  check("a face exactly on a boundary is flagged as near", edgeFace.nearAxes.length >= 1, edgeFace.nearAxes.join());
+}
+
+lines.push(failed === 0 ? "ALL PASSED" : `${failed} FAILED`);
+document.getElementById("out").textContent = lines.join("\n");
+</script>

@@ -24,7 +24,12 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v6
       - name: Check application syntax
-        run: node --check dist/app-v3.js
+        run: |
+          for f in dist/*.js; do
+            cp "$f" "/tmp/$(basename "$f" .js).mjs"
+            node --check "/tmp/$(basename "$f" .js).mjs"
+          done
+          python3 -c "import json; json.load(open('dist/content.json'))"
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload static application

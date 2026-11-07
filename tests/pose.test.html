@@ -1,0 +1,144 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>pose tests</title>
+<pre id="out">RUNNING</pre>
+<script type="module">
+import { estimatePose, frontalizePoints, canonicalPoints, poseWeight, fitPoseSensitivity, meanOf, stdOf } from "../dist/pose.js";
+
+const lines = [];
+let failed = 0;
+const check = (name, ok, detail = "") => {
+  if (!ok) failed += 1;
+  lines.push(`${ok ? "PASS" : "FAIL"} ${name}${detail ? "  " + detail : ""}`);
+};
+const near = (a, b, tol) => Math.abs(a - b) <= tol;
+
+// Canonical straight-on face from MediaPipe, scaled to roughly webcam pixels.
+const canonical = canonicalPoints(14);
+
+// Rotations (see pose.js conventions).
+const rotYaw = (p, a) => ({ x: p.x * Math.cos(a) - p.z * Math.sin(a), y: p.y, z: p.x * Math.sin(a) + p.z * Math.cos(a) });
+const rotPitch = (p, a) => ({ x: p.x, y: p.y * Math.cos(a) + p.z * Math.sin(a), z: -p.y * Math.sin(a) + p.z * Math.cos(a) });
+const rotRoll = (p, a) => ({ x: p.x * Math.cos(a) - p.y * Math.sin(a), y: p.x * Math.sin(a) + p.y * Math.cos(a), z: p.z });
+const rad = (d) => (d * Math.PI) / 180;
+function transform(points, yaw, pitch, roll, shift = { x: 640, y: 360, z: -50 }, noise = 0, rng = Math.random) {
+  const out = {};
+  for (const [k, p] of Object.entries(points)) {
+    let q = rotYaw(p, rad(yaw));
+    q = rotPitch(q, rad(pitch));
+    q = rotRoll(q, rad(roll));
+    out[k] = {
+      x: q.x + shift.x + (rng() - 0.5) * noise,
+      y: q.y + shift.y + (rng() - 0.5) * noise,
+      z: q.z + shift.z + (rng() - 0.5) * noise * 2,
+    };
+  }
+  return out;
+}
+
+const hDist = (p, a, b) => Math.abs(p[a].x - p[b].x);
+const vDist = (p, a, b) => Math.abs(p[a].y - p[b].y);
+
+// 1. identity
+{
+  const pose = estimatePose(transform(canonical, 0, 0, 0));
+  check("identity yaw", near(pose.yaw, 0, 0.3), `yaw=${pose.yaw.toFixed(2)}`);
+  check("identity pitch", near(pose.pitch, 0, 0.3), `pitch=${pose.pitch.toFixed(2)}`);
+  check("identity roll", near(pose.roll, 0, 0.3), `roll=${pose.roll.toFixed(2)}`);
+}
+
+// 2. single axis angles recovered
+for (const yaw of [-30, -15, 15, 30]) {
+  const pose = estimatePose(transform(canonical, yaw, 0, 0));
+  check(`yaw ${yaw} recovered`, near(pose.yaw, yaw, 1.5), `got ${pose.yaw.toFixed(2)}`);
+}
+for (const pitch of [-20, -10, 10, 20]) {
+  const pose = estimatePose(transform(canonical, 0, pitch, 0));
+  check(`pitch ${pitch} recovered`, near(pose.pitch, pitch, 1.5), `got ${pose.pitch.toFixed(2)}`);
+}
+for (const roll of [-15, 15]) {
+  const pose = estimatePose(transform(canonical, 0, 0, roll));
+  check(`roll ${roll} recovered`, near(pose.roll, roll, 1.0), `got ${pose.roll.toFixed(2)}`);
+}
+
+// 3. ratios after frontalization match the canonical ratios under combined rotation
+const ratioSet = (p) => ({
+  upper: vDist(p, "meshTop", "glabella") / (vDist(p, "meshTop", "glabella") + vDist(p, "glabella", "noseBase") + vDist(p, "noseBase", "chin")),
+  middle: vDist(p, "glabella", "noseBase") / (vDist(p, "meshTop", "glabella") + vDist(p, "glabella", "noseBase") + vDist(p, "noseBase", "chin")),
+  eyeGap: hDist(p, "eyeLeftInner", "eyeRightInner") / hDist(p, "eyeLeftOuter", "eyeLeftInner"),
+  jawCheek: hDist(p, "jawLeft", "jawRight") / hDist(p, "cheekLeft", "cheekRight"),
+  faceRatio: hDist(p, "faceLeft", "faceRight") / vDist(p, "meshTop", "chin"),
+});
+const truth = ratioSet(canonical);
+let worstRaw = 0;
+let worstFixed = 0;
+for (const [yaw, pitch, roll] of [[25, 0, 0], [-25, 10, 0], [0, 18, 0], [0, -18, 0], [20, 12, 5], [-28, -14, -6]]) {
+  const rotated = transform(canonical, yaw, pitch, roll);
+  const raw = ratioSet(rotated);
+  const fixed = ratioSet(frontalizePoints(rotated, estimatePose(rotated)));
+  for (const key of Object.keys(truth)) {
+    worstRaw = Math.max(worstRaw, Math.abs(raw[key] / truth[key] - 1));
+    worstFixed = Math.max(worstFixed, Math.abs(fixed[key] / truth[key] - 1));
+  }
+}
+check("frontalized ratios match straight-on truth on clean data", worstFixed < 0.005, `worst fixed ${(worstFixed * 100).toFixed(2)}%  vs raw ${(worstRaw * 100).toFixed(1)}%`);
+check("correction clearly beats raw", worstFixed < worstRaw / 10);
+// a neutral frontal face must keep its uncorrected ratios, so existing thresholds stay valid
+{
+  const same = ratioSet(frontalizePoints(transform(canonical, 0, 0, 0), estimatePose(transform(canonical, 0, 0, 0))));
+  check("frontal face unchanged by correction", Object.keys(truth).every((k) => near(same[k] / truth[k], 1, 1e-6)));
+}
+
+// 4. translation and scale independence
+{
+  const a = transform(canonical, 18, -8, 3, { x: 100, y: 900, z: 0 });
+  const b = transform(canonical, 18, -8, 3, { x: 900, y: 100, z: -300 });
+  const ra = ratioSet(frontalizePoints(a, estimatePose(a)));
+  const rb = ratioSet(frontalizePoints(b, estimatePose(b)));
+  check("position independent", Object.keys(ra).every((k) => near(ra[k], rb[k], 1e-6)));
+}
+
+// 5. noise: depth noise is the weak spot of the landmark model, so report it
+{
+  let seed = 7;
+  const rng = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const sets = { raw: [], fixed: [] };
+  for (let i = 0; i < 300; i += 1) {
+    const yaw = (rng() - 0.5) * 50;
+    const pitch = (rng() - 0.5) * 30;
+    const rotated = transform(canonical, yaw, pitch, 0, undefined, 1.5, rng);
+    const raw = ratioSet(rotated);
+    const fixed = ratioSet(frontalizePoints(rotated, estimatePose(rotated)));
+    sets.raw.push(raw);
+    sets.fixed.push(fixed);
+  }
+  for (const key of Object.keys(truth)) {
+    const rawErr = meanOf(sets.raw.map((r) => Math.abs(r[key] / truth[key] - 1))) * 100;
+    const fixedErr = meanOf(sets.fixed.map((r) => Math.abs(r[key] / truth[key] - 1))) * 100;
+    const mustImprove = ["upper", "middle", "faceRatio"].includes(key);
+    check(`noise 1.5px, ${key}: ${mustImprove ? "corrected error below raw" : "corrected not worse than raw + 0.5pt"}`, mustImprove ? fixedErr < rawErr : fixedErr < rawErr + 0.5, `raw ${rawErr.toFixed(2)}%  fixed ${fixedErr.toFixed(2)}%`);
+  }
+  const rawSpread = stdOf(sets.raw.map((r) => r.upper));
+  const fixedSpread = stdOf(sets.fixed.map((r) => r.upper));
+  lines.push(`INFO upper-third spread over random poses: raw std ${(rawSpread * 100).toFixed(2)}pt, corrected std ${(fixedSpread * 100).toFixed(2)}pt`);
+}
+
+// 6. weights
+check("weight is 1 at frontal", poseWeight(0, 0) === 1);
+check("weight falls with angle", poseWeight(20, 0) < poseWeight(10, 0) && poseWeight(40, 0) === 0);
+
+// 7. regression recovers a known slope
+{
+  const rows = [];
+  for (let i = 0; i < 200; i += 1) {
+    const yaw = (i % 20) - 10;
+    const pitch = Math.floor(i / 20) - 5;
+    rows.push({ yaw, pitch, m: 30 + 0.2 * yaw - 0.35 * pitch });
+  }
+  const fit = fitPoseSensitivity(rows, "m");
+  check("regression slopes", fit && near(fit.perYaw, 0.2, 1e-6) && near(fit.perPitch, -0.35, 1e-6) && near(fit.intercept, 30, 1e-6));
+}
+
+lines.push(failed === 0 ? "ALL PASSED" : `${failed} FAILED`);
+document.getElementById("out").textContent = lines.join("\n");
+</script>

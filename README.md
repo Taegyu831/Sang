@@ -1,15 +1,24 @@
 # 상(相) — FACE / MEASURE
 
-카메라에서 얼굴 기준점과 상대 비율을 측정하고, 일곱 가지 디지털 관상 유형과 해석을 보여주는 전시용 웹 프로토타입입니다.
+카메라에서 얼굴 기준점과 상대 비율을 측정하고, 연속으로 측정한 비율을 관찰·자원·표현·지속·구조 다섯 주제로 읽고, 삼정·오안·오악 전통 틀을 근거로 보여주는 전시용 웹 프로토타입입니다.
 
 ## 프로젝트 구성
 
 - `dist/index.html`: 화면 구조
 - `dist/styles.css`: 데스크톱·모바일 스타일
-- `dist/app-v3.js`: 현재 측정 과정과 결과 해석
+- `dist/app-v3.js`: 카메라, 연속 측정 진행, 결과 화면
+- `dist/pose.js`: 고개 각도 추정과 정면 환산 (자세 보정)
+- `dist/features.js`: 정면 좌표에서 계산하는 비율
+- `dist/capture.js`: 쓸 수 있는 프레임만 모으는 연속 측정
+- `dist/calibration.js`: 평균 얼굴 기준값
+- `dist/reading.js`: 삼정·오안·오악 전통 틀 분류
+- `dist/interpret.js`, `dist/content.json`: 다섯 주제 읽기 규칙과 문구
+- `dist/frames.js`: 전통 틀 아홉 결과의 이름과 설명
+- `dist/debug.js`: `?debug=1` 각도별 지표 기록 화면
+- `tests/`: 자세 보정, 규칙, 전체 흐름 검증 페이지
 - 이전 구현은 Git 변경 이력과 `archives/` 백업에 보관
 - `archives/`: 원본 Git 이력을 복구할 수 있는 백업과 이전 기록
-- `docs/`: 배포·개발·Figma 협업 안내
+- `docs/`: 배포·개발·Figma 협업 안내, `READING_ENGINE.md`에 측정과 읽기 구조
 
 ## 실행
 

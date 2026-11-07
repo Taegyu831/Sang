@@ -1,0 +1,34 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>debug panel test</title>
+<body style="background:#222;margin:0;height:1400px">
+<script type="module">
+import { estimatePose, frontalizePoints, canonicalPoints } from "../dist/pose.js";
+import { computeFrontFeatures } from "../dist/features.js";
+await import("../dist/debug.js");
+await new Promise((r) => setTimeout(r, 400));
+
+const base = canonicalPoints(14);
+// a face away from every decision line, so consistency numbers mean something
+base.jawLeft.x *= 1.14; base.jawRight.x *= 1.14; base.chin.y *= 1.06;
+const rad = (d) => (d * Math.PI) / 180;
+const yawR = (p, a) => ({ x: p.x * Math.cos(a) - p.z * Math.sin(a), y: p.y, z: p.x * Math.sin(a) + p.z * Math.cos(a) });
+const pitchR = (p, a) => ({ x: p.x, y: p.y * Math.cos(a) + p.z * Math.sin(a), z: -p.y * Math.sin(a) + p.z * Math.cos(a) });
+let seed = 3;
+const rng = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+const values = (p) => computeFrontFeatures(p);
+for (let i = 0; i < 180; i += 1) {
+  const yaw = 26 * Math.sin(i / 18);
+  const pitch = 16 * Math.sin(i / 11 + 1);
+  const pts = {};
+  for (const [k, p] of Object.entries(base)) {
+    const q = pitchR(yawR(p, rad(yaw)), rad(pitch));
+    pts[k] = { x: q.x + 640 + (rng() - 0.5) * 1.2, y: q.y + 360 + (rng() - 0.5) * 1.2, z: q.z + (rng() - 0.5) * 2.4 };
+  }
+  const pose = estimatePose(pts);
+  window.__sangDebug.frame({ t: i * 33, pose, matrixPose: { yaw, pitch, roll: 0 }, rawValues: values(pts), correctedValues: values(frontalizePoints(pts, pose)), stage: 0 });
+  if (i === 0) document.querySelector("#dbgRec").click();
+}
+document.querySelector("#dbgRec").click();
+document.title = "done";
+</script>

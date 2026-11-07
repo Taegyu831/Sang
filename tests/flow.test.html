@@ -1,0 +1,83 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>flow test</title>
+<pre id="out">RUNNING</pre>
+<iframe id="app" src="../dist/index.html?sim=1" style="width:1400px;height:900px;border:0"></iframe>
+<script type="module">
+import { estimatePose, canonicalPoints } from "../dist/pose.js";
+import { LANDMARK } from "../dist/features.js";
+
+const lines = [];
+let failed = 0;
+const check = (name, ok, detail = "") => { if (!ok) failed += 1; lines.push(`${ok ? "PASS" : "FAIL"} ${name}${detail ? "  " + detail : ""}`); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const frame = document.getElementById("app");
+await new Promise((r) => frame.addEventListener("load", r));
+for (let i = 0; i < 100 && !frame.contentWindow.__sangReady; i += 1) await sleep(50);
+const win = frame.contentWindow;
+const doc = frame.contentDocument;
+check("simulation hook is ready", !!win.__sangReady);
+
+// ----- landmark arrays that look like MediaPipe output -----
+const W = 1280;
+const H = 720;
+const base = canonicalPoints(14);
+const rad = (d) => (d * Math.PI) / 180;
+const yawR = (p, a) => ({ x: p.x * Math.cos(a) - p.z * Math.sin(a), y: p.y, z: p.x * Math.sin(a) + p.z * Math.cos(a) });
+const pitchR = (p, a) => ({ x: p.x, y: p.y * Math.cos(a) + p.z * Math.sin(a), z: -p.y * Math.sin(a) + p.z * Math.cos(a) });
+const rollR = (p, a) => ({ x: p.x * Math.cos(a) - p.y * Math.sin(a), y: p.x * Math.sin(a) + p.y * Math.cos(a), z: p.z });
+let seed = 5;
+const rng = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+function landmarksFor(points, yaw, pitch, roll, noise = 1) {
+  const arr = Array.from({ length: 468 }, () => ({ x: 0.5, y: 0.5, z: 0 }));
+  for (const [name, index] of Object.entries(LANDMARK)) {
+    const p = points[name] ?? points.noseBase;
+    const q = rollR(pitchR(yawR(p, rad(yaw)), rad(pitch)), rad(roll));
+    arr[index] = { x: (q.x + 640 + (rng() - 0.5) * noise) / W, y: (q.y + 360 + (rng() - 0.5) * noise) / H, z: (q.z - 40 + (rng() - 0.5) * noise * 2) / W };
+  }
+  return arr;
+}
+
+// ----- a smiling and a turned-away frame are guided, not counted -----
+win.__sang.feed(landmarksFor(base, 0, 0, 0), { mouthSmileLeft: 0.8, mouthSmileRight: 0.8 });
+let st = win.__sang.state();
+check("a smile is not counted and the visitor is told", st.frames === 0 && st.status.includes("무표정"), st.status);
+win.__sang.feed(landmarksFor(base, 40, 0, 0));
+st = win.__sang.state();
+check("a large head turn is not counted", st.frames === 0 && st.status.includes("정면"), st.status);
+
+// ----- natural movement until the capture finishes by itself -----
+let frames = 0;
+while (!win.__sang.state().done && frames < 1200) {
+  const t = frames / 18;
+  win.__sang.feed(landmarksFor(base, 20 * Math.sin(t), 12 * Math.sin(t * 1.3 + 1), 5 * Math.sin(t * 0.6)));
+  frames += 1;
+}
+st = win.__sang.state();
+check("capture finishes by itself while the head keeps moving", st.done, `${frames} fed, ${st.finalMeasurement?.frames} used`);
+check("five themes and three frames are produced", st.reading?.themes.length === 5 && Object.keys(st.reading.frames.axes).length === 3);
+check("measurement carries confidence and coverage", st.finalMeasurement.confidence > 40 && st.finalMeasurement.coverage.yaw[1] - st.finalMeasurement.coverage.yaw[0] > 10, `confidence ${st.finalMeasurement.confidence}`);
+check("the average face reads as balanced on every theme", st.reading.themes.every((t) => t.state === "neutral"), st.reading.themes.map((t) => t.state).join());
+
+// ----- the result screen renders -----
+win.__sang.show();
+await sleep(200);
+const text = (sel) => doc.querySelector(sel)?.textContent ?? "";
+check("hero lists five theme readings", doc.querySelectorAll("#resultName .axis-line").length === 5);
+check("five theme cards", doc.querySelectorAll("#resultThemes .theme-card").length === 5);
+check("each theme card has the four steps", [...doc.querySelectorAll("#resultThemes .theme-card")].every((c) => c.querySelectorAll(".theme-step").length === 4));
+check("three frame cards", doc.querySelectorAll("#resultSynthesis .axis-card").length === 3);
+check("measured facts carry numbers", [...doc.querySelectorAll(".theme-facts li span")].every((s) => /\d/.test(s.textContent)));
+check("evidence and method are filled", doc.querySelectorAll("#resultEvidence article").length >= 8 && doc.querySelectorAll("#resultMethod article").length >= 5);
+check("analysis panels are filled", doc.querySelectorAll("#resultAnalysis .analysis-panel").length === 4);
+check("no placeholder text left in the hero", !text("#resultName").includes("undefined") && !text("#resultName").includes("NaN"));
+check("no NaN or undefined anywhere in the result", !/NaN|undefined/.test(doc.querySelector("#resultView").textContent));
+check("no em dash in generated result text", !/[—–]/.test(doc.querySelector("#resultThemes").textContent + doc.querySelector("#resultSynthesis").textContent));
+doc.querySelector("#showAllTypes").click();
+await sleep(100);
+check("catalog lists nine readings in three groups", doc.querySelectorAll("#catalogList .catalog-card").length === 9 && doc.querySelectorAll("#catalogList .catalog-group").length === 3);
+
+lines.push(failed === 0 ? "ALL PASSED" : `${failed} FAILED`);
+document.getElementById("out").textContent = lines.join("\n");
+</script>
