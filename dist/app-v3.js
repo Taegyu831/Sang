@@ -290,6 +290,8 @@ function handleFace(landmarks, blend, matrixData) {
   const rawValues = computeFrontFeatures(raw);
   const correctedValues = computeFrontFeatures(frontalizePoints(raw, pose));
   const values = POSE_CORRECTION ? correctedValues : rawValues;
+  const faceFill = vertical(raw.meshTop, raw.chin) / video.videoHeight;
+  const centerOffset = Math.abs(raw.noseTip.x / video.videoWidth - 0.5);
   if (DEBUG_MODE) {
     window.__sangDebug?.frame({
       t: performance.now(),
@@ -297,13 +299,14 @@ function handleFace(landmarks, blend, matrixData) {
       matrixPose: poseFromMatrix(matrixData),
       rawValues,
       correctedValues,
+      blend,
+      faceFill,
+      centerOffset,
     });
   }
   updateMetrics(smoothValues(values));
   if (classificationComplete) return;
 
-  const faceFill = vertical(raw.meshTop, raw.chin) / video.videoHeight;
-  const centerOffset = Math.abs(raw.noseTip.x / video.videoWidth - 0.5);
   const verdict = capture.assess({ pose, blend, faceFill, centerOffset });
   if (verdict.ok) {
     capture.add(values, verdict.weight, pose);

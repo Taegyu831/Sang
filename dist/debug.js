@@ -11,6 +11,8 @@
 import { fitPoseSensitivity, meanOf, stdOf, poseWeight } from "./pose.js";
 import { AXIS_ORDER, AXES, classifyAxes } from "./reading.js";
 import { interpret } from "./interpret.js";
+import { StableCapture, CAPTURE } from "./capture.js";
+import { CALIBRATION } from "./calibration.js";
 
 let content = null;
 fetch(new URL("./content.json", import.meta.url)).then((r) => r.json()).then((c) => { content = c; }).catch(() => {});
@@ -67,7 +69,7 @@ function modalShare(keys) {
   return best ? { key: best[0], share: best[1] / keys.length } : { key: "-", share: NaN };
 }
 
-function summarize(frames) {
+function statsFor(frames) {
   const rowsRaw = frames.map((f) => ({ yaw: f.pose.yaw, pitch: f.pose.pitch, ...f.rawValues }));
   const rowsFix = frames.map((f) => ({ yaw: f.pose.yaw, pitch: f.pose.pitch, ...f.correctedValues }));
   const yaws = frames.map((f) => f.pose.yaw);
@@ -122,6 +124,62 @@ function summarize(frames) {
   };
 }
 
+const finalSignature = (themes) => themes.map((t) => t.state + (t.soft ? "~" : "")).join(",");
+
+// Replays the real capture on the recording, starting at many different moments,
+// to answer: if this person were measured again and again, how often would the
+// same result come out, and how long would each measurement take?
+function simulateRuns(frames) {
+  if (!content) return null;
+  const step = Math.max(30, Math.floor(frames.length / 24));
+  const runs = [];
+  let unfinished = 0;
+  for (let start = 0; start + 60 < frames.length; start += step) {
+    const cap = new StableCapture();
+    let end = -1;
+    for (let i = start; i < frames.length; i += 1) {
+      const f = frames[i];
+      const verdict = cap.assess({ pose: f.pose, blend: f.blend ?? {}, faceFill: f.faceFill ?? 0.5, centerOffset: f.centerOffset ?? 0 });
+      if (verdict.ok) cap.add(f.correctedValues, verdict.weight, f.pose);
+      if (i % 3 === 0 && cap.isDone(CALIBRATION)) { end = i; break; }
+    }
+    if (end < 0) { unfinished += 1; continue; }
+    const snap = cap.snapshot(CALIBRATION);
+    const result = interpret(snap.values, content);
+    runs.push({
+      seconds: (frames[end].t - frames[start].t) / 1000,
+      reason: snap.stability >= 0.5 ? "stable" : "cap",
+      stability: snap.stability,
+      frames: result.frames.signature,
+      themes: result.themes.map((t) => t.state + (t.soft ? "~" : "")),
+    });
+  }
+  if (!runs.length) return { total: unfinished, unfinished, finished: 0 };
+  const themeIds = content.themes.map((t) => t.short);
+  return {
+    total: runs.length + unfinished,
+    finished: runs.length,
+    unfinished,
+    stable: runs.filter((r) => r.reason === "stable").length,
+    seconds: meanOf(runs.map((r) => r.seconds)),
+    secondsMax: Math.max(...runs.map((r) => r.seconds)),
+    stability: meanOf(runs.map((r) => r.stability)),
+    frames: modalShare(runs.map((r) => r.frames)),
+    themes: themeIds.map((id, i) => ({ id, ...modalShare(runs.map((r) => r.themes[i])) })),
+    whole: modalShare(runs.map((r) => `${r.frames}#${r.themes.join(",")}`)),
+  };
+}
+
+function summarize(frames) {
+  const inRange = frames.filter((f) => Math.abs(f.pose.yaw) <= CAPTURE.maxYaw && Math.abs(f.pose.pitch) <= CAPTURE.maxPitch && Math.abs(f.pose.roll) <= CAPTURE.maxRoll);
+  return {
+    seconds: (frames.at(-1).t - frames[0].t) / 1000,
+    all: statsFor(frames),
+    gate: inRange.length >= 30 ? statsFor(inRange) : null,
+    runs: simulateRuns(frames),
+  };
+}
+
 const liveEl = document.createElement("div");
 const controlEl = document.createElement("div");
 root.append(liveEl, controlEl);
@@ -140,7 +198,7 @@ function renderLive() {
     parts.push(`<table><tr><th>자세(도)</th><th>yaw</th><th>pitch</th><th>roll</th></tr>
       <tr><td>랜드마크 기반</td><td>${sgn(f.pose.yaw, 1)}</td><td>${sgn(f.pose.pitch, 1)}</td><td>${sgn(f.pose.roll, 1)}</td></tr>
       <tr><td>MediaPipe 행렬</td><td>${sgn(f.matrixPose?.yaw, 1)}</td><td>${sgn(f.matrixPose?.pitch, 1)}</td><td>${sgn(f.matrixPose?.roll, 1)}</td></tr></table>
-      <div class="dim">신뢰 가중치 ${fmt(w, 2)} · yaw+ = 원본 영상 기준 오른쪽, pitch+ = 위를 봄</div>`);
+      <div class="dim">신뢰 가중치 ${fmt(w, 2)} · yaw+ = 내 왼쪽으로 돌림, pitch+ = 위를 봄, roll+ = 왼쪽 어깨로 기울임</div>`);
     const rows = LIVE_KEYS.map(([key, label]) => {
       const raw = f.rawValues[key];
       const fix = f.correctedValues[key];
@@ -166,6 +224,40 @@ function renderLive() {
   liveEl.innerHTML = parts.join("");
 }
 
+function statsHtml(st) {
+  const parts = [`<div class="dim">${st.n}프레임 · yaw ${fmt(st.yawRange[0], 0)}~${fmt(st.yawRange[1], 0)} · pitch ${fmt(st.pitchRange[0], 0)}~${fmt(st.pitchRange[1], 0)}</div>`];
+  const rows = st.metrics.map((m) => {
+    const cls = m.gain > 0.2 ? "good" : m.gain < -0.05 ? "bad" : "";
+    return `<tr><td>${LABELS[m.key] ?? m.key}</td><td>${fmt(m.rawStd)}</td><td>${fmt(m.fixStd)}</td><td class="${cls}">${Number.isFinite(m.gain) ? `${Math.round(m.gain * 100)}%` : "-"}</td></tr>`;
+  }).join("");
+  parts.push(`<table><tr><th>흔들림(표준편차)</th><th>전</th><th>후</th><th>감소</th></tr>${rows}</table>`);
+  const slopeRows = st.metrics.map((m) => `<tr><td>${LABELS[m.key] ?? m.key}</td><td>${sgn(m.rawYaw)}</td><td>${sgn(m.fixYaw)}</td><td>${sgn(m.rawPitch)}</td><td>${sgn(m.fixPitch)}</td></tr>`).join("");
+  parts.push(`<table><tr><th>각도 10도당 변화</th><th>yaw 전</th><th>후</th><th>pitch 전</th><th>후</th></tr>${slopeRows}</table>`);
+  const axisRows = st.axes.map((a) => `<tr><td>${AXES[a.axis].label}</td><td>${a.raw.key} ${fmt(a.raw.share * 100, 0)}%</td><td>${a.fixed.key} ${fmt(a.fixed.share * 100, 0)}%</td></tr>`).join("")
+    + `<tr><td>세 틀 모두</td><td>${fmt(st.wholeRaw.share * 100, 0)}%</td><td>${fmt(st.wholeFix.share * 100, 0)}%</td></tr>`;
+  parts.push(`<table><tr><th>틀 결과 일관성(최빈값 비율)</th><th>보정 전</th><th>보정 후</th></tr>${axisRows}</table>`);
+  if (st.themes.length) {
+    const themeRows = st.themes.map((t) => `<tr><td>${t.id}</td><td>${t.raw.key} ${fmt(t.raw.share * 100, 0)}%</td><td>${t.fixed.key} ${fmt(t.fixed.share * 100, 0)}%</td></tr>`).join("");
+    parts.push(`<table><tr><th>주제 결과 일관성</th><th>보정 전</th><th>보정 후</th></tr>${themeRows}</table>`);
+  }
+  return parts.join("");
+}
+
+function runsHtml(r) {
+  if (!r) return `<div class="warn">해석 문구 파일을 불러오지 못해 재측정 시뮬레이션을 건너뜁니다.</div>`;
+  if (!r.finished) return `<div class="warn">재측정 시뮬레이션 ${r.total}회 모두 끝나지 않았습니다(쓸 수 있는 프레임이 부족).</div>`;
+  const rows = [
+    ["끝난 횟수", `${r.finished} / ${r.total}`],
+    ["값이 안정되어 끝남", `${r.stable} / ${r.finished}`],
+    ["프레임 상한으로 끝남", `${r.finished - r.stable} / ${r.finished}`],
+    ["걸린 시간(평균 / 최대)", `${fmt(r.seconds, 1)}초 / ${fmt(r.secondsMax, 1)}초`],
+    ["틀 세 가지 결과가 같음", `${r.frames.key} ${fmt(r.frames.share * 100, 0)}%`],
+    ...r.themes.map((t) => [`주제 ${t.id}`, `${t.key} ${fmt(t.share * 100, 0)}%`]),
+    ["틀과 주제 전부 같음", `${fmt(r.whole.share * 100, 0)}%`],
+  ].map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join("");
+  return `<h4 style="margin-top:8px"><span>다시 측정하면 같은 결과가 나오는가 (재측정 시뮬레이션)</span></h4><table><tr><th>이 기록을 여러 시점에서 다시 시작</th><th>결과</th></tr>${rows}</table>`;
+}
+
 function renderControls() {
   const recording = state.recording;
   const parts = [];
@@ -176,23 +268,16 @@ function renderControls() {
     <button id="dbgCopy" ${state.summary ? "" : "disabled"}>요약 복사</button>
   </div>`);
   if (recording) parts.push(`<div class="warn">고개를 좌우로 천천히 돌리고, 위아래로 끄덕이세요. 20~30초 권장. 표정은 무표정 유지.</div>`);
-  const s = state.summary;
-  if (s && !recording) {
-    parts.push(`<div class="dim">${s.n}프레임 · ${fmt(s.seconds, 1)}초 · yaw ${fmt(s.yawRange[0], 0)}~${fmt(s.yawRange[1], 0)} · pitch ${fmt(s.pitchRange[0], 0)}~${fmt(s.pitchRange[1], 0)}</div>`);
-    const rows = s.metrics.map((m) => {
-      const cls = m.gain > 0.2 ? "good" : m.gain < -0.05 ? "bad" : "";
-      return `<tr><td>${LABELS[m.key] ?? m.key}</td><td>${fmt(m.rawStd)}</td><td>${fmt(m.fixStd)}</td><td class="${cls}">${Number.isFinite(m.gain) ? `${Math.round(m.gain * 100)}%` : "-"}</td></tr>`;
-    }).join("");
-    parts.push(`<table><tr><th>흔들림(표준편차)</th><th>전</th><th>후</th><th>감소</th></tr>${rows}</table>`);
-    const slopeRows = s.metrics.map((m) => `<tr><td>${LABELS[m.key] ?? m.key}</td><td>${sgn(m.rawYaw)}</td><td>${sgn(m.fixYaw)}</td><td>${sgn(m.rawPitch)}</td><td>${sgn(m.fixPitch)}</td></tr>`).join("");
-    parts.push(`<table><tr><th>각도 10도당 변화</th><th>yaw 전</th><th>후</th><th>pitch 전</th><th>후</th></tr>${slopeRows}</table>`);
-    const axisRows = s.axes.map((a) => `<tr><td>${AXES[a.axis].label}</td><td>${a.raw.key} ${fmt(a.raw.share * 100, 0)}%</td><td>${a.fixed.key} ${fmt(a.fixed.share * 100, 0)}%</td></tr>`).join("")
-      + `<tr><td>세 축 모두</td><td>${fmt(s.wholeRaw.share * 100, 0)}%</td><td>${fmt(s.wholeFix.share * 100, 0)}%</td></tr>`;
-    parts.push(`<table><tr><th>틀 결과 일관성(최빈값 비율)</th><th>보정 전</th><th>보정 후</th></tr>${axisRows}</table>`);
-    if (s.themes.length) {
-      const themeRows = s.themes.map((t) => `<tr><td>${t.id}</td><td>${t.raw.key} ${fmt(t.raw.share * 100, 0)}%</td><td>${t.fixed.key} ${fmt(t.fixed.share * 100, 0)}%</td></tr>`).join("");
-      parts.push(`<table><tr><th>주제 결과 일관성</th><th>보정 전</th><th>보정 후</th></tr>${themeRows}</table>`);
+  const summary = state.summary;
+  if (summary && !recording) {
+    if (summary.gate) {
+      parts.push(`<h4 style="margin-top:8px"><span>사용 범위만 (좌우 ±${CAPTURE.maxYaw}, 상하 ±${CAPTURE.maxPitch})</span></h4>`);
+      parts.push(statsHtml(summary.gate));
+    } else {
+      parts.push(`<div class="warn">사용 범위 안의 프레임이 너무 적습니다. 정면 근처에서 더 오래 기록해 주세요.</div>`);
     }
+    parts.push(`<details><summary class="dim" style="cursor:pointer;margin:6px 0">전체 범위 (좌우 ${fmt(summary.all.yawRange[0], 0)}~${fmt(summary.all.yawRange[1], 0)}, 상하 ${fmt(summary.all.pitchRange[0], 0)}~${fmt(summary.all.pitchRange[1], 0)}) 보기</summary>${statsHtml(summary.all)}</details>`);
+    parts.push(runsHtml(summary.runs));
   }
   controlEl.innerHTML = parts.join("");
   controlEl.querySelector("#dbgRec").onclick = toggleRecording;
@@ -230,23 +315,42 @@ function downloadCsv() {
     ].map((v) => (typeof v === "number" ? Number(v.toFixed(4)) : v)).join(","));
   }
   const blob = new Blob([lines.join("\n")], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
+  a.href = url;
   a.download = `sang-pose-sweep-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.csv`;
+  document.body.append(a);
   a.click();
-  URL.revokeObjectURL(a.href);
+  setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 4000);
+}
+
+function statsLines(label, st) {
+  return [
+    `[${label}] frames ${st.n}, yaw ${fmt(st.yawRange[0], 0)}..${fmt(st.yawRange[1], 0)}, pitch ${fmt(st.pitchRange[0], 0)}..${fmt(st.pitchRange[1], 0)}`,
+    "metric | mean raw | mean fixed | std raw | std fixed | per10deg yaw raw/fixed | per10deg pitch raw/fixed",
+    ...st.metrics.map((m) => `${m.key} | ${fmt(m.rawMean)} | ${fmt(m.fixMean)} | ${fmt(m.rawStd)} | ${fmt(m.fixStd)} | ${sgn(m.rawYaw)}/${sgn(m.fixYaw)} | ${sgn(m.rawPitch)}/${sgn(m.fixPitch)}`),
+    ...st.axes.map((a) => `frame ${a.axis}: raw ${a.raw.key} ${fmt(a.raw.share * 100, 0)}% / fixed ${a.fixed.key} ${fmt(a.fixed.share * 100, 0)}%`),
+    ...st.themes.map((t) => `theme ${t.id}: raw ${t.raw.key} ${fmt(t.raw.share * 100, 0)}% / fixed ${t.fixed.key} ${fmt(t.fixed.share * 100, 0)}%`),
+    `all frames same result: raw ${fmt(st.wholeRaw.share * 100, 0)}% / fixed ${fmt(st.wholeFix.share * 100, 0)}%`,
+  ];
 }
 
 function copySummary() {
   const s = state.summary;
   if (!s) return;
+  const r = s.runs;
   const lines = [
-    `frames ${s.n}, ${fmt(s.seconds, 1)}s, yaw ${fmt(s.yawRange[0], 0)}..${fmt(s.yawRange[1], 0)}, pitch ${fmt(s.pitchRange[0], 0)}..${fmt(s.pitchRange[1], 0)}`,
-    "metric | mean raw | mean fixed | std raw | std fixed | per10deg yaw raw/fixed | per10deg pitch raw/fixed",
-    ...s.metrics.map((m) => `${m.key} | ${fmt(m.rawMean)} | ${fmt(m.fixMean)} | ${fmt(m.rawStd)} | ${fmt(m.fixStd)} | ${sgn(m.rawYaw)}/${sgn(m.fixYaw)} | ${sgn(m.rawPitch)}/${sgn(m.fixPitch)}`),
-    ...s.axes.map((a) => `frame ${a.axis}: raw ${a.raw.key} ${fmt(a.raw.share * 100, 0)}% / fixed ${a.fixed.key} ${fmt(a.fixed.share * 100, 0)}%`),
-    ...s.themes.map((t) => `theme ${t.id}: raw ${t.raw.key} ${fmt(t.raw.share * 100, 0)}% / fixed ${t.fixed.key} ${fmt(t.fixed.share * 100, 0)}%`),
-    `all axes same result: raw ${fmt(s.wholeRaw.share * 100, 0)}% / fixed ${fmt(s.wholeFix.share * 100, 0)}%`,
+    `recording ${fmt(s.seconds, 1)}s`,
+    ...(s.gate ? statsLines(`in capture range yaw<=${CAPTURE.maxYaw} pitch<=${CAPTURE.maxPitch}`, s.gate) : ["(too few frames inside the capture range)"]),
+    ...statsLines("all frames", s.all),
+    ...(r && r.finished
+      ? [
+        `replay: ${r.finished}/${r.total} finished (${r.stable} stable, ${r.finished - r.stable} by frame cap), time avg ${fmt(r.seconds, 1)}s max ${fmt(r.secondsMax, 1)}s, mean stability ${fmt(r.stability, 2)}`,
+        `replay frames result: ${r.frames.key} ${fmt(r.frames.share * 100, 0)}%`,
+        ...r.themes.map((t) => `replay theme ${t.id}: ${t.key} ${fmt(t.share * 100, 0)}%`),
+        `replay everything same: ${fmt(r.whole.share * 100, 0)}%`,
+      ]
+      : ["replay: not available"]),
   ];
   navigator.clipboard?.writeText(lines.join("\n"));
 }

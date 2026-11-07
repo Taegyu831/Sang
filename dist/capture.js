@@ -136,6 +136,12 @@ export class StableCapture {
     return this.stability(calibration) >= 0.5;
   }
 
+  /** "stable" when the ratios stopped drifting, "cap" when the frame limit ended it, null if not done. */
+  doneReason(calibration) {
+    if (!this.isDone(calibration)) return null;
+    return this.stability(calibration) >= 0.5 ? "stable" : "cap";
+  }
+
   snapshot(calibration) {
     const yaws = this.frames.map((f) => f.yaw);
     const pitches = this.frames.map((f) => f.pitch);
