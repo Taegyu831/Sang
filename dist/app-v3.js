@@ -4,6 +4,7 @@ import { CALIBRATION, zScore, formatValue } from "./calibration.js";
 import { AXES, AXIS_ORDER, THRESHOLDS } from "./reading.js";
 import { StableCapture, GUIDANCE } from "./capture.js";
 import { interpret } from "./interpret.js";
+import { applyPoseResidual } from "./residual.js";
 import { FACE_TYPES, READING_PROFILES } from "./frames.js";
 
 const MEDIAPIPE_VERSION = "1.1.1";
@@ -17,6 +18,8 @@ const SEARCH_PARAMS = new URLSearchParams(window.location.search);
 // ?pose=raw turns the head pose correction off, to compare against the old behaviour.
 const POSE_CORRECTION = SEARCH_PARAMS.get("pose") !== "raw";
 const DEBUG_MODE = SEARCH_PARAMS.get("debug") === "1";
+// ?resid=off turns off the leftover head-angle correction (see dist/residual.js).
+const POSE_RESIDUAL_ON = SEARCH_PARAMS.get("resid") !== "off";
 
 const $ = (selector) => document.querySelector(selector);
 const video = $("#camera");
@@ -288,7 +291,8 @@ function handleFace(landmarks, blend, matrixData) {
   // same when the person turns, nods or tilts the head (see dist/pose.js).
   const pose = estimatePose(raw);
   const rawValues = computeFrontFeatures(raw);
-  const correctedValues = computeFrontFeatures(frontalizePoints(raw, pose));
+  const frontalValues = computeFrontFeatures(frontalizePoints(raw, pose));
+  const correctedValues = POSE_RESIDUAL_ON ? applyPoseResidual(frontalValues, pose) : frontalValues;
   const values = POSE_CORRECTION ? correctedValues : rawValues;
   const faceFill = vertical(raw.meshTop, raw.chin) / video.videoHeight;
   const centerOffset = Math.abs(raw.noseTip.x / video.videoWidth - 0.5);

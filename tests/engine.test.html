@@ -9,6 +9,7 @@ import { CALIBRATION } from "../dist/calibration.js";
 import { classifyAxes, classifySanjeong, classifyOgan, classifyOak } from "../dist/reading.js";
 import { StableCapture, weightedMedian } from "../dist/capture.js";
 import { interpret, evaluateTheme, buildTone } from "../dist/interpret.js";
+import { applyPoseResidual, POSE_RESIDUAL } from "../dist/residual.js";
 
 const lines = [];
 let failed = 0;
@@ -183,6 +184,23 @@ for (const [yaw, pitch, roll] of [[22, 0, 0], [-24, 12, 0], [0, -18, 0], [15, 15
 {
   const edgeFace = classifyAxes(truth);
   check("a face exactly on a boundary is flagged as near", edgeFace.nearAxes.length >= 1, edgeFace.nearAxes.join());
+}
+
+// ---------- leftover head-angle correction ----------
+{
+  const same = applyPoseResidual(truth, { yaw: 0, pitch: 0, roll: 0 });
+  check("no change at a straight-on pose", featureKeys.every((k) => same[k] === truth[k]));
+  const nod = applyPoseResidual(truth, { yaw: 0, pitch: 20, roll: 0 });
+  check("looking up 20 degrees moves lower third down and jaw ratio down", nod.lowerThird < truth.lowerThird - 2 && nod.jawCheek < truth.jawCheek - 3, `lower ${nod.lowerThird.toFixed(2)} jaw ${nod.jawCheek.toFixed(2)}`);
+  const sum = (v) => v.upperThird + v.middleThird + v.lowerThird;
+  for (const pose of [{ yaw: 0, pitch: 20 }, { yaw: 26, pitch: -15 }, { yaw: -20, pitch: 10 }]) {
+    check(`thirds still add up to 100 at yaw ${pose.yaw} pitch ${pose.pitch}`, near(sum(applyPoseResidual(truth, pose)), sum(truth), 1e-6));
+  }
+  const far = applyPoseResidual(truth, { yaw: 80, pitch: 80 });
+  const edge = applyPoseResidual(truth, { yaw: 30, pitch: 25 });
+  check("never extrapolates beyond the fitted range", featureKeys.every((k) => far[k] === edge[k]));
+  check("keeps keys it does not know about", applyPoseResidual({ ...truth, extra: 5 }, { yaw: 10, pitch: 10 }).extra === 5);
+  check("every residual key is a calibrated ratio", Object.keys(POSE_RESIDUAL).every((k) => CALIBRATION[k]));
 }
 
 lines.push(failed === 0 ? "ALL PASSED" : `${failed} FAILED`);

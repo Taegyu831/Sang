@@ -126,7 +126,8 @@ export class StableCapture {
       if (!scale || !Number.isFinite(a[key]) || !Number.isFinite(b[key])) continue;
       worst = Math.max(worst, Math.abs(a[key] - b[key]) / scale);
     }
-    return clamp(1 - worst / 0.3);
+    // Done at stability 0.5, i.e. when the older and newer half differ by at most 0.25 steps.
+    return clamp(1 - worst / 0.5);
   }
 
   isDone(calibration) {
