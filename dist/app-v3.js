@@ -428,10 +428,15 @@ function renderSummary() {
 }
 
 // A small crop of the visitor's own face with only this part's lines drawn.
+// The portrait is 640 x 800 (4:5), so it is drawn 80 units wide and 100 high
+// and every point's x is scaled by 0.8: the crop keeps the real proportions.
+const SHOT_W = 80;
+const SHOT_H = 100;
+
 function partPicture(shot, draw) {
   const figure = el("figure", "part-pic");
   if (!shot) return figure;
-  const p = shot.points;
+  const p = Object.fromEntries(Object.entries(shot.points).map(([k, q]) => [k, { x: (q.x * SHOT_W) / 100, y: (q.y * SHOT_H) / 100 }]));
   const segments = [];
   const left = Math.min(p.faceLeft.x, p.faceRight.x);
   const right = Math.max(p.faceLeft.x, p.faceRight.x);
@@ -445,23 +450,50 @@ function partPicture(shot, draw) {
   }
   const xs = segments.flat().map((q) => q.x);
   const ys = segments.flat().map((q) => q.y);
-  // Crop around the drawn part, at least a third of the face, keeping 4:3.
-  let w = Math.max(34, (Math.max(...xs) - Math.min(...xs)) * 1.5);
-  let h = Math.max(26, (Math.max(...ys) - Math.min(...ys)) * 1.5, w * 0.75);
-  w = Math.max(w, h / 0.75);
-  h = w * 0.75;
-  const cx = segments.length ? (Math.max(...xs) + Math.min(...xs)) / 2 : 50;
-  const cy = segments.length ? (Math.max(...ys) + Math.min(...ys)) / 2 : 50;
-  const x0 = clamp(cx - w / 2, 0, Math.max(0, 100 - w));
-  const y0 = clamp(cy - h / 2, 0, Math.max(0, 100 - h));
-  const svg = svgNode("svg", { viewBox: `${x0.toFixed(1)} ${y0.toFixed(1)} ${Math.min(100, w).toFixed(1)} ${Math.min(100, h).toFixed(1)}`, preserveAspectRatio: "xMidYMid slice", "aria-hidden": "true" });
-  svg.append(svgNode("image", { href: shot.src, x: 0, y: 0, width: 100, height: 100, preserveAspectRatio: "none" }));
+  const faceWidth = right - left;
+  // Crop around the drawn part with some face around it, 4:3, inside the photo.
+  let w = Math.max(faceWidth * 0.9, (Math.max(...xs) - Math.min(...xs)) * 1.4);
+  let h = Math.max((Math.max(...ys) - Math.min(...ys)) * 1.4, w * 0.75);
+  w = Math.min(SHOT_W, Math.max(w, h / 0.75));
+  h = Math.min(SHOT_H, w * 0.75);
+  const cx = segments.length ? (Math.max(...xs) + Math.min(...xs)) / 2 : SHOT_W / 2;
+  const cy = segments.length ? (Math.max(...ys) + Math.min(...ys)) / 2 : SHOT_H / 2;
+  const x0 = clamp(cx - w / 2, 0, SHOT_W - w);
+  const y0 = clamp(cy - h / 2, 0, SHOT_H - h);
+  const svg = svgNode("svg", { viewBox: `${x0.toFixed(2)} ${y0.toFixed(2)} ${w.toFixed(2)} ${h.toFixed(2)}`, preserveAspectRatio: "xMidYMid slice", "aria-hidden": "true" });
+  svg.append(svgNode("image", { href: shot.src, x: 0, y: 0, width: SHOT_W, height: SHOT_H, preserveAspectRatio: "none" }));
   for (const [a, b] of segments) {
     svg.append(svgNode("line", { x1: a.x.toFixed(2), y1: a.y.toFixed(2), x2: b.x.toFixed(2), y2: b.y.toFixed(2), class: "part-line" }));
-    for (const q of [a, b]) svg.append(svgNode("circle", { cx: q.x.toFixed(2), cy: q.y.toFixed(2), r: 0.9, class: "part-dot" }));
+    for (const q of [a, b]) svg.append(svgNode("circle", { cx: q.x.toFixed(2), cy: q.y.toFixed(2), r: (w / 90).toFixed(2), class: "part-dot" }));
   }
   figure.append(svg);
   return figure;
+}
+
+// Readings grouped by what they are about (성격, 재물 ...), in the order the
+// most common reading of each group comes.
+function readingGroups(readings) {
+  const groups = new Map();
+  for (const r of readings) {
+    const key = r.domain || "기타";
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(r.text);
+  }
+  const wrap = el("div", "part-readings");
+  for (const [domain, texts] of groups) {
+    const row = el("div", "rd");
+    const body = el("div", "rd-text");
+    body.append(...texts.map((t) => el("p", "", t)));
+    row.append(el("span", "rd-tag", domain), body);
+    wrap.append(row);
+  }
+  return wrap;
+}
+
+function labelRow(label, text, className) {
+  const row = el("div", `part-row ${className}`);
+  row.append(el("span", "part-label", label), el("p", "", text));
+  return row;
 }
 
 function partCard(part, shot, compact) {
@@ -469,29 +501,18 @@ function partCard(part, shot, compact) {
   const body = el("div", "part-body");
   const head = el("div", "part-head");
   head.append(el("small", "", part.part), el("h3", "", part.name));
-  body.append(head, el("p", "part-mine", part.mine));
-  if (part.about) body.append(el("p", "part-about", part.about));
+  body.append(head, labelRow("내 얼굴", part.mine, "is-mine"));
+  if (part.about) body.append(labelRow("이 부위는", part.about, "is-about"));
   // Readings come sorted by how many sources gave them; the most common show
   // first and the rest fold under "더 보기".
-  const shown = compact ? 2 : 5;
-  const readingItem = (r) => {
-    const item = el("li");
-    if (r.domain) item.append(el("b", "", r.domain));
-    item.append(document.createTextNode(r.text));
-    return item;
-  };
+  const shown = compact ? 2 : 4;
   if (part.readings.length) {
-    body.append(el("p", "part-kicker", "관상에서는 이렇게 봅니다"));
-    const list = el("ul", "part-readings");
-    list.append(...part.readings.slice(0, shown).map(readingItem));
-    body.append(list);
+    body.append(el("p", "part-kicker", "관상 풀이"));
+    body.append(readingGroups(part.readings.slice(0, shown)));
     const more = part.readings.slice(shown);
     if (more.length) {
       const details = el("details", "part-more");
-      details.append(el("summary", "", `다르게 보는 풀이 ${more.length}개 더 보기`));
-      const moreList = el("ul", "part-readings");
-      moreList.append(...more.map(readingItem));
-      details.append(moreList);
+      details.append(el("summary", "", `다른 풀이 ${more.length}개 더 보기`), readingGroups(more));
       body.append(details);
     }
   } else {
