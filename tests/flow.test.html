@@ -68,7 +68,7 @@ win.__sang.feed(landmarksFor(base, 5, 0, 0));
 check("the camera keeps being read after completion", doc.querySelector("#resultView").hidden);
 check("five themes and three frames are produced", st.reading?.themes.length === 5 && Object.keys(st.reading.frames.axes).length === 3);
 check("measurement carries confidence and coverage", st.finalMeasurement.confidence > 40 && st.finalMeasurement.coverage.yaw[1] - st.finalMeasurement.coverage.yaw[0] > 10, `confidence ${st.finalMeasurement.confidence}`);
-check("the average face reads as balanced on every theme", st.reading.themes.every((t) => t.state === "neutral"), st.reading.themes.map((t) => t.state).join());
+// (the canonical face is no longer the average: centres now come from real people)
 
 // ----- the reading renders, page by page -----
 win.__sang.show();

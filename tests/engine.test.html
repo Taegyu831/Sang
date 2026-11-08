@@ -54,6 +54,10 @@ function pose3(points, yaw, pitch, roll, noise = 0, rng = Math.random) {
 }
 const truth = computeFrontFeatures(canonical);
 const featureKeys = Object.keys(CALIBRATION);
+// The five-theme and three-frame engines (no longer on the visitor screen) are
+// tested against the canonical face as the average, as they were designed.
+// The live calibration now centres most ratios on real people instead.
+const CANON = Object.fromEntries(Object.entries(CALIBRATION).map(([k, c]) => [k, { ...c, center: k === "symmetry" || !Number.isFinite(truth[k]) ? 93 : truth[k] }]));
 
 check("canonical thirds match the calibration centers", near(truth.upperThird, CALIBRATION.upperThird.center, 0.1) && near(truth.lowerThird, CALIBRATION.lowerThird.center, 0.1),
   `${truth.upperThird.toFixed(1)}/${truth.middleThird.toFixed(1)}/${truth.lowerThird.toFixed(1)}`);
@@ -61,11 +65,11 @@ check("canonical thirds match the calibration centers", near(truth.upperThird, C
   let worst = 0;
   let worstKey = "";
   for (const key of featureKeys) {
-    if (key === "symmetry") continue;
+    if (key === "symmetry" || CALIBRATION[key].from === "people") continue;
     const z = Math.abs(truth[key] - CALIBRATION[key].center) / CALIBRATION[key].scale;
     if (z > worst) { worst = z; worstKey = key; }
   }
-  check("canonical face sits at the center of every calibrated ratio", worst < 0.12, `worst ${worstKey} ${worst.toFixed(3)} steps`);
+  check("canonical face sits at the center of every ratio still calibrated on it", worst < 0.12, `worst ${worstKey} ${worst.toFixed(3)} steps`);
 }
 
 // full pipeline: rotate, frontalize, measure
@@ -80,44 +84,44 @@ for (const [yaw, pitch, roll] of [[22, 0, 0], [-24, 12, 0], [0, -18, 0], [15, 15
 
 // ---------- frames ----------
 {
-  const avg = classifyAxes(truth);
+  const avg = classifyAxes(truth, undefined, CANON);
   check("average face: 삼정 balance, 오안 even", avg.axes.sanjeong.key === "balance" && avg.axes.ogan.key === "even", avg.signature);
-  check("long upper third", classifySanjeong({ ...truth, upperThird: 33, middleThird: 28.5, lowerThird: 38.5 }).key === "upper");
-  check("long middle third", classifySanjeong({ ...truth, upperThird: 26, middleThird: 36, lowerThird: 38 }).key === "middle");
-  check("long lower third", classifySanjeong({ ...truth, upperThird: 25, middleThird: 28, lowerThird: 47 }).key === "lower");
-  const tiers = ["light", "moderate", "clear"].map((_, i) => classifySanjeong({ ...truth, upperThird: 28.3 + [2.6, 4, 5.8][i], middleThird: 30.3, lowerThird: 41.4 - [2.6, 4, 5.8][i] }).tier);
+  check("long upper third", classifySanjeong({ ...truth, upperThird: 33, middleThird: 28.5, lowerThird: 38.5 }, undefined, CANON).key === "upper");
+  check("long middle third", classifySanjeong({ ...truth, upperThird: 26, middleThird: 36, lowerThird: 38 }, undefined, CANON).key === "middle");
+  check("long lower third", classifySanjeong({ ...truth, upperThird: 25, middleThird: 28, lowerThird: 47 }, undefined, CANON).key === "lower");
+  const tiers = ["light", "moderate", "clear"].map((_, i) => classifySanjeong({ ...truth, upperThird: 28.3 + [2.6, 4, 5.8][i], middleThird: 30.3, lowerThird: 41.4 - [2.6, 4, 5.8][i] }, undefined, CANON).tier);
   check("삼정 intensity tiers rise with the lead", tiers.join() === "light,moderate,clear", tiers.join());
-  check("open eyes", classifyOgan({ ...truth, openMeasure: 1.5 }).key === "open");
-  check("focused eyes", classifyOgan({ ...truth, openMeasure: 1.15 }).key === "focused");
-  check("wide face and jaw: structure", classifyOak({ ...truth, jawCheek: 84, faceRatio: 93 }).key === "structure");
-  check("narrow face and jaw: soft", classifyOak({ ...truth, jawCheek: 71, faceRatio: 80 }).key === "soft");
-  const edge = classifySanjeong({ ...truth, upperThird: 28.3 + 0.8 * 3.0 + 0.05, middleThird: 30.3 - 1, lowerThird: 41.4 - 1.5 });
+  check("open eyes", classifyOgan({ ...truth, openMeasure: 1.5 }, undefined, CANON).key === "open");
+  check("focused eyes", classifyOgan({ ...truth, openMeasure: 1.15 }, undefined, CANON).key === "focused");
+  check("wide face and jaw: structure", classifyOak({ ...truth, jawCheek: 84, faceRatio: 93 }, undefined, CANON).key === "structure");
+  check("narrow face and jaw: soft", classifyOak({ ...truth, jawCheek: 71, faceRatio: 80 }, undefined, CANON).key === "soft");
+  const edge = classifySanjeong({ ...truth, upperThird: 28.3 + 0.8 * 3.0 + 0.05, middleThird: 30.3 - 1, lowerThird: 41.4 - 1.5 }, undefined, CANON);
   check("boundary flagged as near", edge.near === true, `margin ${edge.margin.toFixed(2)}`);
 }
 
 // ---------- themes ----------
 {
-  const avg = interpret(truth, content);
+  const avg = interpret(truth, content, CANON);
   check("average face reads balanced on all five themes", avg.themes.every((t) => t.state === "neutral"), avg.themes.map((t) => t.state).join());
   check("no cross links for an average face", avg.links.length === 0);
 
-  const strong = interpret({ ...truth, lowerThird: 47, jawCheek: 84, philtrumLower: 23 }, content);
+  const strong = interpret({ ...truth, lowerThird: 47, jawCheek: 84, philtrumLower: 23 }, content, CANON);
   const per = strong.themes.find((t) => t.id === "persistence");
   check("three ratios agree: persistence reads strongly", per.state === "pos" && !per.soft && per.supports === 3, `pull ${per.pull.toFixed(2)} supports ${per.supports}`);
 
-  const weak = interpret({ ...truth, lowerThird: 46.5 }, content).themes.find((t) => t.id === "persistence");
+  const weak = interpret({ ...truth, lowerThird: 46.5 }, content, CANON).themes.find((t) => t.id === "persistence");
   check("one ratio alone reads as a soft tendency", weak.state === "pos" && weak.soft === true && weak.supports === 1, `pull ${weak.pull.toFixed(2)} supports ${weak.supports}`);
   check("soft tendency uses the soft sentence", weak.reading.includes("약한 경향"));
 
-  const outlier = interpret({ ...truth, lowerThird: 80 }, content).themes.find((t) => t.id === "persistence");
+  const outlier = interpret({ ...truth, lowerThird: 80 }, content, CANON).themes.find((t) => t.id === "persistence");
   check("one extreme ratio cannot make a strong reading", outlier.soft === true);
 
-  const mixed = interpret({ ...truth, lowerThird: 47, jawCheek: 84, philtrumLower: 23, mouthNose: 2.1, mouthLift: 3.0 }, content);
+  const mixed = interpret({ ...truth, lowerThird: 47, jawCheek: 84, philtrumLower: 23, mouthNose: 2.1, mouthLift: 3.0 }, content, CANON);
   check("persistence and expression both positive picks the matching link", mixed.links.length >= 1 && mixed.links[0].themes.join() === "persistence,expression", mixed.links.map((l) => l.themes.join("+")).join(" | "));
-  check("every theme always has a sentence", interpret({ ...truth, upperThird: 20 }, content).themes.every((t) => t.reading.length > 10));
+  check("every theme always has a sentence", interpret({ ...truth, upperThird: 20 }, content, CANON).themes.every((t) => t.reading.length > 10));
   check("rows carry fact text with numbers", per.rows.every((r) => /\d/.test(r.fact)));
 
-  const tone = buildTone({ ...truth, eyeTilt: 6, mouthLift: -2 }, content.tone);
+  const tone = buildTone({ ...truth, eyeTilt: 6, mouthLift: -2 }, content.tone, CANON);
   check("tone combines eye and mouth", tone.eye === "up" && tone.mouth === "down" && tone.text.includes("눈꼬리") && tone.text.includes("입꼬리"));
 }
 
@@ -170,8 +174,8 @@ for (const [yaw, pitch, roll] of [[22, 0, 0], [-24, 12, 0], [0, -18, 0], [15, 15
   check("two different head movements give the same ratios", stepGap(sa, sb) < 0.2, `largest gap ${stepGap(sa, sb).toFixed(3)} steps`);
   const toTruth = Math.max(...["upperThird", "middleThird", "lowerThird", "openMeasure", "noseWidth", "mouthNose", "jawCheek", "faceRatio"].map((k) => Math.abs(sa.values[k] - variantTruth[k]) / CALIBRATION[k].scale));
   check("pooled ratios stay close to the straight-on truth", toTruth < 0.2, `${toTruth.toFixed(3)} steps`);
-  const ra = interpret(sa.values, content);
-  const rb = interpret(sb.values, content);
+  const ra = interpret(sa.values, content, CANON);
+  const rb = interpret(sb.values, content, CANON);
   check("variant face reads as a wide jaw", ra.frames.axes.oak.key === "structure" && !ra.frames.axes.oak.near, `${ra.frames.signature}`);
   const settled = (r, o) => r.themes.every((x, i) => x.near || o.themes[i].near || x.state === o.themes[i].state);
   check("same face, same readings after both movements, except themes flagged as near a boundary",
@@ -182,7 +186,7 @@ for (const [yaw, pitch, roll] of [[22, 0, 0], [-24, 12, 0], [0, -18, 0], [15, 15
 }
 
 {
-  const edgeFace = classifyAxes(truth);
+  const edgeFace = classifyAxes(truth, undefined, CANON);
   check("a face exactly on a boundary is flagged as near", edgeFace.nearAxes.length >= 1, edgeFace.nearAxes.join());
 }
 
