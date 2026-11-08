@@ -1,0 +1,12 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>canonical values</title>
+<pre id="out">RUNNING</pre>
+<script type="module">
+// Prints every ratio measured on MediaPipe's canonical (average) face.
+// These are the starting centres in dist/calibration.js.
+import { canonicalPoints } from "../dist/pose.js";
+import { computeFrontFeatures } from "../dist/features.js";
+const v = computeFrontFeatures(canonicalPoints(14));
+document.getElementById("out").textContent = Object.entries(v).map(([k, x]) => `${k} ${Number(x).toFixed(3)}`).join("\n");
+</script>

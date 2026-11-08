@@ -31,7 +31,9 @@ const LIVE_KEYS = [
   ["eyeTilt", "눈꼬리 도"],
   ["mouthLift", "입꼬리 %"],
 ];
-const SUMMARY_KEYS = LIVE_KEYS.map(([key]) => key).concat(["eyeGap", "noseEyeGap", "symmetry", "noseDepth"]);
+// Part-card ratios added 2026-11-08; recorded so their centres and spread can be set from real people.
+const PART_KEYS = ["browLength", "browTilt", "browArch", "browEyeGap", "browInnerGap", "eyeSize", "eyeOpen", "eyeAsym", "mouthFace", "mouthPupil", "lipFull", "lipRatio", "chinWidth", "fwhr"];
+const SUMMARY_KEYS = LIVE_KEYS.map(([key]) => key).concat(["eyeGap", "noseEyeGap", "symmetry", "noseDepth"], PART_KEYS);
 const LABELS = Object.fromEntries(LIVE_KEYS);
 
 const state = { recording: false, frames: [], last: null, summary: null };

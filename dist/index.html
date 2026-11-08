@@ -56,7 +56,7 @@
         <!-- 4. 풀이: 한 번에 아래로 내려 읽는다 -->
         <section class="screen" id="resultView" aria-label="관상 풀이" hidden>
           <div class="pages" id="pages">
-            <!-- 첫 장: 얼굴과 다섯 줄 요약 -->
+            <!-- 맨 위: 얼굴과 가장 두드러진 세 곳 -->
             <article class="page" data-page="0">
               <div class="overview">
                 <figure class="plate" id="resultFrontFigure" hidden>
@@ -68,23 +68,34 @@
                 </figure>
                 <div class="overview-text">
                   <p class="headline small-headline">자, 말씀드리겠소.</p>
-                  <ol class="summary-list" id="resultName"></ol>
+                  <p class="kicker">이 얼굴에서 가장 눈에 띄는 곳</p>
+                  <ol class="top-list" id="topList"></ol>
                   <p class="hint">아래로 내려 하나씩 보시오 ▼</p>
                 </div>
               </div>
             </article>
 
-            <!-- 다섯 가지 풀이: 앱이 채운다 -->
-            <div id="resultThemes" class="theme-pages"></div>
+            <section class="page part-section">
+              <h2 class="sec-head">가장 두드러진 세 곳</h2>
+              <div class="part-cards" id="topCards"></div>
+            </section>
 
-            <!-- 마지막 장 -->
+            <section class="page part-section">
+              <h2 class="sec-head">나머지 부위</h2>
+              <div class="part-cards is-compact" id="restCards"></div>
+            </section>
+
+            <section class="page part-section">
+              <h2 class="sec-head">종합</h2>
+              <ol class="summary-list" id="resultName"></ol>
+              <div id="resultLinksWrap" hidden>
+                <div class="links" id="resultLinks"></div>
+              </div>
+            </section>
+
             <article class="page" data-page="last">
               <div class="closing">
                 <p class="headline small-headline">이상이오.</p>
-                <div id="resultLinksWrap" hidden>
-                  <p class="kicker">함께 보면</p>
-                  <div class="links" id="resultLinks"></div>
-                </div>
                 <p class="closing-line" id="resultClosing"></p>
                 <div class="closing-actions">
                   <button class="btn primary big-btn" id="restartButton" type="button">한 번 더 재기</button>
@@ -93,7 +104,6 @@
               </div>
             </article>
           </div>
-
         </section>
       </div>
     </main>

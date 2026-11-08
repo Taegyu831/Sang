@@ -1,0 +1,613 @@
+{
+ "version": 1,
+ "note": "부위 카드. readings는 대중 관상 해설 모음(아티팩트 '상(相) 대중 관상 해석 모음')에서 옮긴 것. 방향은 high, low, middle. 여러 값을 보는 카드(삼정)는 '값.방향'으로 적음.",
+ "cards": [
+  {
+   "id": "forehead",
+   "part": "이마",
+   "keys": [
+    "foreheadFace"
+   ],
+   "draw": [
+    [
+     "foreheadLeft",
+     "foreheadRight"
+    ],
+    [
+     "faceLeft",
+     "faceRight"
+    ]
+   ],
+   "names": {
+    "high": "넓은 이마",
+    "low": "좁은 이마",
+    "middle": "보통 폭의 이마"
+   },
+   "mine": "이마 폭이 광대 폭의 {v0}%요.",
+   "typical": "보통은 {c0}% 쯤이오.",
+   "readings": {},
+   "so": {}
+  },
+  {
+   "id": "thirds",
+   "part": "삼정",
+   "keys": [
+    "upperThird",
+    "middleThird",
+    "lowerThird"
+   ],
+   "draw": [
+    "h:meshTop",
+    "h:glabella",
+    "h:noseBase",
+    "h:chin"
+   ],
+   "names": {
+    "upperThird.high": "이마 쪽(상정)이 긴 얼굴",
+    "upperThird.low": "이마 쪽(상정)이 짧은 얼굴",
+    "middleThird.high": "코 쪽(중정)이 긴 얼굴",
+    "middleThird.low": "코 쪽(중정)이 짧은 얼굴",
+    "lowerThird.high": "턱 쪽(하정)이 긴 얼굴",
+    "lowerThird.low": "턱 쪽(하정)이 짧은 얼굴",
+    "middle": "세 구역이 고른 얼굴"
+   },
+   "mine": "이마 쪽, 코 쪽, 턱 쪽 길이가 {k:upperThird:0} : {k:middleThird:0} : {k:lowerThird:0}이오.",
+   "typical": "보통 얼굴은 {ck:upperThird:0} : {ck:middleThird:0} : {ck:lowerThird:0}쯤이오.",
+   "readings": {},
+   "so": {}
+  },
+  {
+   "id": "browLength",
+   "part": "눈썹 길이",
+   "keys": [
+    "browLength"
+   ],
+   "draw": [
+    [
+     "browLeftOuter",
+     "browLeftInner"
+    ],
+    [
+     "browRightOuter",
+     "browRightInner"
+    ]
+   ],
+   "names": {
+    "high": "긴 눈썹",
+    "low": "짧은 눈썹",
+    "middle": "보통 길이의 눈썹"
+   },
+   "mine": "눈썹 길이가 눈 길이의 {v1}배요.",
+   "typical": "보통은 {c1}배쯤이오.",
+   "readings": {},
+   "so": {}
+  },
+  {
+   "id": "browTilt",
+   "part": "눈썹 기울기",
+   "keys": [
+    "browTilt"
+   ],
+   "draw": [
+    [
+     "browLeftOuter",
+     "browLeftInner"
+    ],
+    [
+     "browRightOuter",
+     "browRightInner"
+    ]
+   ],
+   "names": {
+    "high": "꼬리가 올라간 눈썹",
+    "low": "꼬리가 처진 눈썹",
+    "middle": "보통 기울기의 눈썹"
+   },
+   "mine": "눈썹 꼬리가 머리보다 {a0}도 {s:올라가:내려가} 있소.",
+   "typical": "보통은 꼬리가 {ca0}도쯤 내려가 있소.",
+   "readings": {},
+   "so": {}
+  },
+  {
+   "id": "browArch",
+   "part": "눈썹 모양",
+   "keys": [
+    "browArch"
+   ],
+   "draw": [
+    [
+     "browLeftOuter",
+     "browLeftTop"
+    ],
+    [
+     "browLeftTop",
+     "browLeftInner"
+    ],
+    [
+     "browRightOuter",
+     "browRightTop"
+    ],
+    [
+     "browRightTop",
+     "browRightInner"
+    ]
+   ],
+   "names": {
+    "high": "둥글게 휜 눈썹",
+    "low": "일자에 가까운 눈썹",
+    "middle": "보통으로 휜 눈썹"
+   },
+   "mine": "눈썹 가운데가 양 끝을 이은 선보다 눈썹 길이의 {v0}%만큼 솟아 있소.",
+   "typical": "보통은 {c0}%쯤이오.",
+   "readings": {},
+   "so": {}
+  },
+  {
+   "id": "browEyeGap",
+   "part": "눈썹과 눈 사이",
+   "keys": [
+    "browEyeGap"
+   ],
+   "draw": [
+    [
+     "browLeftTop",
+     "eyeLeftTop"
+    ],
+    [
+     "browRightTop",
+     "eyeRightTop"
+    ]
+   ],
+   "names": {
+    "high": "눈썹과 눈 사이가 넓음",
+    "low": "눈썹과 눈 사이가 좁음",
+    "middle": "보통 거리의 눈썹과 눈"
+   },
+   "mine": "눈썹과 눈 사이가 얼굴 길이의 {v1}%요.",
+   "typical": "보통은 {c1}%쯤이오.",
+   "readings": {},
+   "so": {}
+  },
+  {
+   "id": "browInnerGap",
+   "part": "미간",
+   "keys": [
+    "browInnerGap"
+   ],
+   "draw": [
+    [
+     "browLeftInner",
+     "browRightInner"
+    ]
+   ],
+   "names": {
+    "high": "넓은 미간",
+    "low": "좁은 미간",
+    "middle": "보통 미간"
+   },
+   "mine": "두 눈썹 머리 사이에 눈 하나가 {v1}개 들어가오.",
+   "typical": "보통은 {c1}개쯤이오.",
+   "readings": {},
+   "so": {}
+  },
+  {
+   "id": "eyeGap",
+   "part": "눈 사이",
+   "keys": [
+    "eyeGap"
+   ],
+   "draw": [
+    [
+     "eyeLeftInner",
+     "eyeRightInner"
+    ],
+    [
+     "eyeLeftOuter",
+     "eyeLeftInner"
+    ]
+   ],
+   "names": {
+    "high": "먼 눈 사이",
+    "low": "가까운 눈 사이",
+    "middle": "보통 눈 사이"
+   },
+   "mine": "두 눈 사이에 눈 하나가 {v1}개 들어가오.",
+   "typical": "보통은 {c1}개쯤이오.",
+   "readings": {},
+   "so": {}
+  },
+  {
+   "id": "eyeSize",
+   "part": "눈 크기",
+   "keys": [
+    "eyeSize"
+   ],
+   "draw": [
+    [
+     "eyeLeftOuter",
+     "eyeLeftInner"
+    ],
+    [
+     "eyeRightInner",
+     "eyeRightOuter"
+    ]
+   ],
+   "names": {
+    "high": "큰 눈",
+    "low": "작은 눈",
+    "middle": "보통 크기의 눈"
+   },
+   "mine": "눈 하나의 길이가 얼굴 폭의 {v0}%, 약 {f}이오.",
+   "typical": "보통은 {c0}%쯤이오.",
+   "readings": {},
+   "so": {}
+  },
+  {
+   "id": "eyeOpen",
+   "part": "눈 모양",
+   "keys": [
+    "eyeOpen"
+   ],
+   "draw": [
+    [
+     "eyeLeftTop",
+     "eyeLeftBottom"
+    ],
+    [
+     "eyeRightTop",
+     "eyeRightBottom"
+    ]
+   ],
+   "names": {
+    "high": "동그랗게 열린 눈",
+    "low": "가로로 가늘고 긴 눈",
+    "middle": "보통으로 열린 눈"
+   },
+   "mine": "눈 높이가 눈 길이의 {p0}%요.",
+   "typical": "보통은 {cp0}%쯤이오.",
+   "readings": {},
+   "so": {}
+  },
+  {
+   "id": "eyeTilt",
+   "part": "눈꼬리",
+   "keys": [
+    "eyeTilt"
+   ],
+   "draw": [
+    [
+     "eyeLeftOuter",
+     "eyeLeftInner"
+    ],
+    [
+     "eyeRightInner",
+     "eyeRightOuter"
+    ]
+   ],
+   "names": {
+    "high": "올라간 눈꼬리",
+    "low": "처진 눈꼬리",
+    "middle": "수평에 가까운 눈꼬리"
+   },
+   "mine": "눈꼬리가 눈 머리보다 {a0}도 {s:올라가:내려가} 있소.",
+   "typical": "보통은 {c0}도쯤 올라가 있소.",
+   "readings": {},
+   "so": {}
+  },
+  {
+   "id": "eyeAsym",
+   "part": "두 눈",
+   "keys": [
+    "eyeAsym"
+   ],
+   "draw": [
+    [
+     "eyeLeftOuter",
+     "eyeLeftInner"
+    ],
+    [
+     "eyeRightInner",
+     "eyeRightOuter"
+    ]
+   ],
+   "names": {
+    "high": "크기가 다른 두 눈",
+    "middle": "크기가 고른 두 눈"
+   },
+   "mine": "두 눈의 길이가 {v0}% 다르오.",
+   "typical": "",
+   "readings": {},
+   "so": {}
+  },
+  {
+   "id": "noseWidth",
+   "part": "코 폭",
+   "keys": [
+    "noseWidth"
+   ],
+   "draw": [
+    [
+     "noseLeft",
+     "noseRight"
+    ],
+    [
+     "faceLeft",
+     "faceRight"
+    ]
+   ],
+   "names": {
+    "high": "콧방울이 넓은 코",
+    "low": "폭이 좁은 코",
+    "middle": "보통 폭의 코"
+   },
+   "mine": "코 폭이 얼굴 폭의 {v0}%, 약 {f}이오.",
+   "typical": "보통은 {c0}%쯤이오.",
+   "readings": {},
+   "so": {}
+  },
+  {
+   "id": "noseLength",
+   "part": "코 길이",
+   "keys": [
+    "middleThird"
+   ],
+   "draw": [
+    "h:glabella",
+    "h:noseBase"
+   ],
+   "names": {
+    "high": "긴 코",
+    "low": "짧은 코",
+    "middle": "보통 길이의 코"
+   },
+   "mine": "미간에서 코밑까지가 얼굴 세로의 {v0}%요.",
+   "typical": "보통은 {c0}%쯤이오.",
+   "readings": {},
+   "so": {}
+  },
+  {
+   "id": "mouthFace",
+   "part": "입 크기",
+   "keys": [
+    "mouthFace"
+   ],
+   "draw": [
+    [
+     "mouthLeft",
+     "mouthRight"
+    ],
+    [
+     "faceLeft",
+     "faceRight"
+    ]
+   ],
+   "names": {
+    "high": "큰 입",
+    "low": "작은 입",
+    "middle": "보통 크기의 입"
+   },
+   "mine": "입 폭이 얼굴 폭의 {v0}%, 약 {f}이오.",
+   "typical": "보통은 {c0}%쯤이오.",
+   "readings": {},
+   "so": {}
+  },
+  {
+   "id": "lipFull",
+   "part": "입술 두께",
+   "keys": [
+    "lipFull"
+   ],
+   "draw": [
+    [
+     "upperLip",
+     "lowerLip"
+    ]
+   ],
+   "names": {
+    "high": "도톰한 입술",
+    "low": "얇은 입술",
+    "middle": "보통 두께의 입술"
+   },
+   "mine": "입술 위아래 두께가 입 폭의 {v0}%요.",
+   "typical": "보통은 {c0}%쯤이오.",
+   "readings": {},
+   "so": {}
+  },
+  {
+   "id": "lipRatio",
+   "part": "윗입술과 아랫입술",
+   "keys": [
+    "lipRatio"
+   ],
+   "draw": [
+    [
+     "upperLip",
+     "upperLipInner"
+    ],
+    [
+     "lowerLipInner",
+     "lowerLip"
+    ]
+   ],
+   "names": {
+    "high": "윗입술이 도톰한 입",
+    "low": "아랫입술이 도톰한 입",
+    "middle": "위아래가 보통 비율인 입술"
+   },
+   "mine": "윗입술이 아랫입술의 {v1}배 두께요.",
+   "typical": "보통은 {c1}배쯤이오.",
+   "readings": {},
+   "so": {}
+  },
+  {
+   "id": "mouthLift",
+   "part": "입꼬리",
+   "keys": [
+    "mouthLift"
+   ],
+   "draw": [
+    [
+     "mouthLeft",
+     "mouthRight"
+    ]
+   ],
+   "names": {
+    "high": "올라간 입꼬리",
+    "low": "처진 입꼬리",
+    "middle": "수평에 가까운 입꼬리"
+   },
+   "mine": "입꼬리가 입 가운데보다 입 폭의 {a1}%만큼 {s:올라가:내려가} 있소.",
+   "typical": "표정에 따라 달라지니 무표정 기준이오.",
+   "readings": {},
+   "so": {}
+  },
+  {
+   "id": "philtrum",
+   "part": "인중",
+   "keys": [
+    "philtrumLower"
+   ],
+   "draw": [
+    [
+     "noseBase",
+     "upperLip"
+    ]
+   ],
+   "names": {
+    "high": "긴 인중",
+    "low": "짧은 인중",
+    "middle": "보통 길이의 인중"
+   },
+   "mine": "인중이 코밑에서 턱끝까지의 {v0}%요.",
+   "typical": "보통은 {c0}%쯤이오.",
+   "readings": {},
+   "so": {}
+  },
+  {
+   "id": "cheek",
+   "part": "광대",
+   "keys": [
+    "fwhr"
+   ],
+   "draw": [
+    [
+     "faceLeft",
+     "faceRight"
+    ],
+    "h:glabella",
+    "h:upperLip"
+   ],
+   "names": {
+    "high": "옆으로 넓은 광대",
+    "low": "좁은 광대",
+    "middle": "보통 폭의 광대"
+   },
+   "mine": "광대 폭이 눈썹부터 윗입술까지 높이의 {v1}배요.",
+   "typical": "보통은 {c1}배쯤이오.",
+   "readings": {},
+   "so": {}
+  },
+  {
+   "id": "faceShape",
+   "part": "얼굴 가로세로",
+   "keys": [
+    "faceRatio"
+   ],
+   "draw": [
+    [
+     "faceLeft",
+     "faceRight"
+    ],
+    "h:meshTop",
+    "h:chin"
+   ],
+   "names": {
+    "high": "넓적한 얼굴",
+    "low": "길쭉한 얼굴",
+    "middle": "가로세로가 보통인 얼굴"
+   },
+   "mine": "얼굴 폭이 길이의 {v0}%요.",
+   "typical": "보통은 {c0}%쯤이오.",
+   "readings": {},
+   "so": {}
+  },
+  {
+   "id": "jaw",
+   "part": "턱 폭",
+   "keys": [
+    "jawCheek"
+   ],
+   "draw": [
+    [
+     "jawLeft",
+     "jawRight"
+    ],
+    [
+     "faceLeft",
+     "faceRight"
+    ]
+   ],
+   "names": {
+    "high": "넓고 각진 턱",
+    "low": "갸름한 턱",
+    "middle": "보통 폭의 턱"
+   },
+   "mine": "턱 폭이 광대 폭의 {v0}%요.",
+   "typical": "보통은 {c0}%쯤이오.",
+   "readings": {},
+   "so": {}
+  },
+  {
+   "id": "chin",
+   "part": "턱끝",
+   "keys": [
+    "chinWidth"
+   ],
+   "draw": [
+    [
+     "chinLeft",
+     "chinRight"
+    ],
+    [
+     "jawLeft",
+     "jawRight"
+    ]
+   ],
+   "names": {
+    "high": "둥글고 넓은 턱끝",
+    "low": "뾰족한 턱끝",
+    "middle": "보통 폭의 턱끝"
+   },
+   "mine": "턱끝 폭이 턱 폭의 {v0}%요.",
+   "typical": "보통은 {c0}%쯤이오.",
+   "readings": {},
+   "so": {}
+  },
+  {
+   "id": "symmetry",
+   "part": "좌우 균형",
+   "keys": [
+    "symmetry"
+   ],
+   "draw": [
+    [
+     "eyeLeftOuter",
+     "eyeRightOuter"
+    ],
+    [
+     "mouthLeft",
+     "mouthRight"
+    ]
+   ],
+   "names": {
+    "high": "좌우가 잘 맞는 얼굴",
+    "low": "좌우가 조금 다른 얼굴",
+    "middle": "좌우가 보통으로 맞는 얼굴"
+   },
+   "mine": "좌우 맞음 점수가 100점 만점에 {v0}점이오.",
+   "typical": "보통은 {c0}점쯤이오.",
+   "readings": {},
+   "so": {}
+  }
+ ]
+}

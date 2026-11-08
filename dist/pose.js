@@ -88,6 +88,21 @@ const CANONICAL_CM = {
   lowerLip: [0.000, -5.365, 5.535],
   mouthLeft: [-2.456, -4.343, 4.284],
   mouthRight: [2.456, -4.343, 4.284],
+  // Added 2026-11-08 for the eyebrow, eye opening, lip and chin ratios.
+  eyeLeftTop: [-3.177, 2.964, 3.877],
+  eyeLeftBottom: [-3.177, 2.294, 3.776],
+  eyeRightTop: [3.177, 2.964, 3.877],
+  eyeRightBottom: [3.177, 2.294, 3.776],
+  upperLipInner: [0.000, -3.994, 5.219],
+  lowerLipInner: [0.000, -4.542, 5.405],
+  browLeftOuter: [-5.721, 4.255, 2.831],
+  browLeftInner: [-1.396, 5.012, 5.316],
+  browLeftTop: [-3.987, 5.109, 4.466],
+  browRightOuter: [5.721, 4.255, 2.831],
+  browRightInner: [1.396, 5.012, 5.316],
+  browRightTop: [3.987, 5.109, 4.466],
+  chinLeft: [-2.309, -8.974, 3.609],
+  chinRight: [2.309, -8.974, 3.609],
 };
 
 /** Canonical model in this module's image convention (y down, z negative toward camera). */

@@ -32,6 +32,22 @@ export const CALIBRATION = {
   eyeTilt: { label: "눈꼬리 기울기", unit: "°", digits: 1, center: 1.7, scale: 3.0, reliability: "low" },
   mouthLift: { label: "입꼬리 높이", unit: "%", digits: 1, center: 0.9, scale: 1.5, reliability: "low" },
   symmetry: { label: "좌우 상대 균형", unit: "점", digits: 1, center: 93, scale: 4.0, reliability: "medium" },
+  // Part-level ratios (2026-11-08). Centres are the canonical face (tests/canonical-values.html);
+  // scales are first guesses until visitor recordings exist.
+  browLength: { label: "눈썹 길이 / 눈 길이", unit: "배", digits: 2, center: 1.7, scale: 0.15, reliability: "medium" },
+  browTilt: { label: "눈썹 기울기", unit: "°", digits: 1, center: -9.9, scale: 4.0, reliability: "low" },
+  browArch: { label: "눈썹 휘어짐", unit: "%", digits: 1, center: 12.5, scale: 3.0, reliability: "low" },
+  browEyeGap: { label: "눈썹과 눈 사이 / 얼굴 길이", unit: "%", digits: 1, center: 12.1, scale: 1.5, reliability: "low" },
+  browInnerGap: { label: "미간 / 눈 길이", unit: "배", digits: 2, center: 1.08, scale: 0.12, reliability: "medium" },
+  eyeSize: { label: "눈 길이 / 얼굴 폭", unit: "%", digits: 1, center: 16.9, scale: 1.2, reliability: "high" },
+  eyeOpen: { label: "눈 높이 / 눈 길이", unit: "배", digits: 2, center: 0.26, scale: 0.04, reliability: "low" },
+  eyeAsym: { label: "두 눈 길이 차이", unit: "%", digits: 1, center: 0, scale: 4, reliability: "medium" },
+  mouthFace: { label: "입 폭 / 얼굴 폭", unit: "%", digits: 1, center: 32, scale: 2.5, reliability: "medium" },
+  mouthPupil: { label: "입 폭 / 두 눈 중심 사이", unit: "배", digits: 2, center: 0.78, scale: 0.07, reliability: "medium" },
+  lipFull: { label: "입술 두께 / 입 폭", unit: "%", digits: 1, center: 28.7, scale: 5, reliability: "low" },
+  lipRatio: { label: "윗입술 / 아랫입술", unit: "배", digits: 2, center: 0.71, scale: 0.15, reliability: "low" },
+  chinWidth: { label: "턱끝 폭 / 턱 폭", unit: "%", digits: 1, center: 38.9, scale: 5, reliability: "medium" },
+  fwhr: { label: "광대 폭 / 위쪽 얼굴 높이", unit: "배", digits: 2, center: 2.3, scale: 0.15, reliability: "medium" },
 };
 
 export const RELIABILITY_WEIGHT = { high: 1, medium: 0.75, low: 0.5 };

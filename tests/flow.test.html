@@ -64,15 +64,15 @@ check("the average face reads as balanced on every theme", st.reading.themes.eve
 win.__sang.show();
 await sleep(200);
 const text = (sel) => doc.querySelector(sel)?.textContent ?? "";
-check("summary lists five readings", doc.querySelectorAll("#resultName .axis-line").length === 5);
-check("five reading pages", doc.querySelectorAll("#resultThemes .theme-card").length === 5);
-check("each reading page has a label, the reading and the traditional area", [...doc.querySelectorAll("#resultThemes .theme-card")].every((c) => c.querySelector(".theme-label")?.textContent && c.querySelector(".theme-reading")?.textContent && c.querySelector(".theme-area")?.textContent));
-check("summary, five readings and the closing sit in one scroll", doc.querySelectorAll("#pages .page").length === 7);
+check("summary lists the five themes as closing lines", doc.querySelectorAll("#resultName .axis-line").length === 5);
+check("three most distinctive parts first", doc.querySelectorAll("#topCards .part-card").length === 3 && doc.querySelectorAll("#topList li").length === 3);
+check("every measured part has a card", doc.querySelectorAll("#topCards .part-card, #restCards .part-card").length >= 20, `${doc.querySelectorAll(".part-card").length} cards`);
+check("each card says what was measured on this face", [...doc.querySelectorAll(".part-card")].every((c) => /\d/.test(c.querySelector(".part-mine")?.textContent ?? "")));
 check("closing line is filled", text("#resultClosing").length > 10);
 check("no placeholder text in the summary", !text("#resultName").includes("undefined") && !text("#resultName").includes("NaN"));
 check("no NaN or undefined anywhere in the reading", !/NaN|undefined/.test(doc.querySelector("#resultView").textContent));
 check("no em dash in the reading", !/[\u2014\u2013]/.test(doc.querySelector("#resultView").textContent));
-check("measurement numbers are not shown to visitors", !/\d+\.\d/.test(doc.querySelector("#resultView").textContent));
+check("no unfilled tokens in the cards", !/\{[a-z]/.test(doc.querySelector("#resultView").textContent));
 
 lines.push(failed === 0 ? "ALL PASSED" : `${failed} FAILED`);
 document.getElementById("out").textContent = lines.join("\n");

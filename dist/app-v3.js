@@ -4,6 +4,7 @@ import { CALIBRATION } from "./calibration.js";
 import { StableCapture, GUIDANCE } from "./capture.js";
 import { interpret } from "./interpret.js";
 import { applyPoseResidual } from "./residual.js";
+import { readParts } from "./parts.js";
 
 const MEDIAPIPE_VERSION = "1.1.1";
 const MEDIAPIPE_MODULE = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VERSION}/vision_bundle.mjs`;
@@ -39,7 +40,9 @@ const loadBar = $("#loadBar");
 const loadLine = $("#loadLine");
 const pages = $("#pages");
 const resultName = $("#resultName");
-const resultThemes = $("#resultThemes");
+const topList = $("#topList");
+const topCards = $("#topCards");
+const restCards = $("#restCards");
 const resultLinksWrap = $("#resultLinksWrap");
 const resultLinks = $("#resultLinks");
 const resultClosing = $("#resultClosing");
@@ -58,6 +61,8 @@ let animationId;
 let running = false;
 let lastVideoTime = -1;
 let content = null;
+let partsContent = null;
+let parts = null;
 let capture = new StableCapture();
 let latestLandmarks = null;
 let bestShot = null;
@@ -270,7 +275,13 @@ function createPreviewFrame() {
     faceLeft: { x: 22, y: 50 }, faceRight: { x: 78, y: 50 }, templeLeft: { x: 25, y: 40 }, templeRight: { x: 75, y: 40 },
     foreheadLeft: { x: 30, y: 27 }, foreheadRight: { x: 70, y: 27 }, jawLeft: { x: 33, y: 71 }, jawRight: { x: 67, y: 71 },
     eyeLeftOuter: { x: 30, y: 43 }, eyeLeftInner: { x: 43, y: 43 }, eyeRightInner: { x: 57, y: 43 }, eyeRightOuter: { x: 70, y: 43 },
-    noseTip: { x: 50, y: 55 }, upperLip: { x: 50, y: 65 },
+    noseTip: { x: 50, y: 55 }, upperLip: { x: 50, y: 65 }, lowerLip: { x: 50, y: 69 },
+    noseLeft: { x: 44, y: 57 }, noseRight: { x: 56, y: 57 }, mouthLeft: { x: 40, y: 67 }, mouthRight: { x: 60, y: 67 },
+    upperLipInner: { x: 50, y: 66.5 }, lowerLipInner: { x: 50, y: 67.5 },
+    eyeLeftTop: { x: 36, y: 41.5 }, eyeLeftBottom: { x: 36, y: 44.5 }, eyeRightTop: { x: 64, y: 41.5 }, eyeRightBottom: { x: 64, y: 44.5 },
+    browLeftOuter: { x: 27, y: 38 }, browLeftInner: { x: 45, y: 36 }, browLeftTop: { x: 36, y: 34.5 },
+    browRightOuter: { x: 73, y: 38 }, browRightInner: { x: 55, y: 36 }, browRightTop: { x: 64, y: 34.5 },
+    chinLeft: { x: 44, y: 81 }, chinRight: { x: 56, y: 81 },
   };
   return { src: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`, points };
 }
@@ -407,6 +418,7 @@ function goHome() {
 
 // ---------- reading: one scroll ----------
 
+// Five themes, now a few closing lines ("종합").
 function renderSummary() {
   resultName.replaceChildren(...reading.themes.map((theme) => {
     const item = el("li", `axis-line${theme.soft ? " is-soft" : ""}`);
@@ -415,22 +427,83 @@ function renderSummary() {
   }));
 }
 
-function renderThemePages() {
-  const total = reading.themes.length;
-  resultThemes.replaceChildren(...reading.themes.map((theme, index) => {
-    const page = el("article", `page theme-page theme-card is-${theme.state}`);
-    const top = el("div", "theme-top");
-    top.append(el("span", "", theme.title), el("span", "", `${index + 1} / ${total}`));
-    page.append(top, el("p", "theme-label", theme.label), el("p", "theme-reading", theme.reading));
-    page.append(el("p", "theme-area", theme.area));
-    return page;
+// A small crop of the visitor's own face with only this part's lines drawn.
+function partPicture(shot, draw) {
+  const figure = el("figure", "part-pic");
+  if (!shot) return figure;
+  const p = shot.points;
+  const segments = [];
+  const left = Math.min(p.faceLeft.x, p.faceRight.x);
+  const right = Math.max(p.faceLeft.x, p.faceRight.x);
+  for (const item of draw) {
+    if (typeof item === "string" && item.startsWith("h:")) {
+      const at = p[item.slice(2)];
+      if (at) segments.push([{ x: left, y: at.y }, { x: right, y: at.y }]);
+    } else if (Array.isArray(item) && p[item[0]] && p[item[1]]) {
+      segments.push([p[item[0]], p[item[1]]]);
+    }
+  }
+  const xs = segments.flat().map((q) => q.x);
+  const ys = segments.flat().map((q) => q.y);
+  // Crop around the drawn part, at least a third of the face, keeping 4:3.
+  let w = Math.max(34, (Math.max(...xs) - Math.min(...xs)) * 1.5);
+  let h = Math.max(26, (Math.max(...ys) - Math.min(...ys)) * 1.5, w * 0.75);
+  w = Math.max(w, h / 0.75);
+  h = w * 0.75;
+  const cx = segments.length ? (Math.max(...xs) + Math.min(...xs)) / 2 : 50;
+  const cy = segments.length ? (Math.max(...ys) + Math.min(...ys)) / 2 : 50;
+  const x0 = clamp(cx - w / 2, 0, Math.max(0, 100 - w));
+  const y0 = clamp(cy - h / 2, 0, Math.max(0, 100 - h));
+  const svg = svgNode("svg", { viewBox: `${x0.toFixed(1)} ${y0.toFixed(1)} ${Math.min(100, w).toFixed(1)} ${Math.min(100, h).toFixed(1)}`, preserveAspectRatio: "xMidYMid slice", "aria-hidden": "true" });
+  svg.append(svgNode("image", { href: shot.src, x: 0, y: 0, width: 100, height: 100, preserveAspectRatio: "none" }));
+  for (const [a, b] of segments) {
+    svg.append(svgNode("line", { x1: a.x.toFixed(2), y1: a.y.toFixed(2), x2: b.x.toFixed(2), y2: b.y.toFixed(2), class: "part-line" }));
+    for (const q of [a, b]) svg.append(svgNode("circle", { cx: q.x.toFixed(2), cy: q.y.toFixed(2), r: 0.9, class: "part-dot" }));
+  }
+  figure.append(svg);
+  return figure;
+}
+
+function partCard(part, shot, compact) {
+  const card = el("article", `part-card is-${part.dir}`);
+  const body = el("div", "part-body");
+  const head = el("div", "part-head");
+  head.append(el("small", "", part.part), el("h3", "", part.name));
+  body.append(head, el("p", "part-mine", part.mine));
+  const readings = compact ? part.readings.slice(0, 2) : part.readings;
+  if (readings.length) {
+    body.append(el("p", "part-kicker", "관상에서는"));
+    const list = el("ul", "part-readings");
+    for (const r of readings) {
+      const item = el("li");
+      if (r.domain) item.append(el("b", "", r.domain));
+      item.append(document.createTextNode(r.text));
+      list.append(item);
+    }
+    body.append(list);
+  } else {
+    body.append(el("p", "part-empty", "이 모양의 풀이는 아직 모으는 중이오."));
+  }
+  if (part.so) body.append(el("p", "part-so", part.so));
+  card.append(partPicture(shot, part.draw), body);
+  return card;
+}
+
+function renderParts(shot) {
+  parts = readParts(finalMeasurement, partsContent);
+  topList.replaceChildren(...parts.top.map((part) => {
+    const item = el("li");
+    item.append(el("small", "", part.part), el("b", "", part.name));
+    return item;
   }));
+  topCards.replaceChildren(...parts.top.map((part) => partCard(part, shot, false)));
+  restCards.replaceChildren(...parts.rest.map((part) => partCard(part, shot, true)));
 }
 
 function renderClosing() {
   resultLinks.replaceChildren(...reading.links.map((link) => el("p", "", link.text)));
   resultLinksWrap.hidden = reading.links.length === 0;
-  resultClosing.textContent = `${content.general.closing} 사진은 처음으로 돌아가면 지워져요.`;
+  resultClosing.textContent = "관상에서 이렇게들 풀이해 왔다는 이야기이며, 성격이나 미래를 정해 주지 않소. 풀이가 여럿이면 해설마다 다르게 본다는 뜻이오. 사진은 처음으로 돌아가면 지워져요.";
 }
 
 function renderResult() {
@@ -441,8 +514,8 @@ function renderResult() {
     resultFrontImage.src = shot.src;
     renderFrontAnnotation(resultFrontOverlay, shot.points);
   }
+  renderParts(shot);
   renderSummary();
-  renderThemePages();
   renderClosing();
 }
 
@@ -471,9 +544,13 @@ function showResult() {
 // ---------- start up ----------
 
 async function loadContent() {
-  const response = await fetch("./content.json", { cache: "no-cache" });
-  if (!response.ok) throw new Error("해석 문구 파일을 불러오지 못했습니다.");
-  content = await response.json();
+  const [themesResponse, partsResponse] = await Promise.all([
+    fetch("./content.json", { cache: "no-cache" }),
+    fetch("./parts.json", { cache: "no-cache" }),
+  ]);
+  if (!themesResponse.ok || !partsResponse.ok) throw new Error("해석 문구 파일을 불러오지 못했습니다.");
+  content = await themesResponse.json();
+  partsContent = await partsResponse.json();
 }
 
 async function initialize() {
