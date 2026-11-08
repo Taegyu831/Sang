@@ -13,6 +13,7 @@ const MEDIAPIPE_WASM = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${M
 const FACE_MODEL = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
 const PUBLIC_SITE_URL = "https://taegyu831.github.io/Sang/";
 const MODEL_LOAD_TIMEOUT = 18000;
+const CAMERA_LABEL = "▶ 관상 보러 들어가기";
 
 const SEARCH_PARAMS = new URLSearchParams(window.location.search);
 // ?pose=raw turns the head pose correction off, to compare against the old behaviour.
@@ -64,6 +65,23 @@ const restartButton = $("#restartButton");
 const typeCatalog = $("#typeCatalog");
 const catalogClose = $("#catalogClose");
 const catalogList = $("#catalogList");
+const scanScreen = $("#scanScreen");
+const loadingScreen = $("#loadingScreen");
+const loadLog = $("#loadLog");
+const loadBar = $("#loadBar");
+const winTitle = $("#winTitle");
+const statusLeft = $("#statusLeft");
+const stepText = $("#stepText");
+const stepList = $("#stepList");
+const lcdTimer = $("#lcdTimer");
+const trayClock = $("#trayClock");
+const receiptNo = $("#receiptNo");
+const homeButton = $("#homeButton");
+const tabPanels = $("#tabPanels");
+const themeNav = $("#themeNav");
+const themePrev = $("#themePrev");
+const themeNext = $("#themeNext");
+const themeCount = $("#themeCount");
 
 let FaceLandmarker;
 let DrawingUtils;
@@ -95,6 +113,76 @@ const RELIABILITY_TEXT = { high: "근거 신뢰 높음", medium: "근거 신뢰 
 const RELATION_TEXT = { above: "평균보다 큼", typical: "평균 범위", below: "평균보다 작음" };
 
 function clamp(value, minimum = 0, maximum = 1) { return Math.min(maximum, Math.max(minimum, value)); }
+
+// ---------- screens, status bar and the little desk props ----------
+
+const SCREENS = { start: emptyState, scan: scanScreen, loading: loadingScreen, result: resultView };
+const SCREEN_STATUS = { start: "접수 대기 중", scan: "측정 중", loading: "풀이 준비 중", result: "풀이 열람 중" };
+let timerStartedAt = 0;
+let timerId = 0;
+let loadingRun = 0;
+let themeIndex = 0;
+
+function showScreen(name) {
+  for (const [key, node] of Object.entries(SCREENS)) {
+    node.hidden = key !== name;
+    node.classList.toggle("is-on", key === name);
+  }
+  const node = SCREENS[name];
+  const step = Number(node.dataset.step);
+  document.body.dataset.screen = name;
+  winTitle.textContent = node.dataset.title;
+  statusLeft.textContent = SCREEN_STATUS[name];
+  stepText.textContent = `${step}단계 / 총 3단계`;
+  for (const item of stepList.children) {
+    const itemStep = Number(item.dataset.step);
+    item.classList.toggle("is-on", itemStep === step);
+    item.classList.toggle("is-done", itemStep < step);
+  }
+}
+
+function newReceipt() {
+  receiptNo.textContent = `제 ${String(Math.floor(1000 + Math.random() * 9000))}호`;
+}
+
+function renderTimer() {
+  const seconds = Math.floor((performance.now() - timerStartedAt) / 1000);
+  lcdTimer.textContent = `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+function startTimer() {
+  stopTimer();
+  timerStartedAt = performance.now();
+  renderTimer();
+  timerId = window.setInterval(renderTimer, 500);
+}
+
+function stopTimer() {
+  window.clearInterval(timerId);
+  timerId = 0;
+}
+
+function resetTimer() {
+  stopTimer();
+  lcdTimer.textContent = "00:00";
+}
+
+function renderClock() {
+  const now = new Date();
+  const hours = now.getHours();
+  trayClock.textContent = `${hours < 12 ? "오전" : "오후"} ${((hours + 11) % 12) + 1}:${String(now.getMinutes()).padStart(2, "0")}`;
+}
+
+// The wallpaper is made of the classical lines the reading actually cites.
+const WALL_LINES = ["三停得位", "六府相勻", "五官俱正", "眉長過目", "目秀而長", "鼻準洪直", "天地相配", "五嶽朝天", "三停平等", "頦圓豐滿", "光明如鏡", "山根平滿", "寬廣清長", "開大合小", "保壽官", "監察官", "審辯官", "出納官", "採聽官", "命宮", "財帛宮", "福德宮", "相貌宮"];
+
+function fillWall() {
+  const wall = $("#wallText");
+  if (!wall) return;
+  const parts = [];
+  for (let i = 0; i < 260; i += 1) parts.push(WALL_LINES[(i * 7) % WALL_LINES.length]);
+  wall.textContent = parts.join(" ");
+}
 
 function setSystemState(state, label) {
   systemState.dataset.state = state;
@@ -148,7 +236,7 @@ function updateMetrics(values) {
 
 function resetMetrics() {
   smoothed = null;
-  sampleCount.textContent = "WAITING";
+  sampleCount.textContent = "대기";
   qualityValue.textContent = "-";
   for (const item of Object.values(metricNodes)) {
     item.value.textContent = "-";
@@ -171,8 +259,7 @@ function resetClassification() {
 
 function updateMeter(progress) {
   const percent = Math.round(clamp(progress) * 100);
-  journeyProgress.style.setProperty("--journey-progress", `${percent}%`);
-  captureJourney.style.setProperty("--journey-progress", `${percent}%`);
+  journeyProgress.style.setProperty("--p", `${percent}%`);
   meterValue.textContent = `${percent}%`;
 }
 
@@ -208,12 +295,13 @@ function resizeCanvas() {
 
 function drawFace(landmarks) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_TESSELATION, { color: "rgba(164, 122, 53, 0.17)", lineWidth: 0.65 });
-  drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_FACE_OVAL, { color: "rgba(239, 230, 214, 0.72)", lineWidth: 1.25 });
-  drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_LEFT_EYE, { color: "rgba(155, 61, 44, 0.92)", lineWidth: 1.45 });
-  drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_RIGHT_EYE, { color: "rgba(155, 61, 44, 0.92)", lineWidth: 1.45 });
-  drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_LIPS, { color: "rgba(49, 93, 82, 0.9)", lineWidth: 1.3 });
-  drawingUtils.drawLandmarks(Object.values(LANDMARK).map((index) => landmarks[index]), { color: "rgba(239,230,214,0.95)", fillColor: "rgba(155,61,44,0.95)", radius: 1.25 });
+  // Phosphor green mesh, like an old monitor drawing over the face.
+  drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_TESSELATION, { color: "rgba(140, 255, 140, 0.16)", lineWidth: 0.65 });
+  drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_FACE_OVAL, { color: "rgba(200, 255, 200, 0.8)", lineWidth: 1.4 });
+  drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_LEFT_EYE, { color: "rgba(255, 220, 90, 0.95)", lineWidth: 1.5 });
+  drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_RIGHT_EYE, { color: "rgba(255, 220, 90, 0.95)", lineWidth: 1.5 });
+  drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_LIPS, { color: "rgba(255, 120, 100, 0.9)", lineWidth: 1.4 });
+  drawingUtils.drawLandmarks(Object.values(LANDMARK).map((index) => landmarks[index]), { color: "rgba(255,255,255,0.95)", fillColor: "rgba(179,38,30,0.95)", radius: 1.4 });
   if (DEBUG_MODE) drawDebugLabels(landmarks);
 }
 
@@ -321,8 +409,8 @@ function handleFace(landmarks, blend, matrixData) {
     const progress = capture.progress;
     updateMeter(progress);
     qualityValue.textContent = `${Math.round(progress * 100)}%`;
-    sampleCount.textContent = `${capture.frames.length} FRAMES`;
-    statusMessage.textContent = `움직여도 괜찮아요. 안정값을 모으는 중 · ${Math.round(progress * 100)}%`;
+    sampleCount.textContent = `${capture.frames.length}장`;
+    statusMessage.textContent = "좋소. 그대로 편하게 계시오. 조금 움직여도 괜찮아요";
     if (capture.isDone(CALIBRATION)) completeClassification();
   } else if (verdict.reason && GUIDANCE[verdict.reason]) {
     statusMessage.textContent = GUIDANCE[verdict.reason];
@@ -332,7 +420,7 @@ function handleFace(landmarks, blend, matrixData) {
 function noFace() {
   frame.classList.remove("has-face");
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  statusMessage.textContent = "얼굴이 보이도록 화면 중앙에 맞춰주세요";
+  statusMessage.textContent = "얼굴이 보이도록 화면 가운데에 앉아 주세요";
   qualityValue.textContent = "-";
 }
 
@@ -345,8 +433,9 @@ function completeClassification() {
   classificationComplete = true;
   updateMetrics(finalMeasurement);
   updateMeter(1);
-  sampleCount.textContent = `${snapshot.frames} FRAMES`;
-  statusMessage.textContent = "측정 완료 · 결과 안내를 눌러주세요";
+  sampleCount.textContent = `${snapshot.frames}장`;
+  statusMessage.textContent = "다 재었소. 아래 버튼을 눌러 풀이를 보시오";
+  stopTimer();
   qualityValue.textContent = `${confidence}%`;
   setSystemState("ready", "읽기 분류 완료");
   classificationReady.hidden = false;
@@ -395,19 +484,22 @@ async function startCamera() {
     await video.play();
     running = true;
     lastVideoTime = -1;
-    emptyState.hidden = true;
+    showScreen("scan");
     captureStatus.hidden = false;
     captureJourney.hidden = false;
     stopButton.hidden = false;
     frame.classList.add("is-running");
+    startTimer();
     stageLabel.textContent = "연속 측정";
     setSystemState("running", "연속 측정 중");
     resetMetrics();
     resetClassification();
-    statusMessage.textContent = "편하게 정면을 보고 입을 다물어주세요. 고개를 조금 움직여도 됩니다";
+    statusMessage.textContent = "편하게 정면을 보고 입을 다물어 주시오. 고개를 조금 움직여도 괜찮아요";
     predict();
   } catch (error) {
     console.error(error);
+    showScreen("start");
+    resetTimer();
     cameraButton.disabled = false;
     cameraButton.querySelector("span:first-child").textContent = "다시 시도";
     setSystemState("error", "카메라를 사용할 수 없음");
@@ -419,12 +511,15 @@ async function startCamera() {
 
 function stopCamera() {
   stopStream();
-  emptyState.hidden = false;
+  loadingRun += 1;
+  showScreen("start");
+  resetTimer();
+  newReceipt();
   captureStatus.hidden = true;
   captureJourney.hidden = true;
   stopButton.hidden = true;
   cameraButton.disabled = false;
-  cameraButton.querySelector("span:first-child").textContent = "카메라 시작";
+  cameraButton.querySelector("span:first-child").textContent = CAMERA_LABEL;
   setSystemState("ready", "측정 준비 완료");
   resetMetrics();
   resetClassification();
@@ -551,6 +646,40 @@ function createThemeCard(theme, index) {
 
 function renderThemes() {
   resultThemes.replaceChildren(...reading.themes.map((theme, index) => createThemeCard(theme, index)));
+  themeNav.replaceChildren(...reading.themes.map((theme, index) => {
+    const chip = resultElement("button", "theme-chip", theme.short);
+    chip.type = "button";
+    chip.setAttribute("role", "tab");
+    chip.addEventListener("click", () => selectTheme(index));
+    return chip;
+  }));
+  selectTheme(0);
+}
+
+// One theme at a time, so each reading can be read at a comfortable size.
+function selectTheme(index) {
+  const total = resultThemes.children.length;
+  if (!total) return;
+  themeIndex = (index + total) % total;
+  [...resultThemes.children].forEach((card, i) => card.classList.toggle("is-current", i === themeIndex));
+  [...themeNav.children].forEach((chip, i) => chip.setAttribute("aria-selected", String(i === themeIndex)));
+  themeCount.textContent = `${themeIndex + 1} / ${total}`;
+  tabPanels.scrollTop = 0;
+}
+
+function selectTab(name) {
+  resultView.dataset.tab = name;
+  for (const tab of document.querySelectorAll(".tab")) {
+    const on = tab.dataset.tab === name;
+    tab.classList.toggle("is-on", on);
+    tab.setAttribute("aria-selected", String(on));
+  }
+  for (const panel of document.querySelectorAll(".tab-panel")) {
+    const on = panel.dataset.panel === name;
+    panel.hidden = !on;
+    panel.classList.toggle("is-on", on);
+  }
+  tabPanels.scrollTop = 0;
 }
 
 function renderLinksAndTone() {
@@ -824,24 +953,80 @@ function renderResult() {
   renderMethod();
 }
 
+// Between measuring and the reading, the old computer "works": every line
+// is a number the reading really used, so the pause shows the method.
+function loadingLines() {
+  const v = finalMeasurement;
+  const lines = [`얼굴 ${v.frames}장에서 비율 모으기`];
+  if (v.coverage) {
+    lines.push(`고개 각도 되돌리기 · 좌우 ${Math.round(v.coverage.yaw[0])}~${Math.round(v.coverage.yaw[1])}도, 상하 ${Math.round(v.coverage.pitch[0])}~${Math.round(v.coverage.pitch[1])}도`);
+  }
+  lines.push(
+    `삼정 재기 · 상정 ${v.upperThird.toFixed(1)} / 중정 ${v.middleThird.toFixed(1)} / 하정 ${v.lowerThird.toFixed(1)}%`,
+    `오안 재기 · 세 여백 평균 눈 하나의 ${v.openMeasure.toFixed(2)}배`,
+    `오악 재기 · 턱 / 광대 ${v.jawCheek.toFixed(1)}%`,
+    "다섯 가지 주제 읽기",
+    "고전 관상서와 대조하기",
+  );
+  return lines;
+}
+
+function revealResult() {
+  showScreen("result");
+  setSystemState("ready", "풀이 열람 중");
+  tabPanels.scrollTop = 0;
+}
+
 function showResult() {
   if (!classificationComplete) return;
   stopStream();
+  stopTimer();
   renderResult();
+  selectTab("summary");
   classificationReady.hidden = true;
   captureStatus.hidden = true;
   captureJourney.hidden = true;
   stopButton.hidden = true;
-  emptyState.hidden = true;
-  resultView.hidden = false;
   frame.classList.add("is-result");
-  setSystemState("ready", "읽기 결과 열람 중");
-  resultView.scrollTop = 0;
+  const run = ++loadingRun;
+  const lines = loadingLines();
+  loadLog.replaceChildren();
+  loadBar.style.setProperty("--p", "0%");
+  showScreen("loading");
+  setSystemState("running", "풀이 준비 중");
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const stepMs = reduced ? 60 : 380;
+  lines.forEach((text, index) => {
+    window.setTimeout(() => {
+      if (run !== loadingRun) return;
+      loadLog.lastElementChild?.classList.add("ok");
+      loadLog.append(resultElement("li", "", text));
+      loadBar.style.setProperty("--p", `${Math.round(((index + 1) / lines.length) * 100)}%`);
+    }, stepMs * index);
+  });
+  window.setTimeout(() => {
+    if (run !== loadingRun) return;
+    loadLog.lastElementChild?.classList.add("ok");
+    revealResult();
+  }, stepMs * lines.length + (reduced ? 0 : 500));
+}
+
+function goHome() {
+  if (typeCatalog.open) typeCatalog.close();
+  loadingRun += 1;
+  stopStream();
+  frame.classList.remove("is-result");
+  resetMetrics();
+  resetClassification();
+  resetTimer();
+  newReceipt();
+  showScreen("start");
+  setSystemState("ready", "측정 준비 완료");
 }
 
 function restartMeasurement() {
   if (typeCatalog.open) typeCatalog.close();
-  resultView.hidden = true;
+  loadingRun += 1;
   frame.classList.remove("is-result");
   startCamera();
 }
@@ -927,14 +1112,16 @@ async function initialize() {
       "얼굴 측정 모델을 준비하는 시간이 초과되었습니다.",
     );
     drawingUtils = new DrawingUtils(ctx);
-    setCameraButton("카메라 시작", "camera");
+    setCameraButton(CAMERA_LABEL, "camera");
     setSystemState("ready", "측정 준비 완료");
     $(".permission-note").textContent = "시작하면 브라우저가 카메라 사용 권한을 요청합니다.";
   } catch (error) {
     console.error(error);
     setSystemState("error", "측정 모델 로드 실패");
     setCameraButton("모델 다시 불러오기", "retry");
-    $(".permission-note").textContent = `${error?.message || "측정 모델을 불러오지 못했습니다."} 인터넷 연결을 확인한 뒤 다시 시도해주세요.`;
+    // The full engine error goes to the console; the visitor gets one short line.
+    const reason = (error?.message || "").includes("시간이 초과") ? error.message : "측정 모델을 불러오지 못했어요.";
+    $(".permission-note").textContent = `${reason} 인터넷 연결을 확인한 뒤 다시 시도해 주세요.`;
   }
 }
 
@@ -953,6 +1140,19 @@ cameraButton.addEventListener("click", () => {
 stopButton.addEventListener("click", stopCamera);
 classificationReady.addEventListener("click", showResult);
 restartButton.addEventListener("click", restartMeasurement);
+homeButton.addEventListener("click", goHome);
+loadingScreen.addEventListener("click", () => {
+  if (!loadingScreen.hidden) { loadingRun += 1; revealResult(); }
+});
+for (const tab of document.querySelectorAll(".tab")) tab.addEventListener("click", () => selectTab(tab.dataset.tab));
+themePrev.addEventListener("click", () => selectTheme(themeIndex - 1));
+themeNext.addEventListener("click", () => selectTheme(themeIndex + 1));
+if (SEARCH_PARAMS.get("full") === "1") document.body.classList.add("bare");
+fillWall();
+newReceipt();
+renderClock();
+window.setInterval(renderClock, 15000);
+showScreen("start");
 showAllTypes.addEventListener("click", openCatalog);
 catalogClose.addEventListener("click", () => typeCatalog.close());
 typeCatalog.addEventListener("click", (event) => { if (event.target === typeCatalog) typeCatalog.close(); });
@@ -986,7 +1186,7 @@ async function startPreview() {
   bestShot = { weight: 1, shot: createPreviewFrame() };
   classificationComplete = true;
   updateMetrics(finalMeasurement);
-  sampleCount.textContent = "96 FRAMES";
+  sampleCount.textContent = "96장";
   showResult();
 }
 

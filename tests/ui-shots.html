@@ -1,0 +1,32 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>ui shots</title>
+<style>body{margin:0}iframe{border:0;width:100vw;height:100vh;display:block}</style>
+<iframe id="app"></iframe>
+<script>
+// Local helper for screenshots: opens the preview result and switches to a tab.
+// ?tab=themes&theme=2&w=...  (only works on 127.0.0.1)
+const q = new URLSearchParams(location.search);
+const app = document.getElementById("app");
+// Headless Chrome will not make a window narrower than about 500px, so phone sizes are tested in a sized frame.
+if (q.get("w")) { app.style.width = q.get("w") + "px"; app.style.height = (q.get("h") || 844) + "px"; }
+app.src = q.get("scan") ? "../dist/index.html?sim=1" : "../dist/index.html?preview=1&" + (q.get("v") ? "v=" + q.get("v") : "");
+app.addEventListener("load", () => setTimeout(() => {
+  const d = app.contentDocument;
+  if (q.get("scan")) {
+    // Show the measuring screen with a still picture instead of a camera.
+    d.querySelector("#emptyState").hidden = true;
+    d.querySelector("#scanScreen").hidden = false;
+    d.querySelector("#winTitle").textContent = "관상 측정";
+    d.querySelector("#camera").poster = "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720"><rect width="1280" height="720" fill="#2a2a2a"/><ellipse cx="640" cy="360" rx="150" ry="200" fill="#8a7a6a"/></svg>');
+    d.querySelector("#journeyProgress").style.setProperty("--p", "62%");
+    d.querySelector("#meterValue").textContent = "62%";
+    return;
+  }
+  d.querySelector("#loadingScreen")?.click();
+  if (q.get("tab")) d.querySelector(`.tab[data-tab="${q.get("tab")}"]`)?.click();
+  if (q.get("theme")) d.querySelectorAll(".theme-chip")[Number(q.get("theme"))]?.click();
+  if (q.get("catalog")) d.querySelector("#showAllTypes")?.click();
+  if (q.get("scroll")) d.querySelector("#tabPanels").scrollTop = Number(q.get("scroll"));
+}, 1500));
+</script>

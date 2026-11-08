@@ -2,273 +2,267 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#efe6d6" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#1b1712" />
     <meta name="robots" content="noindex, nofollow, noarchive" />
     <meta
       name="description"
-      content="카메라에서 얼굴 기준점을 추출해 얼굴의 상대 비율을 실시간으로 보여주는 측정 프로토타입"
+      content="카메라로 얼굴의 상대 비율을 재고, 전통 관상의 틀로 풀어 주는 졸업 전시 프로토타입"
     />
-    <title>FACE / MEASURE — 실시간 얼굴 비율 측정</title>
+    <title>상(相) 역학원 · 관상측정</title>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
     <link rel="preconnect" href="https://storage.googleapis.com" crossorigin />
+    <link rel="preload" href="./fonts/Galmuri11.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="./styles.css" />
   </head>
-  <body>
-    <main class="app-shell">
-      <header class="topbar">
-        <div class="identity">
-          <span class="index">FM—01</span>
-          <h1>FACE / MEASURE</h1>
-        </div>
-        <div class="topbar-right">
-          <span class="privacy">브라우저 내 처리 · 서버 전송 안 함</span>
-          <span class="system-state" id="systemState" data-state="loading">
-            <i aria-hidden="true"></i>
-            <span>측정 모델 불러오는 중</span>
-          </span>
+  <body data-screen="start">
+    <!-- 방: 신문지 벽지 위에 고전 관상서 문장이 빼곡히 적힌 역학원 -->
+    <div class="wall" aria-hidden="true">
+      <div class="wall-text" id="wallText"></div>
+      <i class="fu l">謹言愼行</i>
+      <i class="fu r">相由心生</i>
+    </div>
+
+    <main class="scene">
+      <header class="plaque">
+        <div class="board">
+          <span class="ph">相 易 學 院</span>
+          <span class="pk">상 역학원 · 얼굴 비율 측정과 관상 풀이 접수처</span>
         </div>
       </header>
 
-      <section class="viewport" aria-label="실시간 얼굴 측정 화면">
-        <div class="camera-frame" id="cameraFrame">
-          <video id="camera" autoplay muted playsinline aria-label="카메라 영상"></video>
-          <canvas id="overlay" aria-hidden="true"></canvas>
-
-          <div class="frame-grid" aria-hidden="true"></div>
-          <div class="face-guide" id="faceGuide" aria-hidden="true">
-            <span class="guide-mark top-left"></span>
-            <span class="guide-mark top-right"></span>
-            <span class="guide-mark bottom-left"></span>
-            <span class="guide-mark bottom-right"></span>
-          </div>
-
-          <div class="empty-state" id="emptyState">
-            <p class="eyebrow">LOCAL FACE GEOMETRY</p>
-            <h2>얼굴의 비율을<br />실시간으로 측정합니다.</h2>
-            <p class="empty-copy">
-              얼굴의 상대값을 측정한 뒤, 삼정·오안·오악 세 가지 틀로 각각 읽어 한 얼굴에서 세 가지 인상을 보여줍니다.
-            </p>
-            <button class="camera-button" id="cameraButton" type="button" disabled>
-              <span>카메라 시작</span>
-              <span aria-hidden="true">↗</span>
-            </button>
-            <p class="permission-note">시작하면 브라우저가 카메라 사용 권한을 요청합니다.</p>
-          </div>
-
-          <div class="capture-status" id="captureStatus" hidden>
-            <span class="status-label" id="stageLabel">연속 측정</span>
-            <span class="status-message" id="statusMessage">얼굴을 화면 중앙에 맞춰주세요</span>
-            <span class="quality" id="qualityValue">-</span>
-          </div>
-
-          <div class="capture-journey capture-meter" id="captureJourney" hidden aria-label="측정 진행">
-            <span class="journey-step is-active"><i></i><b>안정값 수집</b></span>
-            <span class="journey-line"><i id="journeyProgress"></i></span>
-            <span class="journey-step"><b id="meterValue">0%</b></span>
-          </div>
-
-          <button class="stop-button" id="stopButton" type="button" hidden>
-            측정 종료
-          </button>
-
-          <button class="classification-ready" id="classificationReady" type="button" hidden>
-            <span class="ready-dot" aria-hidden="true"></span>
-            <span>다섯 가지 읽기가 완료되었습니다</span>
-            <span class="ready-action">결과 보기 →</span>
-          </button>
-
-          <section class="result-view" id="resultView" aria-label="디지털 관상 읽기 결과" hidden>
-            <div class="result-inner">
-              <header class="result-hero">
-                <p class="result-index">DIGITAL FACE READING <span id="resultCode">S-01 · E-01 · O-01</span></p>
-                <figure class="result-face-figure result-front-figure" id="resultFrontFigure" hidden>
-                  <div class="face-plate">
-                    <img id="resultFrontImage" alt="측정 당시 정면 얼굴" />
-                    <svg id="resultFrontOverlay" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"></svg>
-                  </div>
-                  <figcaption><span>정면 도판</span><small>삼정 · 오안 · 오관</small></figcaption>
-                </figure>
-                <h2 class="axis-readout" id="resultName"></h2>
-                <p class="result-tagline" id="resultTagline"></p>
-                <div class="result-keywords" id="resultKeywords"></div>
-                <div class="result-meta">
-                  <div><span>읽는 방식</span><strong id="resultFit">3축 독립</strong></div>
-                  <div><span>판정 경계 근처</span><strong id="resultSecondary">없음</strong></div>
-                  <div><span>측정 완성도</span><strong id="resultConfidence">-</strong></div>
+      <div class="crt">
+        <div class="crt-screen">
+          <div class="app" id="app">
+            <div class="desk">
+              <!-- 큰 창: 접수, 측정, 풀이가 차례로 바뀐다 -->
+              <section class="win main" aria-label="관상측정 프로그램">
+                <div class="titlebar">
+                  <span class="ti"><i class="ico" aria-hidden="true">相</i><span id="winTitle">관상 접수</span><span class="ti-app"> - 상 역학원</span></span>
+                  <span class="tb" aria-hidden="true"><b>_</b><b>□</b><b>×</b></span>
                 </div>
-              </header>
-
-              <div class="result-body">
-                <div class="result-copy" id="resultCopy"></div>
-
-                <section class="result-themes-wrap" aria-labelledby="themesTitle">
-                  <div class="context-heading">
-                    <h3 id="themesTitle">다섯 가지 읽기</h3>
-                    <span>FIVE READINGS</span>
-                  </div>
-                  <div class="result-themes" id="resultThemes"></div>
-                </section>
-
-                <section class="result-links-wrap" id="resultLinksWrap" aria-labelledby="linksTitle" hidden>
-                  <div class="context-heading">
-                    <h3 id="linksTitle">함께 보면 달라지는 점</h3>
-                    <span>READ TOGETHER</span>
-                  </div>
-                  <div class="result-links" id="resultLinks"></div>
-                  <div class="result-tone" id="resultTone" hidden></div>
-                </section>
-
-                <section class="result-synthesis-wrap" aria-labelledby="synthesisTitle">
-                  <div class="context-heading">
-                    <h3 id="synthesisTitle">근거 · 전통 틀 세 가지</h3>
-                    <span>THREE FRAMES</span>
-                  </div>
-                  <div class="result-synthesis" id="resultSynthesis"></div>
-                </section>
-
-                <details class="result-data-disclosure">
-                  <summary>
-                    <span>측정값과 판정 기준 자세히 보기</span>
-                    <small>해석의 근거가 궁금할 때 펼쳐보세요</small>
-                  </summary>
-                  <div class="result-data-body">
-                    <section class="result-evidence-wrap" aria-labelledby="evidenceTitle">
-                      <h3 id="evidenceTitle">읽기에 사용한 비율</h3>
-                      <div class="result-evidence" id="resultEvidence"></div>
-                    </section>
-
-                    <section class="result-analysis-wrap" aria-labelledby="analysisTitle">
-                      <div class="context-heading">
-                        <h3 id="analysisTitle">측정 항목별 상세 분석</h3>
-                        <span>VALUES → READING</span>
-                      </div>
-                      <div class="result-analysis" id="resultAnalysis"></div>
-                    </section>
-
-                    <section class="result-method-wrap" aria-labelledby="methodTitle">
-                      <div class="context-heading">
-                        <h3 id="methodTitle">측정 방식과 한계</h3>
-                        <span>값의 성격을 구분합니다</span>
-                      </div>
-                      <div class="result-method" id="resultMethod"></div>
-                    </section>
-                  </div>
-                </details>
-
-                <div class="result-actions">
-                  <button class="secondary-action" id="showAllTypes" type="button">다른 읽기도 보기</button>
-                  <button class="primary-action" id="restartButton" type="button">다시 측정하기</button>
+                <div class="menubar">
+                  <span>파일(F)</span><span>보기(V)</span><span>도움말(H)</span>
+                  <span class="system-state" id="systemState" data-state="loading"><i aria-hidden="true"></i><span>측정 모델 불러오는 중</span></span>
                 </div>
 
-                <p class="result-disclaimer">
-                  이 결과는 카메라에서 측정된 상대 비율을 전시적 언어로 번역한 것입니다.
-                  전통 관상학의 공인 판정이나 성격·능력에 대한 과학적 진단이 아닙니다.
-                  결과 화면의 사진은 현재 브라우저 메모리에만 머물며 새로고침하면 사라집니다.
-                  맞는 부분만큼 낯설거나 다른 부분을 발견하는 것 역시 이 체험의 일부입니다.
-                </p>
-              </div>
+                <div class="panel">
+                  <!-- 1. 접수 -->
+                  <section class="screen is-on" id="emptyState" data-title="관상 접수" data-step="1">
+                    <div class="start-inner">
+                      <p class="kicker">상 역학원 · 관상 상담 접수</p>
+                      <h1 class="big">얼굴부터<br />재어 보겠소</h1>
+                      <p class="sub">카메라로 얼굴의 비율을 재고, 전통 관상의 틀로 하나하나 풀어 드리오.<br />고개를 조금 움직여도 괜찮아요.</p>
+                      <button class="btn primary camera-button" id="cameraButton" type="button" disabled>
+                        <span>측정 모델 준비 중</span>
+                      </button>
+                      <p class="tiny permission-note">시작하면 브라우저가 카메라 사용 권한을 물어봐요.</p>
+                      <p class="tiny privacy">얼굴 영상은 이 화면 안에서만 처리하고, 저장하거나 어디로도 보내지 않아요.</p>
+                    </div>
+                  </section>
+
+                  <!-- 2. 측정 -->
+                  <section class="screen" id="scanScreen" data-title="관상 측정" data-step="2" hidden>
+                    <div class="scan-layout">
+                      <div class="camera-frame sunk" id="cameraFrame">
+                        <video id="camera" autoplay muted playsinline aria-label="카메라 영상"></video>
+                        <canvas id="overlay" aria-hidden="true"></canvas>
+                        <div class="face-guide" aria-hidden="true">
+                          <span class="guide-mark top-left"></span>
+                          <span class="guide-mark top-right"></span>
+                          <span class="guide-mark bottom-left"></span>
+                          <span class="guide-mark bottom-right"></span>
+                        </div>
+                      </div>
+
+                      <div class="scan-side">
+                        <div class="msgbox capture-status" id="captureStatus" role="status">
+                          <span class="msg-icon" aria-hidden="true">i</span>
+                          <div>
+                            <small id="stageLabel">연속 측정</small>
+                            <p id="statusMessage">얼굴을 화면 가운데에 맞춰 주세요</p>
+                          </div>
+                        </div>
+
+                        <div class="meter capture-journey" id="captureJourney" aria-label="측정 진행">
+                          <div class="meter-head"><span>안정값 모으는 중</span><b id="meterValue">0%</b></div>
+                          <div class="bar sunk"><i id="journeyProgress"></i></div>
+                          <p class="tiny">측정 완성도 <b id="qualityValue">-</b></p>
+                        </div>
+
+                        <button class="btn primary ready-button" id="classificationReady" type="button" hidden>
+                          <span>다 재었소. 풀이 보기 ▶</span>
+                        </button>
+                        <button class="btn small" id="stopButton" type="button">그만 재기</button>
+                      </div>
+                    </div>
+                  </section>
+
+                  <!-- 2.5 풀이 준비: 실제로 쓴 숫자를 한 줄씩 보여 준다 -->
+                  <section class="screen" id="loadingScreen" data-title="관상 풀이" data-step="3" hidden>
+                    <div class="loading-inner">
+                      <h2 class="mid">잰 값을 풀어 보는 중<span class="dots" aria-hidden="true"></span></h2>
+                      <div class="bar sunk"><i id="loadBar"></i></div>
+                      <ol class="log sunk" id="loadLog"></ol>
+                      <p class="tiny">컴퓨터가 오래되어 조금 느려요.</p>
+                    </div>
+                  </section>
+
+                  <!-- 3. 풀이 -->
+                  <section class="screen result-view" id="resultView" data-title="관상 풀이" data-step="3" aria-label="관상 풀이 결과" hidden>
+                    <div class="dialog">
+                      <div class="stamp" aria-hidden="true">相<br />易學</div>
+                      <div class="tabs" role="tablist" aria-label="풀이 항목">
+                        <button class="tab is-on" type="button" role="tab" data-tab="summary" aria-selected="true">풀이 요약</button>
+                        <button class="tab" type="button" role="tab" data-tab="themes" aria-selected="false">다섯 가지 읽기</button>
+                        <button class="tab" type="button" role="tab" data-tab="frames" aria-selected="false">세 가지 틀</button>
+                        <button class="tab" type="button" role="tab" data-tab="values" aria-selected="false">잰 수치</button>
+                        <button class="tab" type="button" role="tab" data-tab="method" aria-selected="false">잰 방법</button>
+                      </div>
+
+                      <div class="tab-panels sunk-white" id="tabPanels">
+                        <!-- 요약 -->
+                        <section class="tab-panel is-on" data-panel="summary" role="tabpanel">
+                          <div class="summary-grid">
+                            <figure class="plate" id="resultFrontFigure" hidden>
+                              <div class="face-plate">
+                                <img id="resultFrontImage" alt="측정할 때의 정면 얼굴" />
+                                <svg id="resultFrontOverlay" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"></svg>
+                              </div>
+                              <figcaption>정면 도판 · 삼정, 오안, 오관</figcaption>
+                            </figure>
+
+                            <div class="summary-copy">
+                              <p class="who"><b id="receiptName">관람객</b> 님의 관상 풀이 <span class="code" id="resultCode"></span></p>
+                              <p class="persona">자, 재어 본 그대로 말씀드리겠소.</p>
+                              <div class="readout sunk-white" id="resultName"></div>
+                              <div class="result-copy" id="resultCopy"></div>
+                              <div class="result-meta">
+                                <div><span>읽는 방식</span><strong id="resultFit">-</strong></div>
+                                <div><span>경계 근처</span><strong id="resultSecondary">없음</strong></div>
+                                <div><span>측정 완성도</span><strong id="resultConfidence">-</strong></div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <section class="links-wrap" id="resultLinksWrap" hidden>
+                            <h3 class="sec-title">함께 보면 달라지는 점</h3>
+                            <div class="result-links" id="resultLinks"></div>
+                            <div class="result-tone" id="resultTone" hidden></div>
+                          </section>
+                          <p class="tagline" id="resultTagline"></p>
+                          <div class="keywords" id="resultKeywords" aria-label="틀에서 나온 낱말"></div>
+                        </section>
+
+                        <!-- 다섯 가지 읽기: 한 번에 하나씩 -->
+                        <section class="tab-panel" data-panel="themes" role="tabpanel" hidden>
+                          <div class="theme-nav" id="themeNav" role="tablist" aria-label="다섯 가지 주제"></div>
+                          <div class="result-themes" id="resultThemes"></div>
+                          <div class="theme-pager">
+                            <button class="btn small" type="button" id="themePrev">◀ 이전</button>
+                            <span id="themeCount">1 / 5</span>
+                            <button class="btn small" type="button" id="themeNext">다음 ▶</button>
+                          </div>
+                        </section>
+
+                        <!-- 세 가지 틀 -->
+                        <section class="tab-panel" data-panel="frames" role="tabpanel" hidden>
+                          <p class="panel-lead">다섯 가지 읽기의 근거가 된 전통의 세 틀이오. 각 틀에서 하나씩 나왔소.</p>
+                          <div class="result-synthesis" id="resultSynthesis"></div>
+                        </section>
+
+                        <!-- 잰 수치 -->
+                        <section class="tab-panel" data-panel="values" role="tabpanel" hidden>
+                          <h3 class="sec-title">읽기에 쓴 비율</h3>
+                          <div class="result-evidence" id="resultEvidence"></div>
+                          <h3 class="sec-title">부위별로 자세히</h3>
+                          <div class="result-analysis" id="resultAnalysis"></div>
+                        </section>
+
+                        <!-- 잰 방법 -->
+                        <section class="tab-panel" data-panel="method" role="tabpanel" hidden>
+                          <div class="result-method" id="resultMethod"></div>
+                          <p class="disclaimer">
+                            이 풀이는 카메라로 잰 얼굴의 상대 비율을 전통 관상의 말로 옮긴 것이에요.
+                            관상학의 공인 판정이나 성격, 능력, 미래에 대한 과학적 진단이 아니에요.
+                            사진은 이 브라우저 메모리에만 있다가 처음으로 돌아가면 사라져요.
+                          </p>
+                        </section>
+                      </div>
+
+                      <div class="dfoot">
+                        <button class="btn small" id="showAllTypes" type="button">다른 읽기도 보기</button>
+                        <span class="dfoot-gap"></span>
+                        <button class="btn small" id="homeButton" type="button">처음으로</button>
+                        <button class="btn primary" id="restartButton" type="button">다시 재기</button>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+
+                <div class="statusbar">
+                  <span id="statusLeft">접수 대기 중</span>
+                  <span id="stepText">1단계 / 총 3단계</span>
+                </div>
+              </section>
+
+              <!-- 작은 창: 측정 일지 -->
+              <aside class="win side" aria-label="측정 일지">
+                <div class="titlebar"><span class="ti">측정 일지</span><span class="tb" aria-hidden="true"><b>×</b></span></div>
+                <div class="sidebody">
+                  <div class="nameplate sunk-white"><small>접수번호</small><b id="receiptNo">-</b></div>
+                  <div class="timebox">
+                    <small>측정 시간</small>
+                    <div class="lcd sunk" id="lcdTimer" aria-label="경과 시간">00:00</div>
+                  </div>
+                  <ol class="steps" id="stepList">
+                    <li data-step="1">접수</li>
+                    <li data-step="2">측정</li>
+                    <li data-step="3">풀이</li>
+                  </ol>
+                  <div class="strip-heading"><span>지금 잰 비율</span><span id="sampleCount">대기</span></div>
+                  <div class="metrics sunk-white" id="metrics">
+                    <article class="metric" data-key="upperThird"><span class="metric-name">상정</span><strong>-</strong><small>%</small></article>
+                    <article class="metric" data-key="middleThird"><span class="metric-name">중정</span><strong>-</strong><small>%</small></article>
+                    <article class="metric" data-key="lowerThird"><span class="metric-name">하정</span><strong>-</strong><small>%</small></article>
+                    <article class="metric" data-key="openMeasure"><span class="metric-name">오안 여백</span><strong>-</strong><small>배</small></article>
+                    <article class="metric" data-key="eyeGap"><span class="metric-name">눈 사이</span><strong>-</strong><small>배</small></article>
+                    <article class="metric" data-key="noseWidth"><span class="metric-name">코 너비</span><strong>-</strong><small>%</small></article>
+                    <article class="metric" data-key="mouthNose"><span class="metric-name">입 / 코</span><strong>-</strong><small>배</small></article>
+                    <article class="metric" data-key="philtrumLower"><span class="metric-name">인중 / 하정</span><strong>-</strong><small>%</small></article>
+                    <article class="metric" data-key="jawCheek"><span class="metric-name">턱 / 광대</span><strong>-</strong><small>%</small></article>
+                    <article class="metric" data-key="foreheadFace"><span class="metric-name">이마 / 광대</span><strong>-</strong><small>%</small></article>
+                    <article class="metric" data-key="faceRatio"><span class="metric-name">가로 / 세로</span><strong>-</strong><small>%</small></article>
+                    <article class="metric" data-key="eyeTilt"><span class="metric-name">눈꼬리</span><strong>-</strong><small>°</small></article>
+                    <article class="metric" data-key="mouthLift"><span class="metric-name">입꼬리</span><strong>-</strong><small>%</small></article>
+                    <article class="metric" data-key="symmetry"><span class="metric-name">좌우 균형</span><strong>-</strong><small>점</small></article>
+                  </div>
+                </div>
+              </aside>
             </div>
-          </section>
-        </div>
-      </section>
 
-      <section class="measurement-strip" aria-label="실시간 측정값">
-        <div class="strip-heading">
-          <span>LIVE RATIOS</span>
-          <span id="sampleCount">WAITING</span>
+            <div class="taskbar">
+              <span class="start"><i aria-hidden="true">相</i>시작</span>
+              <span class="tbtn">관상측정.exe</span>
+              <span class="tray" id="trayClock">--:--</span>
+            </div>
+          </div>
+          <div class="scan" aria-hidden="true"></div>
         </div>
-
-        <div class="metrics" id="metrics">
-          <article class="metric" data-key="upperThird">
-            <span class="metric-name">상정 / 삼정 전체</span>
-            <strong>-</strong>
-            <small>% · 추정</small>
-          </article>
-          <article class="metric" data-key="middleThird">
-            <span class="metric-name">중정 / 삼정 전체</span>
-            <strong>-</strong>
-            <small>%</small>
-          </article>
-          <article class="metric" data-key="lowerThird">
-            <span class="metric-name">하정 / 삼정 전체</span>
-            <strong>-</strong>
-            <small>%</small>
-          </article>
-          <article class="metric" data-key="openMeasure">
-            <span class="metric-name">오안 세 여백 평균</span>
-            <strong>-</strong>
-            <small>배</small>
-          </article>
-          <article class="metric" data-key="eyeGap">
-            <span class="metric-name">눈 사이 / 평균 눈</span>
-            <strong>-</strong>
-            <small>배</small>
-          </article>
-          <article class="metric" data-key="noseWidth">
-            <span class="metric-name">코 너비 / 얼굴 너비</span>
-            <strong>-</strong>
-            <small>%</small>
-          </article>
-          <article class="metric" data-key="mouthNose">
-            <span class="metric-name">입 너비 / 코 너비</span>
-            <strong>-</strong>
-            <small>배</small>
-          </article>
-          <article class="metric" data-key="philtrumLower">
-            <span class="metric-name">인중 / 하정</span>
-            <strong>-</strong>
-            <small>%</small>
-          </article>
-          <article class="metric" data-key="jawCheek">
-            <span class="metric-name">턱 / 광대 너비</span>
-            <strong>-</strong>
-            <small>%</small>
-          </article>
-          <article class="metric" data-key="foreheadFace">
-            <span class="metric-name">이마 / 광대 너비</span>
-            <strong>-</strong>
-            <small>%</small>
-          </article>
-          <article class="metric" data-key="faceRatio">
-            <span class="metric-name">광대 너비 / 얼굴 길이</span>
-            <strong>-</strong>
-            <small>%</small>
-          </article>
-          <article class="metric" data-key="eyeTilt">
-            <span class="metric-name">눈꼬리 기울기</span>
-            <strong>-</strong>
-            <small>° · 표정 영향</small>
-          </article>
-          <article class="metric" data-key="mouthLift">
-            <span class="metric-name">입꼬리 높이</span>
-            <strong>-</strong>
-            <small>% · 표정 영향</small>
-          </article>
-          <article class="metric" data-key="symmetry">
-            <span class="metric-name">좌우 상대 균형</span>
-            <strong>-</strong>
-            <small>점</small>
-          </article>
-        </div>
-
-        <footer class="formula-note">
-          <span>수치는 실측 길이가 아닌 얼굴 내부의 상대 비율이며, 고개 각도를 보정한 값입니다.</span>
-          <span>상정은 얼굴 메시 상단을 머리카락선으로 간주한 추정값입니다. 눈꼬리·입꼬리는 표정에 민감합니다.</span>
-        </footer>
-      </section>
+        <div class="crt-foot"><span>SANG 相 CRT-17</span><i class="led" aria-hidden="true"></i></div>
+      </div>
     </main>
 
-    <dialog class="type-catalog" id="typeCatalog" aria-labelledby="catalogTitle">
-      <div class="catalog-header">
-        <div>
-          <p>THREE FRAMES, NINE READINGS</p>
-          <h2 id="catalogTitle">다른 읽기도 보기</h2>
-        </div>
-        <button class="catalog-close" id="catalogClose" type="button" aria-label="닫기">×</button>
+    <!-- 아홉 가지 읽기 목록 -->
+    <dialog class="type-catalog win" id="typeCatalog" aria-labelledby="catalogTitle">
+      <div class="titlebar">
+        <span class="ti" id="catalogTitle">다른 읽기도 보기</span>
+        <button class="tb-close" id="catalogClose" type="button" aria-label="닫기">×</button>
       </div>
-      <div class="catalog-list" id="catalogList"></div>
-      <p class="catalog-note">삼정, 오안, 오악에서 각각 하나씩 나옵니다. 모두 얼굴의 일부 비율이 만드는 시각적 인상을 설명한 전시용 분류입니다.</p>
+      <div class="catalog-body">
+        <p class="catalog-note">삼정, 오안, 오악에서 각각 하나씩 나와요. 모두 얼굴 일부의 비율이 만드는 인상을 설명한 전시용 분류예요.</p>
+        <div class="catalog-list" id="catalogList"></div>
+      </div>
     </dialog>
 
     <script>
@@ -283,14 +277,12 @@
           }
           if (button) {
             button.disabled = false;
-            button.querySelector("span:first-child").textContent = "웹 버전으로 열기";
+            button.querySelector("span").textContent = "웹 버전으로 열기";
             button.addEventListener("click", function () {
-              window.location.href = "https://taegyu831.github.io/Sang/";
+              window.location.assign("https://taegyu831.github.io/Sang/");
             });
           }
-          if (note) {
-            note.textContent = "카메라 측정은 file:// 주소에서 실행할 수 없습니다. HTTPS 웹 버전에서 시작해주세요.";
-          }
+          if (note) note.textContent = "카메라 측정은 file:// 주소에서 열 수 없어요. 버튼을 눌러 웹 버전으로 가 주세요.";
         });
       }
     </script>
