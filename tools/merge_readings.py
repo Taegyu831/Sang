@@ -82,9 +82,15 @@ def _polite(match):
     return prev + "습니다."  # 있다, 좋다, 했다
 
 
+# Nouns followed by the copula ("부자코다.") look like verb stems to the rule above.
+COPULA_FIXES = {"부자콥니다": "부자코입니다", "노력갑니다": "노력가입니다", "하납니다": "하나입니다", "야심갑니다": "야심가입니다"}
+
+
 def voice(text):
     text = text.strip().replace("\u2014", ", ").replace("\u2013", ", ")
     text = re.sub(r"(\S)다\.(?=\s|$)", _polite, text)
+    for wrong, right in COPULA_FIXES.items():
+        text = text.replace(wrong, right)
     # "...보인다 (인상 평)." -> "...보입니다 (인상 평)."
     return re.sub(r"(\S)다(?= \()", lambda m: _polite(m)[:-1], text)
 
