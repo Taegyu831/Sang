@@ -48,9 +48,6 @@ const resultFrontImage = $("#resultFrontImage");
 const resultFrontOverlay = $("#resultFrontOverlay");
 const restartButton = $("#restartButton");
 const homeButton = $("#homeButton");
-const prevPage = $("#prevPage");
-const nextPage = $("#nextPage");
-const pageDots = $("#pageDots");
 
 let FaceLandmarker;
 let DrawingUtils;
@@ -69,7 +66,6 @@ let finalMeasurement = null;
 let reading = null;
 let classificationComplete = false;
 let flowRun = 0;
-let pageIndex = 0;
 
 function clamp(value, minimum = 0, maximum = 1) { return Math.min(maximum, Math.max(minimum, value)); }
 
@@ -409,7 +405,7 @@ function goHome() {
   showScreen("start");
 }
 
-// ---------- reading: page by page ----------
+// ---------- reading: one scroll ----------
 
 function renderSummary() {
   resultName.replaceChildren(...reading.themes.map((theme) => {
@@ -450,34 +446,13 @@ function renderResult() {
   renderClosing();
 }
 
-function pageList() {
-  return [...pages.querySelectorAll(".page")];
-}
-
-function goToPage(index) {
-  const list = pageList();
-  pageIndex = Math.max(0, Math.min(list.length - 1, index));
-  list.forEach((page, i) => page.classList.toggle("is-on", i === pageIndex));
-  pageDots.replaceChildren(...list.map((_, i) => {
-    const dot = el("button");
-    dot.type = "button";
-    dot.setAttribute("aria-label", `${i + 1}장`);
-    if (i === pageIndex) dot.setAttribute("aria-current", "true");
-    dot.addEventListener("click", () => goToPage(i));
-    return dot;
-  }));
-  prevPage.disabled = pageIndex === 0;
-  nextPage.hidden = pageIndex === list.length - 1;
-  pages.scrollTop = 0;
-}
-
 const LOADING_LINES = ["관상서를 펼치는 중", "삼정과 오안을 맞춰 보는 중", "다섯 가지로 풀어 보는 중"];
 
 function showResult() {
   if (!classificationComplete) return;
   stopStream();
   renderResult();
-  goToPage(0);
+  pages.scrollTop = 0;
   const run = ++flowRun;
   showScreen("loading");
   setProgress(loadBar, 0);
@@ -548,14 +523,7 @@ cameraButton.addEventListener("click", () => {
 stopButton.addEventListener("click", goHome);
 restartButton.addEventListener("click", () => { goHome(); startCamera(); });
 homeButton.addEventListener("click", goHome);
-prevPage.addEventListener("click", () => goToPage(pageIndex - 1));
-nextPage.addEventListener("click", () => goToPage(pageIndex + 1));
 loadingScreen.addEventListener("click", () => { flowRun += 1; showScreen("result"); });
-document.addEventListener("keydown", (event) => {
-  if (resultView.hidden) return;
-  if (event.key === "ArrowRight") goToPage(pageIndex + 1);
-  if (event.key === "ArrowLeft") goToPage(pageIndex - 1);
-});
 window.addEventListener("beforeunload", stopStream);
 showScreen("start");
 
@@ -600,7 +568,6 @@ if (isLocal && SEARCH_PARAMS.get("sim") === "1") {
       feed: (landmarks, blend = {}) => handleFace(landmarks, blend, null),
       state: () => ({ done: classificationComplete, progress: capture.progress, frames: capture.frames.length, reading, finalMeasurement, status: statusMessage.textContent }),
       show: showResult,
-      page: goToPage,
     };
     window.__sangReady = true;
   });
