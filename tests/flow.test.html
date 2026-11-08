@@ -47,6 +47,10 @@ win.__sang.feed(landmarksFor(base, 40, 0, 0));
 st = win.__sang.state();
 check("a large head turn is not counted", st.frames === 0 && st.status.includes("정면"), st.status);
 
+// ----- the measuring screen is showing, as for a visitor -----
+doc.querySelector("#emptyState").hidden = true;
+doc.querySelector("#scanScreen").hidden = false;
+
 // ----- natural movement until the capture finishes by itself -----
 let frames = 0;
 while (!win.__sang.state().done && frames < 1200) {
@@ -56,6 +60,12 @@ while (!win.__sang.state().done && frames < 1200) {
 }
 st = win.__sang.state();
 check("capture finishes by itself while the head keeps moving", st.done, `${frames} fed, ${st.finalMeasurement?.frames} used`);
+await sleep(1500);
+check("finishing the capture does not open the reading by itself", !doc.querySelector("#scanScreen").hidden && doc.querySelector("#loadingScreen").hidden && doc.querySelector("#resultView").hidden);
+check("a 풀이 보기 button appears instead", !doc.querySelector("#toResultButton").hidden);
+// frames keep coming in after the capture is complete (debug recording keeps going)
+win.__sang.feed(landmarksFor(base, 5, 0, 0));
+check("the camera keeps being read after completion", doc.querySelector("#resultView").hidden);
 check("five themes and three frames are produced", st.reading?.themes.length === 5 && Object.keys(st.reading.frames.axes).length === 3);
 check("measurement carries confidence and coverage", st.finalMeasurement.confidence > 40 && st.finalMeasurement.coverage.yaw[1] - st.finalMeasurement.coverage.yaw[0] > 10, `confidence ${st.finalMeasurement.confidence}`);
 check("the average face reads as balanced on every theme", st.reading.themes.every((t) => t.state === "neutral"), st.reading.themes.map((t) => t.state).join());

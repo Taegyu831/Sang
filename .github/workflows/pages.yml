@@ -29,7 +29,9 @@ jobs:
             cp "$f" "/tmp/$(basename "$f" .js).mjs"
             node --check "/tmp/$(basename "$f" .js).mjs"
           done
-          python3 -c "import json; json.load(open('dist/content.json'))"
+          python3 -c "import json; json.load(open('dist/content.json')); json.load(open('dist/parts.json'))"
+      - name: Stamp file versions so browsers load the new files
+        run: python3 tools/stamp_version.py "${GITHUB_SHA::7}"
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload static application
