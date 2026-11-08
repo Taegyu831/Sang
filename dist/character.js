@@ -18,6 +18,10 @@ function paint(canvas, frameName) {
   });
 }
 
+const visibleWatch = new IntersectionObserver((entries) => {
+  for (const entry of entries) entry.target._master?.chatter(entry.isIntersecting);
+});
+
 /**
  * Creates one character. scale = screen pixels per sprite pixel.
  * animate: false draws a still picture (used on the many part cards).
@@ -36,6 +40,7 @@ export function createMaster({ scale = 4, pose = "idle", animate = true } = {}) 
   let talkUntil = 0;
   let talkTimer = 0;
   let blinkTimer = 0;
+  let chatterTimer = 0;
 
   const frameName = () => {
     if (mouthOpen) return base === "point" ? "pointTalk" : "talk";
@@ -71,11 +76,26 @@ export function createMaster({ scale = 4, pose = "idle", animate = true } = {}) 
         render();
       }, 130);
     },
-    stop() { window.clearTimeout(blinkTimer); window.clearInterval(talkTimer); },
+    stop() { window.clearTimeout(blinkTimer); window.clearInterval(talkTimer); window.clearTimeout(chatterTimer); },
+    // Keep talking the whole time he is on screen: bursts of mouth movement
+    // with short breaths in between, so it reads as speech, not a loop.
+    chatter(on) {
+      window.clearTimeout(chatterTimer);
+      if (!on || reducedMotion()) return;
+      const burst = () => {
+        const ms = 1300 + Math.random() * 1500;
+        api.talk(ms);
+        chatterTimer = window.setTimeout(burst, ms + 350 + Math.random() * 500);
+      };
+      burst();
+    },
   };
 
   render();
   if (animate && !reducedMotion()) scheduleBlink();
+  // Talk only while visible, to keep many characters cheap.
+  if (animate) visibleWatch.observe(canvas);
+  canvas._master = api;
   return api;
 }
 

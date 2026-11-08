@@ -491,6 +491,55 @@ function partPicture(shot, draw) {
   return figure;
 }
 
+// ---------- reading text with emphasis ----------
+
+// Splits text by a regex and wraps the matches in <b class=...>; plain text otherwise.
+function rich(tag, className, text, pattern, markClass) {
+  const node = el(tag, className);
+  let last = 0;
+  for (const m of text.matchAll(pattern)) {
+    if (m.index > last) node.append(document.createTextNode(text.slice(last, m.index)));
+    node.append(el("b", markClass, m[0]));
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) node.append(document.createTextNode(text.slice(last)));
+  return node;
+}
+
+// The summary bubble: the closing "전체적으로 ..." sentence in bold red, the
+// "다만 / 한편" counter-view sentences one shade lighter.
+function summaryBubble(text) {
+  const p = el("p", "part-summary bubble");
+  const sentences = text.match(/[^.]+\.\s*/g) ?? [text];
+  for (const sentence of sentences) {
+    const trimmed = sentence.trim();
+    if (/^전체적으로/.test(trimmed)) p.append(el("span", "sum-key", sentence));
+    else if (/^(다만|한편)/.test(trimmed)) p.append(el("span", "sum-alt", sentence));
+    else p.append(document.createTextNode(sentence));
+  }
+  return p;
+}
+
+// "내 얼굴": the measured sentence with its numbers highlighted, then "보통은 ..." in grey.
+const NUMBER = /\d+분의 1|\d+(?:\.\d+)?\s*(?:%|배|개|도|점)?/g;
+function mineRow(text) {
+  const row = el("div", "part-row is-mine");
+  const cut = text.indexOf("보통");
+  const measured = cut > 0 ? text.slice(0, cut) : text;
+  const p = rich("p", "", measured, NUMBER, "num");
+  if (cut > 0) p.append(el("span", "typical", text.slice(cut)));
+  row.append(el("span", "part-label", "내 얼굴"), p);
+  return row;
+}
+
+const DOMAIN_CLASS = {
+  재물: "is-money",
+  직업: "is-work", 명예: "is-work", 중년운: "is-work", 부하운: "is-work",
+  대인관계: "is-people", 형제운: "is-people", 부모운: "is-people", 가정: "is-people",
+  결혼: "is-love", 연애: "is-love", 자녀운: "is-love",
+  초년운: "is-time", 말년운: "is-time", 총운: "is-time", 수명: "is-time", 건강: "is-time",
+};
+
 // Readings grouped by what they are about (성격, 재물 ...), in the order the
 // most common reading of each group comes.
 function readingGroups(readings) {
@@ -505,7 +554,7 @@ function readingGroups(readings) {
     const row = el("div", "rd");
     const body = el("div", "rd-text");
     body.append(...texts.map((t) => el("p", "", t)));
-    row.append(el("span", "rd-tag", domain), body);
+    row.append(el("span", `rd-tag ${DOMAIN_CLASS[domain] ?? ""}`.trim(), domain), body);
     wrap.append(row);
   }
   return wrap;
@@ -527,13 +576,11 @@ function partCard(part, shot, compact) {
   if (part.summary) {
     // The summary is the master speaking: a small still portrait and a bubble.
     const row = el("div", "master-row is-card");
-    const master = createMaster({ scale: compact ? 2 : 3, animate: false, pose: compact ? "idle" : "point" });
-    row.append(master.node, el("p", "part-summary bubble", part.summary));
-    row._master = master;
-    speakOnView.observe(row);
+    const master = createMaster({ scale: compact ? 2 : 3, pose: compact ? "idle" : "point" });
+    row.append(master.node, summaryBubble(part.summary));
     body.append(row);
   }
-  body.append(labelRow("내 얼굴", part.mine, "is-mine"));
+  body.append(mineRow(part.mine));
   if (part.about) body.append(labelRow("이 부위는", part.about, "is-about"));
   if (part.readings.length) {
     // Readings come sorted by how many sources gave them.
@@ -554,7 +601,15 @@ function renderParts(shot) {
     return item;
   }));
   topCards.replaceChildren(...parts.top.map((part) => partCard(part, shot, false)));
-  synthesisBox.replaceChildren(...synthesize(parts.top, partsContent).map((line) => el("p", "", line)));
+  // Part names in red, life areas in gold.
+  const names = parts.top.map((p) => p.part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const highlight = new RegExp(names.join("|"), "g");
+  const areas = /재물 이야기|일과 사회적 자리|사람과의 인연|연애와 결혼|인생의 시기|일과 사회|성격과 기질/g;
+  synthesisBox.replaceChildren(...synthesize(parts.top, partsContent).map((line, i) => {
+    const p = rich("p", "", line, i === 0 ? /$^/g : highlight, "hl");
+    if (i > 1) return rich("p", "", line, areas, "hl-domain");
+    return p;
+  }));
   restCards.replaceChildren(...parts.rest.map((part) => partCard(part, shot, true)));
 }
 
