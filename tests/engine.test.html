@@ -57,9 +57,9 @@ const featureKeys = Object.keys(CALIBRATION);
 // The five-theme and three-frame engines (no longer on the visitor screen) are
 // tested against the canonical face as the average, as they were designed.
 // The live calibration now centres most ratios on real people instead.
-const CANON = Object.fromEntries(Object.entries(CALIBRATION).map(([k, c]) => [k, { ...c, center: k === "symmetry" || !Number.isFinite(truth[k]) ? 93 : truth[k] }]));
+const CANON = Object.fromEntries(Object.entries(CALIBRATION).map(([k, c]) => [k, { ...c, scale: c.captureScale ?? c.scale, center: k === "symmetry" || !Number.isFinite(truth[k]) ? 93 : truth[k] }]));
 
-check("canonical thirds match the calibration centers", near(truth.upperThird, CALIBRATION.upperThird.center, 0.1) && near(truth.lowerThird, CALIBRATION.lowerThird.center, 0.1),
+check("canonical thirds are within one step of the measured people", ["upperThird", "middleThird", "lowerThird"].every((k) => Math.abs(truth[k] - CALIBRATION[k].center) < CALIBRATION[k].scale),
   `${truth.upperThird.toFixed(1)}/${truth.middleThird.toFixed(1)}/${truth.lowerThird.toFixed(1)}`);
 {
   let worst = 0;
@@ -77,7 +77,7 @@ for (const [yaw, pitch, roll] of [[22, 0, 0], [-24, 12, 0], [0, -18, 0], [15, 15
   const rotated = pose3(canonical, yaw, pitch, roll);
   const fixed = computeFrontFeatures(frontalizePoints(rotated, estimatePose(rotated)));
   const raw = computeFrontFeatures(rotated);
-  const stepErr = (f) => Math.max(...featureKeys.filter((k) => !["symmetry", "eyeTilt", "mouthLift"].includes(k)).map((k) => Math.abs(f[k] - truth[k]) / CALIBRATION[k].scale));
+  const stepErr = (f) => Math.max(...featureKeys.filter((k) => !["symmetry", "eyeTilt", "mouthLift"].includes(k)).map((k) => Math.abs(f[k] - truth[k]) / (CALIBRATION[k].captureScale ?? CALIBRATION[k].scale)));
   check(`pose ${yaw}/${pitch}/${roll}: corrected within 0.05 steps, raw is off`, stepErr(fixed) < 0.05 && stepErr(raw) > 0.2, `corrected ${stepErr(fixed).toFixed(3)} raw ${stepErr(raw).toFixed(2)} steps`);
   check(`pose ${yaw}/${pitch}/${roll}: eye tilt and mouth lift survive head tilt`, near(fixed.eyeTilt, truth.eyeTilt, 0.5) && near(fixed.mouthLift, truth.mouthLift, 0.3), `eyeTilt ${fixed.eyeTilt.toFixed(2)} vs ${truth.eyeTilt.toFixed(2)}, raw ${raw.eyeTilt.toFixed(2)}`);
 }

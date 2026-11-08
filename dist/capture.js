@@ -122,7 +122,8 @@ export class StableCapture {
     const b = this.estimate(this.frames.slice(half));
     let worst = 0;
     for (const key of this.options.stabilityKeys) {
-      const scale = calibration?.[key]?.scale;
+      // Stability uses the wider capture steps, not the narrow reading steps.
+      const scale = calibration?.[key]?.captureScale ?? calibration?.[key]?.scale;
       if (!scale || !Number.isFinite(a[key]) || !Number.isFinite(b[key])) continue;
       worst = Math.max(worst, Math.abs(a[key] - b[key]) / scale);
     }
