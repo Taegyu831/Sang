@@ -64,12 +64,13 @@ check("the average face reads as balanced on every theme", st.reading.themes.eve
 win.__sang.show();
 await sleep(200);
 const text = (sel) => doc.querySelector(sel)?.textContent ?? "";
-check("summary lists the five themes as closing lines", doc.querySelectorAll("#resultName .axis-line").length === 5);
+check("an overall reading is written for the top three", doc.querySelectorAll("#synthesis p").length >= 2);
+check("every card starts with a summary", [...doc.querySelectorAll(".part-card")].every((c) => (c.querySelector(".part-summary")?.textContent ?? "").length > 20));
 check("three most distinctive parts first", doc.querySelectorAll("#topCards .part-card").length === 3 && doc.querySelectorAll("#topList li").length === 3);
 check("every measured part has a card", doc.querySelectorAll("#topCards .part-card, #restCards .part-card").length >= 20, `${doc.querySelectorAll(".part-card").length} cards`);
 check("each card says what was measured on this face", [...doc.querySelectorAll(".part-card")].every((c) => /\d/.test(c.querySelector(".part-row.is-mine")?.textContent ?? "")));
 check("closing line is filled", text("#resultClosing").length > 10);
-check("no placeholder text in the summary", !text("#resultName").includes("undefined") && !text("#resultName").includes("NaN"));
+check("no placeholder text in the overall reading", !/undefined|NaN|\{/.test(text("#synthesis")));
 check("no NaN or undefined anywhere in the reading", !/NaN|undefined/.test(doc.querySelector("#resultView").textContent));
 check("no em dash in the reading", !/[\u2014\u2013]/.test(doc.querySelector("#resultView").textContent));
 check("no unfilled tokens in the cards", !/\{[a-z]/.test(doc.querySelector("#resultView").textContent));

@@ -105,10 +105,40 @@ export function readPart(card, values, calibration = CALIBRATION, rules = PART_R
     name: `${dir === "middle" ? "" : strengthWord(z, rules)}${name}`,
     mine: [fillTokens(card.mine, key, values, calibration), fillTokens(card.typical, key, values, calibration)].filter(Boolean).join(" "),
     readings: readings.map((r) => ({ text: r.text, domain: r.domain ?? "" })),
-    so: slot(card.so, card, key, dir) ?? "",
+    summary: slot(card.summary, card, key, dir) ?? "",
+    gist: slot(card.gist, card, key, dir) ?? "",
     about: card.about ?? "",
     draw: card.draw ?? [],
   };
+}
+
+/**
+ * A rough overall reading without any API: which life areas the readings of
+ * the three most distinctive parts share most (재물, 일, 사람 ...), plus each
+ * part's one-line gist. Texts live in parts.json under "synthesis".
+ */
+export function synthesize(top, partsContent, rules = PART_RULES) {
+  const s = partsContent.synthesis;
+  if (!s || !top.length) return [];
+  const groupOf = {};
+  for (const [group, domains] of Object.entries(s.groups)) for (const d of domains) groupOf[d] = group;
+  const counts = {};
+  for (const part of top) for (const r of part.readings) {
+    const group = groupOf[r.domain];
+    if (group) counts[group] = (counts[group] ?? 0) + 1;
+  }
+  const ranked = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  const names = top.map((p) => p.part);
+  const gists = top.filter((p) => p.gist).map((p) => `${p.part}에서는 ${p.gist}`);
+  const lines = [`이 얼굴에서 가장 눈에 띄는 곳은 ${names.join(", ")}입니다.`];
+  // Each gist ends in a noun ("...두드러지는 얼굴"), so they read as one sentence.
+  if (gists.length) lines.push(`${gists.join(", ")}로 읽힙니다.`);
+  if (top.every((p) => Math.abs(p.z) < rules.clearAt)) lines.push(s.balanced);
+  else if (ranked.length) {
+    lines.push(s.lines[ranked[0][0]]);
+    if (ranked[1] && ranked[1][1] >= ranked[0][1] * 0.6) lines.push(s.second.replace("{group}", s.secondNames[ranked[1][0]]));
+  } else lines.push(s.lines["성격"]);
+  return lines;
 }
 
 /** All cards for a face, most distinctive first. */

@@ -4,7 +4,7 @@ import { CALIBRATION } from "./calibration.js";
 import { StableCapture, GUIDANCE } from "./capture.js";
 import { interpret } from "./interpret.js";
 import { applyPoseResidual } from "./residual.js";
-import { readParts } from "./parts.js";
+import { readParts, synthesize } from "./parts.js";
 
 const MEDIAPIPE_VERSION = "1.1.1";
 const MEDIAPIPE_MODULE = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VERSION}/vision_bundle.mjs`;
@@ -39,12 +39,10 @@ const journeyProgress = $("#journeyProgress");
 const loadBar = $("#loadBar");
 const loadLine = $("#loadLine");
 const pages = $("#pages");
-const resultName = $("#resultName");
 const topList = $("#topList");
 const topCards = $("#topCards");
 const restCards = $("#restCards");
-const resultLinksWrap = $("#resultLinksWrap");
-const resultLinks = $("#resultLinks");
+const synthesisBox = $("#synthesis");
 const resultClosing = $("#resultClosing");
 const resultFrontFigure = $("#resultFrontFigure");
 const resultFrontImage = $("#resultFrontImage");
@@ -418,15 +416,6 @@ function goHome() {
 
 // ---------- reading: one scroll ----------
 
-// Five themes, now a few closing lines ("종합").
-function renderSummary() {
-  resultName.replaceChildren(...reading.themes.map((theme) => {
-    const item = el("li", `axis-line${theme.soft ? " is-soft" : ""}`);
-    item.append(el("small", "", theme.short), el("b", "", theme.label));
-    return item;
-  }));
-}
-
 // A small crop of the visitor's own face with only this part's lines drawn.
 // The portrait is 640 x 800 (4:5), so it is drawn 80 units wide and 100 high
 // and every point's x is scaled by 0.8: the crop keeps the real proportions.
@@ -501,26 +490,18 @@ function partCard(part, shot, compact) {
   const body = el("div", "part-body");
   const head = el("div", "part-head");
   head.append(el("small", "", part.part), el("h3", "", part.name));
-  body.append(head, labelRow("내 얼굴", part.mine, "is-mine"));
+  body.append(head);
+  // The conclusion first, then what it was built from.
+  if (part.summary) body.append(el("p", "part-summary", part.summary));
+  body.append(labelRow("내 얼굴", part.mine, "is-mine"));
   if (part.about) body.append(labelRow("이 부위는", part.about, "is-about"));
-  // Readings come sorted by how many sources gave them; the most common show
-  // first and the rest fold under "더 보기".
-  const shown = compact ? 2 : 4;
   if (part.readings.length) {
-    body.append(el("p", "part-kicker", "관상 풀이"));
-    body.append(readingGroups(part.readings.slice(0, shown)));
-    const more = part.readings.slice(shown);
-    if (more.length) {
-      const details = el("details", "part-more");
-      details.append(el("summary", "", `다른 풀이 ${more.length}개 더 보기`), readingGroups(more));
-      body.append(details);
-    }
-  } else {
-    body.append(el("p", "part-empty", part.dir === "middle"
-      ? "보통 범위라 어느 한쪽 풀이가 두드러지지 않습니다."
-      : "이 모양의 풀이는 아직 모으는 중입니다."));
+    // Readings come sorted by how many sources gave them.
+    const details = el("details", "part-more");
+    details.open = !compact;
+    details.append(el("summary", "", `풀이 근거 ${part.readings.length}개`), readingGroups(part.readings));
+    body.append(details);
   }
-  if (part.so) body.append(el("p", "part-so", part.so));
   card.append(partPicture(shot, part.draw), body);
   return card;
 }
@@ -533,12 +514,11 @@ function renderParts(shot) {
     return item;
   }));
   topCards.replaceChildren(...parts.top.map((part) => partCard(part, shot, false)));
+  synthesisBox.replaceChildren(...synthesize(parts.top, partsContent).map((line) => el("p", "", line)));
   restCards.replaceChildren(...parts.rest.map((part) => partCard(part, shot, true)));
 }
 
 function renderClosing() {
-  resultLinks.replaceChildren(...reading.links.map((link) => el("p", "", link.text)));
-  resultLinksWrap.hidden = reading.links.length === 0;
   resultClosing.textContent = "관상에서 이렇게들 풀이해 왔다는 이야기이며, 성격이나 미래를 정해 주지는 않습니다. 풀이가 여러 개면 해설마다 다르게 본다는 뜻입니다. 사진은 처음으로 돌아가면 지워집니다.";
 }
 
@@ -551,7 +531,6 @@ function renderResult() {
     renderFrontAnnotation(resultFrontOverlay, shot.points);
   }
   renderParts(shot);
-  renderSummary();
   renderClosing();
 }
 
