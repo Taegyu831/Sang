@@ -35,6 +35,7 @@ const resultView = $("#resultView");
 const cameraButton = $("#cameraButton");
 const permissionNote = $(".permission-note");
 const stopButton = $("#stopButton");
+const toResultButton = $("#toResultButton");
 const statusMessage = $("#statusMessage");
 const journeyProgress = $("#journeyProgress");
 const loadBar = $("#loadBar");
@@ -150,6 +151,7 @@ function resetClassification() {
   finalMeasurement = null;
   reading = null;
   classificationComplete = false;
+  toResultButton.hidden = true;
   setProgress(journeyProgress, 0);
 }
 
@@ -376,10 +378,11 @@ function completeClassification() {
   reading = interpret(finalMeasurement, content);
   classificationComplete = true;
   setProgress(journeyProgress, 1);
-  statusMessage.textContent = "다 쟀습니다!";
-  // Visitors go straight on to the reading; no extra button to find.
-  const run = flowRun;
-  window.setTimeout(() => { if (run === flowRun && !scanScreen.hidden) showResult(); }, 900);
+  statusMessage.textContent = "다 쟀습니다! 준비되시면 아래 버튼을 눌러 주세요";
+  // The camera keeps running (and ?debug=1 keeps recording) until the visitor
+  // chooses to see the reading.
+  toResultButton.hidden = false;
+  toResultButton.focus({ preventScroll: true });
 }
 
 async function predict() {
@@ -711,6 +714,7 @@ cameraButton.addEventListener("click", () => {
   else if (action === "camera") startCamera();
 });
 stopButton.addEventListener("click", goHome);
+toResultButton.addEventListener("click", showResult);
 restartButton.addEventListener("click", () => { goHome(); startCamera(); });
 homeButton.addEventListener("click", goHome);
 loadingScreen.addEventListener("click", () => { flowRun += 1; showScreen("result"); });
