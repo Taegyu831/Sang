@@ -157,11 +157,14 @@ img { display: block; max-width: 100%; }
 .part-card.is-high .part-head h3 { color: var(--pos); }
 .part-card.is-low .part-head h3 { color: var(--neg); }
 .part-mine { font-size: 1.02em; color: #222; background: #f3efe4; padding: 0.5em 0.7em; }
+.part-about { font-size: 0.88em; color: #555; }
 .part-kicker { font-family: var(--pixel); font-size: 0.8em; color: var(--navy); -webkit-font-smoothing: none; }
 .part-readings { margin: 0; padding-left: 1.1em; display: grid; gap: 0.35em; }
 .part-readings li { line-height: 1.6; }
 .part-readings li b { font-weight: 700; font-size: 0.8em; color: #555; margin-right: 0.5em; }
 .part-so { font-weight: 700; font-size: 1.05em; padding-top: 0.4em; border-top: 1px dashed #bbb; }
+.part-more summary { cursor: pointer; font-family: var(--pixel); font-size: 0.8em; color: var(--navy); -webkit-font-smoothing: none; }
+.part-more[open] summary { margin-bottom: 0.4em; }
 .part-empty { font-size: 0.85em; color: #888; }
 .part-cards.is-compact .part-card { grid-template-columns: minmax(96px, 18%) minmax(0, 1fr); font-size: 0.9em; }
 

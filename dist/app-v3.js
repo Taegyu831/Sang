@@ -325,7 +325,7 @@ function handleFace(landmarks, blend, matrixData) {
       lastShotAt = performance.now();
     }
     setProgress(journeyProgress, capture.progress);
-    statusMessage.textContent = "좋소. 그대로 편하게 계시오";
+    statusMessage.textContent = "좋습니다. 그대로 편하게 계세요";
     if (capture.isDone(CALIBRATION)) completeClassification();
   } else if (verdict.reason && GUIDANCE[verdict.reason]) {
     statusMessage.textContent = GUIDANCE[verdict.reason];
@@ -346,7 +346,7 @@ function completeClassification() {
   reading = interpret(finalMeasurement, content);
   classificationComplete = true;
   setProgress(journeyProgress, 1);
-  statusMessage.textContent = "다 재었소!";
+  statusMessage.textContent = "다 쟀습니다!";
   // Visitors go straight on to the reading; no extra button to find.
   const run = flowRun;
   window.setTimeout(() => { if (run === flowRun && !scanScreen.hidden) showResult(); }, 900);
@@ -396,7 +396,7 @@ async function startCamera() {
     lastVideoTime = -1;
     resetClassification();
     showScreen("scan");
-    statusMessage.textContent = "편하게 정면을 보고 입을 다물어 주시오";
+    statusMessage.textContent = "편하게 정면을 보고 입을 다물어 주세요";
     setCameraButton(CAMERA_LABEL, "camera");
     predict();
   } catch (error) {
@@ -470,19 +470,34 @@ function partCard(part, shot, compact) {
   const head = el("div", "part-head");
   head.append(el("small", "", part.part), el("h3", "", part.name));
   body.append(head, el("p", "part-mine", part.mine));
-  const readings = compact ? part.readings.slice(0, 2) : part.readings;
-  if (readings.length) {
-    body.append(el("p", "part-kicker", "관상에서는"));
+  if (part.about) body.append(el("p", "part-about", part.about));
+  // Readings come sorted by how many sources gave them; the most common show
+  // first and the rest fold under "더 보기".
+  const shown = compact ? 2 : 5;
+  const readingItem = (r) => {
+    const item = el("li");
+    if (r.domain) item.append(el("b", "", r.domain));
+    item.append(document.createTextNode(r.text));
+    return item;
+  };
+  if (part.readings.length) {
+    body.append(el("p", "part-kicker", "관상에서는 이렇게 봅니다"));
     const list = el("ul", "part-readings");
-    for (const r of readings) {
-      const item = el("li");
-      if (r.domain) item.append(el("b", "", r.domain));
-      item.append(document.createTextNode(r.text));
-      list.append(item);
-    }
+    list.append(...part.readings.slice(0, shown).map(readingItem));
     body.append(list);
+    const more = part.readings.slice(shown);
+    if (more.length) {
+      const details = el("details", "part-more");
+      details.append(el("summary", "", `다르게 보는 풀이 ${more.length}개 더 보기`));
+      const moreList = el("ul", "part-readings");
+      moreList.append(...more.map(readingItem));
+      details.append(moreList);
+      body.append(details);
+    }
   } else {
-    body.append(el("p", "part-empty", "이 모양의 풀이는 아직 모으는 중이오."));
+    body.append(el("p", "part-empty", part.dir === "middle"
+      ? "보통 범위라 어느 한쪽 풀이가 두드러지지 않습니다."
+      : "이 모양의 풀이는 아직 모으는 중입니다."));
   }
   if (part.so) body.append(el("p", "part-so", part.so));
   card.append(partPicture(shot, part.draw), body);
@@ -503,7 +518,7 @@ function renderParts(shot) {
 function renderClosing() {
   resultLinks.replaceChildren(...reading.links.map((link) => el("p", "", link.text)));
   resultLinksWrap.hidden = reading.links.length === 0;
-  resultClosing.textContent = "관상에서 이렇게들 풀이해 왔다는 이야기이며, 성격이나 미래를 정해 주지 않소. 풀이가 여럿이면 해설마다 다르게 본다는 뜻이오. 사진은 처음으로 돌아가면 지워져요.";
+  resultClosing.textContent = "관상에서 이렇게들 풀이해 왔다는 이야기이며, 성격이나 미래를 정해 주지는 않습니다. 풀이가 여러 개면 해설마다 다르게 본다는 뜻입니다. 사진은 처음으로 돌아가면 지워집니다.";
 }
 
 function renderResult() {

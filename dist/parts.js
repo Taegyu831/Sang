@@ -106,6 +106,7 @@ export function readPart(card, values, calibration = CALIBRATION, rules = PART_R
     mine: [fillTokens(card.mine, key, values, calibration), fillTokens(card.typical, key, values, calibration)].filter(Boolean).join(" "),
     readings: readings.map((r) => ({ text: r.text, domain: r.domain ?? "" })),
     so: slot(card.so, card, key, dir) ?? "",
+    about: card.about ?? "",
     draw: card.draw ?? [],
   };
 }
