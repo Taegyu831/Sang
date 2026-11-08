@@ -1,0 +1,28 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>master preview</title>
+<style>
+body{margin:0;padding:24px;background:#fffdf6;font-family:"Apple SD Gothic Neo",sans-serif;display:flex;gap:28px;flex-wrap:wrap;align-items:flex-end}
+figure{margin:0;text-align:center;font-size:13px;color:#555}
+canvas{image-rendering:pixelated;width:192px;height:auto;background:#e9e2d0;display:block}
+.small canvas{width:64px}
+</style>
+<div id="out"></div>
+<script type="module">
+import { MASTER } from "../dist/master.js";
+function draw(name, scale) {
+  const c = document.createElement("canvas");
+  c.width = MASTER.w; c.height = MASTER.h;
+  const x = c.getContext("2d");
+  MASTER.frames[name].forEach((row, j) => [...row].forEach((ch, i) => {
+    if (ch === ".") return;
+    x.fillStyle = MASTER.palette[ch]; x.fillRect(i, j, 1, 1);
+  }));
+  const f = document.createElement("figure");
+  if (scale === "small") f.className = "small";
+  f.append(c, Object.assign(document.createElement("figcaption"), { textContent: name }));
+  document.body.append(f);
+}
+for (const n of Object.keys(MASTER.frames)) draw(n);
+draw("idle", "small"); draw("point", "small");
+</script>

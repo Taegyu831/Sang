@@ -5,6 +5,7 @@ import { StableCapture, GUIDANCE } from "./capture.js";
 import { interpret } from "./interpret.js";
 import { applyPoseResidual } from "./residual.js";
 import { readParts, synthesize } from "./parts.js";
+import { createMaster, mountMaster, say } from "./character.js";
 
 const MEDIAPIPE_VERSION = "1.1.1";
 const MEDIAPIPE_MODULE = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VERSION}/vision_bundle.mjs`;
@@ -70,6 +71,36 @@ let reading = null;
 let classificationComplete = false;
 let flowRun = 0;
 
+// ---------- the 역학원 master (pixel character with a speech bubble) ----------
+
+const masters = {};
+for (const row of document.querySelectorAll("[data-master]")) {
+  masters[row.dataset.master] = mountMaster(row, { scale: Number(row.dataset.scale) || 4, pose: row.dataset.pose || "idle" });
+}
+const GREETINGS = {
+  start: ["#startSay", "어서 오세요. 카메라 앞에 편히 앉으시면, 제가 얼굴을 하나하나 풀어 드리겠습니다."],
+  result: ["#resultSay", "자, 얼굴을 다 읽었습니다. 정리해 드리겠습니다."],
+};
+
+function greet(name) {
+  const entry = GREETINGS[name];
+  if (entry && masters[name]) say(masters[name], $(entry[0]), entry[1]);
+}
+
+// The measuring guidance changes often; the master just moves his mouth.
+new MutationObserver(() => masters.scan?.talk(500)).observe($("#statusMessage"), { childList: true, characterData: true, subtree: true });
+
+// Masters further down the reading speak once when scrolled into view.
+const speakOnView = new IntersectionObserver((entries) => {
+  for (const entry of entries) {
+    if (!entry.isIntersecting) continue;
+    speakOnView.unobserve(entry.target);
+    const master = entry.target._master;
+    const text = entry.target.querySelector(".bubble p, .part-summary");
+    if (master && text) say(master, text, text.textContent, { speed: 14 });
+  }
+}, { threshold: 0.6 });
+
 function clamp(value, minimum = 0, maximum = 1) { return Math.min(maximum, Math.max(minimum, value)); }
 
 function el(tag, className, text) {
@@ -94,6 +125,7 @@ const SCREENS = { start: startScreen, scan: scanScreen, loading: loadingScreen, 
 function showScreen(name) {
   for (const [key, node] of Object.entries(SCREENS)) node.hidden = key !== name;
   document.body.dataset.screen = name;
+  greet(name);
 }
 
 function setCameraButton(label, action, disabled = false) {
@@ -492,7 +524,15 @@ function partCard(part, shot, compact) {
   head.append(el("small", "", part.part), el("h3", "", part.name));
   body.append(head);
   // The conclusion first, then what it was built from.
-  if (part.summary) body.append(el("p", "part-summary", part.summary));
+  if (part.summary) {
+    // The summary is the master speaking: a small still portrait and a bubble.
+    const row = el("div", "master-row is-card");
+    const master = createMaster({ scale: compact ? 2 : 3, animate: false, pose: compact ? "idle" : "point" });
+    row.append(master.node, el("p", "part-summary bubble", part.summary));
+    row._master = master;
+    speakOnView.observe(row);
+    body.append(row);
+  }
   body.append(labelRow("내 얼굴", part.mine, "is-mine"));
   if (part.about) body.append(labelRow("이 부위는", part.about, "is-about"));
   if (part.readings.length) {
@@ -519,6 +559,9 @@ function renderParts(shot) {
 }
 
 function renderClosing() {
+  const closingRow = document.querySelector('[data-master="closing"]');
+  closingRow._master = masters.closing;
+  speakOnView.observe(closingRow);
   resultClosing.textContent = "관상에서 이렇게들 풀이해 왔다는 이야기이며, 성격이나 미래를 정해 주지는 않습니다. 풀이가 여러 개면 해설마다 다르게 본다는 뜻입니다. 사진은 처음으로 돌아가면 지워집니다.";
 }
 
@@ -534,7 +577,7 @@ function renderResult() {
   renderClosing();
 }
 
-const LOADING_LINES = ["관상서를 펼치는 중", "삼정과 오안을 맞춰 보는 중", "다섯 가지로 풀어 보는 중"];
+const LOADING_LINES = ["관상서를 펼치는 중입니다", "삼정과 오안을 맞춰 보는 중입니다", "부위마다 풀이를 모으는 중입니다"];
 
 function showResult() {
   if (!classificationComplete) return;
@@ -549,7 +592,7 @@ function showResult() {
   LOADING_LINES.forEach((line, index) => {
     window.setTimeout(() => {
       if (run !== flowRun) return;
-      loadLine.textContent = line;
+      say(masters.loading, loadLine, line);
       setProgress(loadBar, (index + 1) / LOADING_LINES.length);
     }, stepMs * index);
   });

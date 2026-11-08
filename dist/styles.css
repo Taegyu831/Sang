@@ -178,12 +178,32 @@ img { display: block; max-width: 100%; }
 .part-cards.is-compact .part-card { grid-template-columns: minmax(120px, 22%) minmax(0, 1fr); }
 .part-cards.is-compact .part-body { font-size: 0.88em; }
 
+/* ---------- 역학원 선생님 (픽셀 캐릭터와 말풍선) ---------- */
+.master { display: block; flex: none; height: auto; image-rendering: pixelated; image-rendering: crisp-edges; }
+.master-row { display: flex; align-items: flex-end; gap: clamp(8px, 1.2vw, 16px); text-align: left; }
+.bubble { position: relative; flex: 1 1 auto; min-width: 0; margin-bottom: 0.6em; padding: 0.7em 1em; background: #fff; border: 3px solid #2a1c14; box-shadow: 4px 4px 0 rgba(42, 28, 20, 0.18); line-height: 1.6; }
+/* pixel tail pointing at the master */
+.bubble::before, .bubble::after { content: ""; position: absolute; left: -12px; bottom: 10px; width: 12px; height: 12px; background: #2a1c14; clip-path: polygon(100% 0, 0 100%, 100% 100%); }
+.bubble::after { left: -6px; bottom: 13px; width: 8px; height: 8px; background: #fff; }
+.master-row.is-big { max-width: 34em; }
+.master-row.is-big .bubble { font-size: 1.05em; }
+.master-row.is-scan { width: min(100%, 760px); }
+.master-row.is-scan .bubble { padding: 0.5em 0.9em; }
+.master-row.is-scan .scan-msg { text-align: left; }
+.master-row.is-card { align-items: flex-end; }
+.master-row.is-card .master { margin-bottom: 2px; }
+.part-summary.bubble { padding: 0.7em 0.9em; background: #fff8e1; border: 2px solid #2a1c14; border-left-width: 2px; font-size: 1.02em; line-height: 1.75; }
+.part-summary.bubble::after { background: #fff8e1; left: -5px; }
+.part-summary.bubble::before { left: -11px; }
+.loading .master-row { width: 100%; }
+
 /* ---------- 휴대폰 ---------- */
 @media (max-width: 760px) {
   :root { --fs: 17px; }
   .panel { padding: 14px; }
   .overview { grid-template-columns: 1fr; }
   .part-card, .part-cards.is-compact .part-card { grid-template-columns: 1fr; }
+  .master-row.is-big .master { width: 112px !important; }
   .part-pic { position: static; }
   .part-row, .rd { grid-template-columns: 1fr; gap: 0.25em; }
   .plate { width: min(60%, 230px); justify-self: center; }
