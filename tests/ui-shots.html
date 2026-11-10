@@ -19,6 +19,16 @@ app.addEventListener("load", () => setTimeout(() => {
     d.querySelector("#scanScreen").hidden = false;
     d.querySelector("#camera").poster = "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720"><rect width="1280" height="720" fill="#2a2a2a"/><ellipse cx="640" cy="360" rx="150" ry="200" fill="#8a7a6a"/></svg>');
     d.querySelector("#journeyProgress").style.setProperty("--p", "62%");
+    // The turn guide mid-way: front done, left half done, head turning left.
+    const g = d.querySelector("#turnGuide");
+    g.hidden = false;
+    g.querySelector('[data-zone="front"]').classList.add("is-done");
+    g.querySelector('[data-zone="front"] i').style.width = "100%";
+    g.querySelector('[data-zone="left"]').classList.add("is-next");
+    g.querySelector('[data-zone="left"] i').style.width = "50%";
+    d.querySelector("#tgGhost").style.setProperty("--to", "25%");
+    d.querySelector("#tgHead").style.setProperty("--x", "32%");
+    d.querySelector("#statusMessage").textContent = "이제 고개를 살짝 ◀ 쪽으로 돌려 보세요";
     return;
   }
   d.querySelector("#loadingScreen").click();

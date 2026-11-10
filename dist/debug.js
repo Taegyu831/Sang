@@ -142,7 +142,7 @@ function simulateRuns(frames) {
     for (let i = start; i < frames.length; i += 1) {
       const f = frames[i];
       const verdict = cap.assess({ pose: f.pose, blend: f.blend ?? {}, faceFill: f.faceFill ?? 0.5, centerOffset: f.centerOffset ?? 0 });
-      if (verdict.ok) cap.add(f.correctedValues, verdict.weight, f.pose);
+      if (verdict.ok) cap.add(f.correctedValues, verdict.weight, f.pose, f.t);
       if (i % 3 === 0 && cap.isDone(CALIBRATION)) { end = i; break; }
     }
     if (end < 0) { unfinished += 1; continue; }

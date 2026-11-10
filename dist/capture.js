@@ -28,6 +28,19 @@ export const CAPTURE = {
   maxFrames: 400,
   // Keys checked for stability and how many typical steps may still drift.
   stabilityKeys: ["upperThird", "middleThird", "lowerThird", "openMeasure", "noseWidth", "mouthNose", "jawCheek", "faceRatio"],
+  // Guided turn: front, then a slight turn to each side. Pooling both sides
+  // cancels what pose correction leaves over (one side reads a little high,
+  // the other a little low) and side views show depth (nose, jaw) for real.
+  // yaw > 0 turns toward the left of the mirrored screen (see dist/pose.js).
+  zones: {
+    front: { min: -6, max: 6, frames: 15 },
+    left: { min: 8, max: 26, frames: 10 },
+    right: { min: -26, max: -8, frames: 10 },
+  },
+  zoneOrder: ["front", "left", "right"],
+  // Someone who cannot or will not turn still finishes after this long.
+  zoneTimeoutMs: 15000,
+  zoneTimeoutFrames: 450,
 };
 
 const clamp = (v, lo = 0, hi = 1) => Math.min(hi, Math.max(lo, v));
@@ -65,6 +78,35 @@ export class StableCapture {
     this.totalWeight = 0;
     this.rejected = 0;
     this.lastReason = null;
+    this.zoneCount = Object.fromEntries(Object.keys(this.options.zones).map((z) => [z, 0]));
+    this.added = 0;
+    this.startedAt = null;
+    this.lastAt = null;
+  }
+
+  /** Which guided zone a head angle falls in, or null between zones. */
+  zoneOf(yaw) {
+    for (const [name, z] of Object.entries(this.options.zones)) if (yaw >= z.min && yaw <= z.max) return name;
+    return null;
+  }
+
+  /** 0..1 per zone. */
+  get zoneProgress() {
+    const out = {};
+    for (const [name, z] of Object.entries(this.options.zones)) out[name] = clamp(this.zoneCount[name] / z.frames);
+    return out;
+  }
+
+  /** The next zone still missing frames, in guidance order, or null when all are covered. */
+  get nextZone() {
+    const p = this.zoneProgress;
+    return this.options.zoneOrder.find((z) => p[z] < 1) ?? null;
+  }
+
+  get zoneTimedOut() {
+    const o = this.options;
+    if (this.added >= o.zoneTimeoutFrames) return true;
+    return this.startedAt !== null && this.lastAt - this.startedAt >= o.zoneTimeoutMs;
   }
 
   /**
@@ -89,8 +131,16 @@ export class StableCapture {
     return { ok: weight > 0.02, weight, reason: null };
   }
 
-  add(values, weight, pose) {
+  /** t: timestamp in ms (optional; tests feed frames without real time). */
+  add(values, weight, pose, t = null) {
     this.frames.push({ values, weight, yaw: pose.yaw, pitch: pose.pitch });
+    this.added += 1;
+    const zone = this.zoneOf(pose.yaw);
+    if (zone) this.zoneCount[zone] += 1;
+    if (t !== null) {
+      this.startedAt ??= t;
+      this.lastAt = t;
+    }
     this.totalWeight += weight;
     if (this.frames.length > this.options.maxFrames) {
       const dropped = this.frames.shift();
@@ -99,7 +149,12 @@ export class StableCapture {
   }
 
   get progress() {
-    return clamp(this.totalWeight / this.options.targetWeight);
+    // Weight and turn coverage both count, so the bar keeps moving while turning.
+    const o = this.options;
+    const need = Object.values(o.zones).reduce((a, z) => a + z.frames, 0);
+    const have = Object.entries(o.zones).reduce((a, [n, z]) => a + Math.min(this.zoneCount[n], z.frames), 0);
+    const zones = this.zoneTimedOut ? 1 : have / need;
+    return clamp(0.5 * clamp(this.totalWeight / o.targetWeight) + 0.5 * zones);
   }
 
   /** Estimate from a list of frames (default: all). */
@@ -134,6 +189,7 @@ export class StableCapture {
   isDone(calibration) {
     const o = this.options;
     if (this.frames.length < o.minFrames || this.totalWeight < o.targetWeight) return false;
+    if (this.nextZone && !this.zoneTimedOut) return false;
     if (this.totalWeight >= o.capWeight) return true;
     return this.stability(calibration) >= 0.5;
   }
@@ -151,6 +207,7 @@ export class StableCapture {
       values: this.estimate(),
       frames: this.frames.length,
       totalWeight: this.totalWeight,
+      zones: { ...this.zoneCount },
       stability: this.stability(calibration),
       coverage: this.frames.length
         ? { yaw: [Math.min(...yaws), Math.max(...yaws)], pitch: [Math.min(...pitches), Math.max(...pitches)] }
@@ -159,11 +216,19 @@ export class StableCapture {
   }
 }
 
+// What the master says while a usable frame comes in, by the next zone needed.
+export const TURN_GUIDANCE = {
+  front: "좋습니다. 먼저 정면을 편하게 봐 주세요",
+  left: "이제 고개를 살짝 ◀ 쪽으로 돌려 보세요",
+  right: "좋아요. 이번엔 살짝 ▶ 쪽으로 돌려 보세요",
+  done: "다 봤습니다. 정면으로 돌아와 잠깐만 계세요",
+};
+
 export const GUIDANCE = {
   far: "카메라에 조금 더 가까이 와주세요",
   near: "카메라에서 조금 멀어져 주세요",
   "off-center": "얼굴을 화면 중앙에 맞춰주세요",
-  yaw: "고개를 조금만 정면 쪽으로 돌려주세요",
+  yaw: "너무 많이 돌렸어요. 조금만 돌아와 주세요",
   "pitch-up": "턱을 조금 당겨 주세요",
   "pitch-down": "고개를 조금 들어 주세요",
   roll: "고개를 너무 기울이지 않아도 괜찮아요",

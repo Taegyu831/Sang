@@ -45,7 +45,7 @@ let st = win.__sang.state();
 check("a smile is not counted and the visitor is told", st.frames === 0 && st.status.includes("무표정"), st.status);
 win.__sang.feed(landmarksFor(base, 40, 0, 0));
 st = win.__sang.state();
-check("a large head turn is not counted", st.frames === 0 && st.status.includes("정면"), st.status);
+check("a large head turn is not counted", st.frames === 0 && st.status.includes("돌아와"), st.status);
 
 // ----- the measuring screen is showing, as for a visitor -----
 doc.querySelector("#emptyState").hidden = true;

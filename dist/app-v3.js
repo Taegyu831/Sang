@@ -1,7 +1,7 @@
 import { estimatePose, frontalizePoints, poseFromMatrix } from "./pose.js";
 import { LANDMARK, getPoints, computeFrontFeatures, vertical, mean } from "./features.js";
 import { CALIBRATION } from "./calibration.js";
-import { StableCapture, GUIDANCE } from "./capture.js";
+import { StableCapture, GUIDANCE, TURN_GUIDANCE } from "./capture.js";
 import { interpret } from "./interpret.js";
 import { applyPoseResidual } from "./residual.js";
 import { readParts, synthesize } from "./parts.js";
@@ -38,6 +38,10 @@ const stopButton = $("#stopButton");
 const toResultButton = $("#toResultButton");
 const statusMessage = $("#statusMessage");
 const journeyProgress = $("#journeyProgress");
+const turnGuide = $("#turnGuide");
+const tgHead = $("#tgHead");
+const tgGhost = $("#tgGhost");
+const tgZones = Object.fromEntries([...turnGuide.querySelectorAll(".tg-zone")].map((el) => [el.dataset.zone, el]));
 const loadBar = $("#loadBar");
 const loadLine = $("#loadLine");
 const pages = $("#pages");
@@ -153,6 +157,36 @@ function resetClassification() {
   classificationComplete = false;
   toResultButton.hidden = true;
   setProgress(journeyProgress, 0);
+  smoothYaw = 0;
+  turnGuide.hidden = false;
+  updateTurnGuide(null);
+}
+
+// ---------- turn guide (how far is "살짝") ----------
+
+// Screen position of a head angle on the guide: yaw > 0 turns toward the left
+// of the mirrored picture, and the track spans -30..30 degrees.
+const yawToX = (yaw) => 50 - (clamp(yaw, -30, 30) / 30) * 50;
+const ZONE_TARGET = { front: 0, left: 15, right: -15 };
+let smoothYaw = 0;
+
+function updateTurnGuide(yaw) {
+  if (Number.isFinite(yaw)) {
+    smoothYaw += 0.35 * (yaw - smoothYaw);
+    tgHead.style.setProperty("--x", `${yawToX(smoothYaw).toFixed(1)}%`);
+    tgHead.classList.toggle("is-out", Math.abs(yaw) > capture.options.maxYaw);
+  }
+  const progress = capture.zoneProgress;
+  const next = capture.zoneTimedOut ? null : capture.nextZone;
+  for (const [name, el] of Object.entries(tgZones)) {
+    el.querySelector("i").style.width = `${Math.round(progress[name] * 100)}%`;
+    el.classList.toggle("is-done", progress[name] >= 1);
+    el.classList.toggle("is-next", name === next);
+  }
+  // The faint dot shows the move to copy; only needed for the side turns.
+  const showGhost = next === "left" || next === "right";
+  tgGhost.classList.toggle("is-off", !showGhost);
+  if (showGhost) tgGhost.style.setProperty("--to", `${yawToX(ZONE_TARGET[next])}%`);
 }
 
 // ---------- canvas ----------
@@ -348,16 +382,19 @@ function handleFace(landmarks, blend, matrixData) {
     });
   }
   if (classificationComplete) return;
+  updateTurnGuide(pose.yaw);
 
   const verdict = capture.assess({ pose, blend, faceFill, centerOffset });
   if (verdict.ok) {
-    capture.add(values, verdict.weight, pose);
+    capture.add(values, verdict.weight, pose, performance.now());
     if (verdict.weight > (bestShot?.weight ?? 0) + 0.03 && performance.now() - lastShotAt > 400) {
       bestShot = { weight: verdict.weight, shot: capturePortraitFrame() };
       lastShotAt = performance.now();
     }
     setProgress(journeyProgress, capture.progress);
-    statusMessage.textContent = "좋습니다. 그대로 편하게 계세요";
+    const next = capture.zoneTimedOut ? null : capture.nextZone;
+    const line = next ? TURN_GUIDANCE[next] : TURN_GUIDANCE.done;
+    if (statusMessage.textContent !== line) statusMessage.textContent = line;
     if (capture.isDone(CALIBRATION)) completeClassification();
   } else if (verdict.reason && GUIDANCE[verdict.reason]) {
     statusMessage.textContent = GUIDANCE[verdict.reason];
@@ -378,6 +415,7 @@ function completeClassification() {
   reading = interpret(finalMeasurement, content);
   classificationComplete = true;
   setProgress(journeyProgress, 1);
+  turnGuide.hidden = true;
   statusMessage.textContent = "다 쟀습니다! 준비되시면 아래 버튼을 눌러 주세요";
   // The camera keeps running (and ?debug=1 keeps recording) until the visitor
   // chooses to see the reading.

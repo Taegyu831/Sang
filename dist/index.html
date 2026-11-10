@@ -34,6 +34,16 @@
             <div class="camera-frame" id="cameraFrame">
               <video id="camera" autoplay muted playsinline aria-label="카메라 영상"></video>
               <canvas id="overlay" aria-hidden="true"></canvas>
+              <!-- 고개를 얼마나 '살짝' 돌릴지: 구간 세 칸, 지금 고개 위치, 따라 할 시범 -->
+              <div class="turn-guide" id="turnGuide" aria-hidden="true" hidden>
+                <div class="tg-track">
+                  <span class="tg-zone" data-zone="left"><i></i><b>◀ 살짝</b></span>
+                  <span class="tg-zone" data-zone="front"><i></i><b>정면</b></span>
+                  <span class="tg-zone" data-zone="right"><i></i><b>살짝 ▶</b></span>
+                  <span class="tg-ghost" id="tgGhost"></span>
+                  <span class="tg-head" id="tgHead"></span>
+                </div>
+              </div>
             </div>
             <div class="master-row is-scan" data-master="scan" data-scale="3">
               <div class="bubble"><p class="scan-msg" id="statusMessage" role="status">얼굴을 화면 가운데에 맞춰 주세요</p></div>

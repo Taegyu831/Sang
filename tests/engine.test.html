@@ -170,6 +170,20 @@ for (const [yaw, pitch, roll] of [[22, 0, 0], [-24, 12, 0], [0, -18, 0], [15, 15
   const sb = b.c.snapshot(CALIBRATION);
   check("sweeping left and right finishes by itself", a.c.isDone(CALIBRATION), `${a.frames} frames, stability ${sa.stability.toFixed(2)}`);
   check("nodding up and down finishes by itself", b.c.isDone(CALIBRATION), `${b.frames} frames, stability ${sb.stability.toFixed(2)}`);
+  check("a left-right sweep covers front and both sides", a.c.nextZone === null, JSON.stringify(a.c.snapshot(CALIBRATION).zones));
+  {
+    const g = new StableCapture();
+    const add = (yaw, n) => { for (let i = 0; i < n; i += 1) g.add({ noseWidth: 25 }, 1, { yaw, pitch: 0, roll: 0 }); };
+    add(0, 60);
+    check("front only: asks for the left turn next", g.nextZone === "left" && !g.isDone(CALIBRATION));
+    add(15, 12);
+    check("after the left turn: asks for the right", g.nextZone === "right");
+    add(-15, 12);
+    check("all three covered: nothing left to ask", g.nextZone === null);
+    const h = new StableCapture();
+    for (let i = 0; i < 80; i += 1) h.add({ noseWidth: 25 }, 1, { yaw: 0, pitch: 0, roll: 0 }, i * 250);
+    check("someone who never turns still finishes after the time limit", h.zoneTimedOut && h.isDone(CALIBRATION));
+  }
   const stepGap = (x, y) => Math.max(...["upperThird", "middleThird", "lowerThird", "openMeasure", "noseWidth", "mouthNose", "jawCheek", "faceRatio"].map((k) => Math.abs(x.values[k] - y.values[k]) / CALIBRATION[k].scale));
   check("two different head movements give the same ratios", stepGap(sa, sb) < 0.2, `largest gap ${stepGap(sa, sb).toFixed(3)} steps`);
   const toTruth = Math.max(...["upperThird", "middleThird", "lowerThird", "openMeasure", "noseWidth", "mouthNose", "jawCheek", "faceRatio"].map((k) => Math.abs(sa.values[k] - variantTruth[k]) / CALIBRATION[k].scale));
