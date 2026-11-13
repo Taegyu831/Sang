@@ -30,7 +30,7 @@
   - `calibration.js`: 비율마다 보통 얼굴의 기준값 (아직 표준 얼굴 기준의 임시값)
   - `parts.js`, `parts.json`: 부위 카드 규칙, 대중 관상 풀이, 정리 문장, 종합 문구
   - `debug.js`: `?debug=1` 측정 패널
-  - `fonts/`: 갈무리 글꼴 (SIL Open Font License)
+  - `fonts/`: IBM Plex Sans KR, IBM Plex Mono, 도장 글자 일부 (모두 SIL Open Font License)
 - `tools/`
   - `merge_readings.py`: 조사한 풀이를 `parts.json`에 넣는 스크립트 (조사 원본과 출처는 저장소 밖에 보관)
   - `summaries.json`: 부위별 정리 문장 원본

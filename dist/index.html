@@ -3,13 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#0e6a66" />
+    <meta name="theme-color" content="#f5f7f9" />
     <meta name="robots" content="noindex, nofollow, noarchive" />
     <meta name="description" content="카메라로 얼굴의 비율을 재고, 전통 관상의 틀로 풀어 주는 졸업 전시 프로토타입" />
     <title>상(相) 역학원 · 관상측정</title>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
     <link rel="preconnect" href="https://storage.googleapis.com" crossorigin />
-    <link rel="preload" href="./fonts/Galmuri11.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="./fonts/PlexSansKR-Regular.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="./fonts/PlexSansKR-Bold.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
@@ -18,7 +19,8 @@
         <!-- 1. 시작 -->
         <section class="screen" id="emptyState">
           <div class="start">
-            <h1 class="headline">얼굴부터<br />재어 보겠습니다</h1>
+            <span class="seal" aria-hidden="true">相</span>
+            <h1 class="headline">얼굴부터<br /><em>재어</em> 보겠습니다</h1>
             <div class="master-row is-big" data-master="start" data-scale="5" data-pose="point">
               <div class="bubble"><p id="startSay">어서 오세요. 카메라 앞에 편히 앉으시면, 제가 얼굴을 하나하나 풀어 드리겠습니다.</p></div>
             </div>
@@ -104,6 +106,7 @@
 
             <article class="page" data-page="last">
               <div class="closing">
+                <span class="seal" aria-hidden="true">相</span>
                 <div class="master-row" data-master="closing" data-scale="4">
                   <div class="bubble"><p id="closingSay">풀이는 여기까지입니다. 재미있게 보셨나요?</p></div>
                 </div>

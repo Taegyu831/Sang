@@ -573,6 +573,26 @@ function mineRow(text) {
   return row;
 }
 
+// Where this face sits between small and large next to the average of the people measured.
+const SCALE_LABELS = ["낮음", "보통", "높음"];
+function scaleRow(part) {
+  const idx = part.dir === "low" ? 0 : part.dir === "high" ? 2 : 1;
+  const at = 50 + (clamp(part.z, -2.5, 2.5) / 2.5) * 46;
+  const row = el("div", "part-row is-scale");
+  const scale = el("div", "scale");
+  scale.style.setProperty("--at", `${at.toFixed(1)}%`);
+  scale.append(el("span", "scale-mark"));
+  const bar = el("div", "scale-bar");
+  const lab = el("div", "scale-lab");
+  SCALE_LABELS.forEach((text, i) => {
+    bar.append(el("i", i === idx ? "on" : ""));
+    lab.append(el("span", i === idx ? "on" : "", text));
+  });
+  scale.append(bar, lab);
+  row.append(el("span", "part-label", "내 위치"), scale);
+  return row;
+}
+
 const DOMAIN_CLASS = {
   재물: "is-money",
   직업: "is-work", 명예: "is-work", 중년운: "is-work", 부하운: "is-work",
@@ -622,6 +642,7 @@ function partCard(part, shot, compact) {
     body.append(row);
   }
   body.append(mineRow(part.mine));
+  if (Number.isFinite(part.z)) body.append(scaleRow(part));
   if (part.about) body.append(labelRow("이 부위는", part.about, "is-about"));
   if (part.readings.length) {
     // Readings come sorted by how many sources gave them.
