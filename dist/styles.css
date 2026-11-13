@@ -1,5 +1,5 @@
 /* 상(相) 관상측정
-   계측 도면 스타일: 연회색 바탕, 가는 선, 파랑 하나, 숫자는 고정폭 글꼴. 붉은 도장(相)은 브랜드 마크로만 쓴다.
+   계측 도면 스타일: 가는 선, 선명한 글꼴, 색은 발표 자료와 같은 살구색 바탕과 고동색 강조. 붉은 도장(相)은 브랜드 마크.
    글꼴: IBM Plex Sans KR, IBM Plex Mono · SIL Open Font License 1.1 · fonts/LICENSE-IBMPlex-OFL.txt
          도장 글자 相: Noto Serif KR 일부 · SIL Open Font License 1.1 · fonts/LICENSE-NotoSerifKR-OFL.txt */
 
@@ -11,25 +11,25 @@
 @font-face { font-family: "Seal Serif"; src: url("./fonts/NotoSerifKR-Seal.woff2") format("woff2"); font-weight: 700; font-display: swap; }
 
 :root {
-  --paper: #f5f7f9;
+  --paper: #fbf7ee;       /* 발표 자료 바탕: 살구색 */
   --card: #ffffff;
-  --ink: #0f141a;
-  --ink-2: #333d4a;
-  --muted: #566170;
-  --line: #d3d9e0;
-  --accent: #1c4dff;      /* 강조 파랑: 값, 결론, 눈금 */
-  --accent-soft: #e6ecff;
-  --seal: #d6261c;        /* 도장 빨강: 브랜드 마크에만 */
-  --gold: #1c4dff;        /* 숫자 강조도 같은 파랑 */
-  --navy: #1c4dff;
-  --pos: #1c4dff; --neg: #0f141a;
+  --ink: #1d1a16;
+  --ink-2: #3d3730;
+  --muted: #7a7064;
+  --line: #e7dfcf;
+  --accent: #a3271f;      /* 강조 고동색: 값, 결론, 눈금 (발표 자료와 같은 값) */
+  --accent-soft: #fbeee6;
+  --seal: #a3271f;        /* 도장: 발표 자료의 相와 같은 값 */
+  --gold: #8a6416;        /* 숫자와 핵심 단어: 발표 자료의 갈색 굵은 글씨 */
+  --navy: #a3271f;
+  --pos: #a3271f; --neg: #3d3730;
   /* 풀이 분야: 작은 점 색 */
-  --d-money: #a86a00; --d-money-bg: #e9edf2;
-  --d-work: #1c4dff;  --d-work-bg: #e9edf2;
-  --d-people: #1a7f4b; --d-people-bg: #e9edf2;
-  --d-love: #c2305f;  --d-love-bg: #e9edf2;
-  --d-time: #6a4bc4;  --d-time-bg: #e9edf2;
-  --d-other: #566170; --d-other-bg: #e9edf2;
+  --d-money: #a86a00; --d-money-bg: #f1ece3;
+  --d-work: #1c4dff;  --d-work-bg: #f1ece3;
+  --d-people: #1a7f4b; --d-people-bg: #f1ece3;
+  --d-love: #c2305f;  --d-love-bg: #f1ece3;
+  --d-time: #6a4bc4;  --d-time-bg: #f1ece3;
+  --d-other: #566170; --d-other-bg: #f1ece3;
 
   --sans: "Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", system-ui, sans-serif;
   --mono: "Plex Mono", "Plex Sans KR", ui-monospace, Menlo, Consolas, monospace;
@@ -70,11 +70,11 @@ img { display: block; max-width: 100%; }
 .hint { font-weight: 500; font-size: calc(var(--fs) * 0.8); color: var(--muted); }
 
 .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 2.6em; padding: 0.45em 1.5em; border-radius: var(--radius); border: 1px solid var(--ink); background: var(--card); color: var(--ink); font-weight: 500; font-size: calc(var(--fs) * 0.9); transition: transform 0.1s, background 0.15s; }
-.btn:hover:not(:disabled) { background: #eaeef3; }
+.btn:hover:not(:disabled) { background: #f3ede1; }
 .btn:active:not(:disabled) { transform: translateY(1px); }
 .btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
-.btn.primary:hover:not(:disabled) { background: #1740d6; }
+.btn.primary:hover:not(:disabled) { background: #86201a; }
 .btn.big-btn { font-size: calc(var(--fs) * 1.1); padding: 0.6em 2.2em; }
 .btn.small { font-size: calc(var(--fs) * 0.75); min-height: 2.2em; border-width: 1px; }
 .btn:disabled { opacity: 0.45; cursor: default; }
@@ -92,27 +92,27 @@ img { display: block; max-width: 100%; }
 #camera, #overlay { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; transform: scaleX(-1); }
 #overlay { pointer-events: none; }
 /* 고개 돌리기 안내: 카메라 위 가로 눈금 */
-.turn-guide { position: absolute; top: clamp(8px, 2vh, 18px); left: 50%; transform: translateX(-50%); width: min(560px, 88%); padding: 10px 14px 12px; border-radius: var(--radius); background: rgba(15, 20, 26, 0.72); z-index: 2; pointer-events: none; }
+.turn-guide { position: absolute; top: clamp(8px, 2vh, 18px); left: 50%; transform: translateX(-50%); width: min(560px, 88%); padding: 10px 14px 12px; border-radius: var(--radius); background: rgba(29, 26, 22, 0.72); z-index: 2; pointer-events: none; }
 .tg-track { position: relative; height: 54px; }
 .tg-track::before { content: ""; position: absolute; left: 0; right: 0; top: 18px; height: 2px; background: rgba(255, 255, 255, 0.25); }
 .tg-zone { position: absolute; top: 8px; height: 22px; border: 2px solid rgba(255, 255, 255, 0.45); border-radius: 3px; transition: border-color 0.2s; }
 .tg-zone[data-zone="left"] { left: 6.7%; width: 30%; }
 .tg-zone[data-zone="front"] { left: 40%; width: 20%; }
 .tg-zone[data-zone="right"] { left: 63.3%; width: 30%; }
-.tg-zone i { position: absolute; inset: 0 auto 0 0; width: var(--p, 0%); border-radius: 3px; background: rgba(125, 155, 255, 0.7); transition: width 0.25s; }
+.tg-zone i { position: absolute; inset: 0 auto 0 0; width: var(--p, 0%); border-radius: 3px; background: rgba(251, 238, 230, 0.7); transition: width 0.25s; }
 .tg-zone b { position: absolute; left: 0; right: 0; top: 26px; text-align: center; font-size: 14px; font-weight: 700; color: rgba(255, 255, 255, 0.8); white-space: nowrap; }
-.tg-zone.is-next { border-color: #7d9bff; animation: tgPulse 1.2s ease-in-out infinite; }
-.tg-zone.is-next b { color: #a9bcff; }
+.tg-zone.is-next { border-color: #fbeee6; animation: tgPulse 1.2s ease-in-out infinite; }
+.tg-zone.is-next b { color: #fbeee6; }
 .tg-zone.is-done { border-color: #fff; }
 .tg-zone.is-done i { background: rgba(255, 255, 255, 0.85); }
 .tg-head, .tg-ghost { position: absolute; top: 9px; width: 20px; height: 20px; margin-left: -10px; border-radius: 50%; }
-.tg-head { left: var(--x, 50%); background: #fff; box-shadow: 0 0 0 3px #7d9bff; transition: left 0.12s linear; }
+.tg-head { left: var(--x, 50%); background: #fff; box-shadow: 0 0 0 3px #fbeee6; transition: left 0.12s linear; }
 .tg-head.is-out { box-shadow: 0 0 0 3px #e0533f; background: #ffd6cf; }
 /* 시범: 흐린 점이 가운데에서 목표 구간까지 천천히 갔다 온다 = '이만큼만' */
-.tg-ghost { left: 50%; background: rgba(125, 155, 255, 0.55); animation: tgShow 2.4s ease-in-out infinite; }
+.tg-ghost { left: 50%; background: rgba(251, 238, 230, 0.55); animation: tgShow 2.4s ease-in-out infinite; }
 .tg-ghost.is-off { display: none; }
 @keyframes tgShow { 0%, 15% { left: 50%; } 45%, 65% { left: var(--to, 50%); } 95%, 100% { left: 50%; } }
-@keyframes tgPulse { 50% { border-color: rgba(125, 155, 255, 0.35); } }
+@keyframes tgPulse { 50% { border-color: rgba(251, 238, 230, 0.35); } }
 @media (prefers-reduced-motion: reduce) { .tg-ghost { animation: none; left: var(--to, 50%); } .tg-zone.is-next { animation: none; } }
 .scan-msg { font-size: clamp(20px, min(2.3vw, 4vh), 36px); font-weight: 700; line-height: 1.4; }
 .scan .bar { width: min(100%, 640px); }
@@ -169,7 +169,7 @@ img { display: block; max-width: 100%; }
 .part-card { display: grid; grid-template-columns: minmax(150px, 30%) minmax(0, 1fr); gap: clamp(16px, 2.4vw, 32px); align-items: start; padding: clamp(16px, 2.4vh, 26px); background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); }
 .part-pic { margin: 0; aspect-ratio: 4 / 3; background: #222; border-radius: 4px; overflow: hidden; position: sticky; top: 8px; }
 .part-pic svg { display: block; width: 100%; height: 100%; }
-.part-line { stroke: #7d9bff; vector-effect: non-scaling-stroke; stroke-width: 3px; }
+.part-line { stroke: #ffd84a; vector-effect: non-scaling-stroke; stroke-width: 3px; }
 .part-dot { fill: var(--accent); stroke: #fff; stroke-width: 1px; vector-effect: non-scaling-stroke; }
 .part-body { display: flex; flex-direction: column; gap: 0.9em; min-width: 0; max-width: 40em; font-size: 0.94em; }
 .part-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.6em; }
@@ -183,7 +183,7 @@ img { display: block; max-width: 100%; }
 .part-label { font-size: 0.78em; font-weight: 700; color: var(--muted); }
 .part-row p { line-height: 1.65; }
 .part-row.is-mine p { color: var(--ink); font-weight: 600; }
-.part-row.is-mine .num { font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+.part-row.is-mine .num { font-weight: 700; color: var(--gold); font-variant-numeric: tabular-nums; }
 .part-row.is-mine .typical { display: inline-block; color: var(--muted); font-weight: 400; font-size: 0.9em; }
 .part-row.is-about p { color: var(--muted); font-size: 0.95em; }
 
@@ -231,8 +231,8 @@ img { display: block; max-width: 100%; }
 .loading .master-row { width: 100%; }
 
 /* 부위 카드의 정리: 선생님 말풍선. 마지막 결론 문장은 굵게, "다만, 한편" 문장은 한 톤 낮게 */
-.part-summary.bubble { padding: 0.8em 1em; background: var(--accent-soft); border: 1px solid #b9c8ff; font-size: 1.04em; font-weight: 400; line-height: 1.8; color: var(--ink-2); }
-.part-summary.bubble::before { background: var(--accent-soft); border-color: #b9c8ff; }
+.part-summary.bubble { padding: 0.8em 1em; background: var(--accent-soft); border: 1px solid #d9b9a8; font-size: 1.04em; font-weight: 400; line-height: 1.8; color: var(--ink-2); }
+.part-summary.bubble::before { background: var(--accent-soft); border-color: #d9b9a8; }
 .part-summary .sum-key { color: var(--accent); font-weight: 700; }
 .part-summary .sum-alt { color: var(--muted); }
 
