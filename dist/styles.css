@@ -206,6 +206,30 @@ img { display: block; max-width: 100%; }
 .part-cards.is-compact .part-card { grid-template-columns: minmax(120px, 22%) minmax(0, 1fr); }
 .part-cards.is-compact .part-body { font-size: 0.88em; }
 
+/* 얼굴형: 다섯 윤곽 중 내 얼굴형이 켜진다 */
+#shapeBox, .group-cards { display: grid; gap: clamp(16px, 2.6vh, 28px); }
+.shape-card, .group-card { padding: clamp(16px, 2.4vh, 26px); background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); }
+.shape-card { display: flex; flex-direction: column; gap: clamp(14px, 2.4vh, 24px); }
+.shape-icons { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; max-width: 460px; padding-bottom: clamp(12px, 2vh, 20px); border-bottom: 1px solid var(--line); }
+.shape-icon { margin: 0; display: grid; gap: 4px; justify-items: center; color: var(--muted); }
+.shape-icon svg { width: 100%; max-width: 72px; height: auto; fill: none; stroke: var(--line); stroke-width: 3; }
+.shape-icon figcaption { font-size: 0.7em; font-weight: 500; white-space: nowrap; }
+.shape-icon.is-on { color: var(--ink); }
+.shape-icon.is-on svg { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 4; }
+.shape-icon.is-on figcaption { font-weight: 700; color: var(--accent); }
+.shape-name { font-size: 1.6em; font-weight: 800; letter-spacing: -0.02em; }
+
+/* 기본 부위: 한 부위에 한 장. 아래에 특징을 짧은 이름표로 모은다 */
+.group-card { display: flex; flex-direction: column; gap: 0.9em; }
+.group-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5em 1em; }
+.group-head h3 { font-size: 1.45em; font-weight: 800; letter-spacing: -0.02em; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-size: 0.78em; font-weight: 500; padding: 0.1em 0.7em; border: 1px solid var(--line); border-radius: 3px; color: var(--muted); background: var(--paper); }
+.chip.is-high, .chip.is-low { color: var(--accent); border-color: #d9b9a8; background: var(--accent-soft); font-weight: 700; }
+.group-more { border-top: 1px solid var(--line); padding-top: 0.6em; }
+.group-more .part-cards { gap: 14px; }
+.group-more .part-card { box-shadow: none; background: var(--paper); }
+
 /* 내 위치 눈금: 좁음, 보통, 넓음 */
 .scale { position: relative; padding-top: 0.9em; max-width: 22em; }
 .scale-bar { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 3px; }

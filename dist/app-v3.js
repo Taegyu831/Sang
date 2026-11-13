@@ -4,7 +4,7 @@ import { CALIBRATION } from "./calibration.js";
 import { StableCapture, GUIDANCE, TURN_GUIDANCE } from "./capture.js";
 import { interpret } from "./interpret.js";
 import { applyPoseResidual } from "./residual.js";
-import { readParts, synthesize } from "./parts.js";
+import { readParts, synthesize, classifyFaceShape, FACE_SHAPES } from "./parts.js";
 import { createMaster, mountMaster, say } from "./character.js";
 
 const MEDIAPIPE_VERSION = "1.1.1";
@@ -47,7 +47,8 @@ const loadLine = $("#loadLine");
 const pages = $("#pages");
 const topList = $("#topList");
 const topCards = $("#topCards");
-const restCards = $("#restCards");
+const shapeBox = $("#shapeBox");
+const groupCards = $("#groupCards");
 const synthesisBox = $("#synthesis");
 const resultClosing = $("#resultClosing");
 const resultFrontFigure = $("#resultFrontFigure");
@@ -627,7 +628,7 @@ function labelRow(label, text, className) {
   return row;
 }
 
-function partCard(part, shot, compact) {
+function partCard(part, shot, compact, still = false) {
   const card = el("article", `part-card is-${part.dir}`);
   const body = el("div", "part-body");
   const head = el("div", "part-head");
@@ -637,7 +638,7 @@ function partCard(part, shot, compact) {
   if (part.summary) {
     // The summary is the master speaking: a small still portrait and a bubble.
     const row = el("div", "master-row is-card");
-    const master = createMaster({ scale: compact ? 2 : 3, pose: compact ? "idle" : "point" });
+    const master = createMaster({ scale: compact ? 2 : 3, pose: compact ? "idle" : "point", animate: !still });
     row.append(master.node, summaryBubble(part.summary));
     body.append(row);
   }
@@ -652,6 +653,77 @@ function partCard(part, shot, compact) {
     body.append(details);
   }
   card.append(partPicture(shot, part.draw), body);
+  return card;
+}
+
+// Five outlines everyone knows; the visitor's own shape is lit.
+const SHAPE_PATHS = {
+  egg: "M50 6 C74 6 84 30 82 54 C80 78 66 94 50 94 C34 94 20 78 18 54 C16 30 26 6 50 6 Z",
+  round: "M50 10 C78 10 92 30 92 54 C92 78 74 92 50 92 C26 92 8 78 8 54 C8 30 22 10 50 10 Z",
+  square: "M26 10 H74 Q88 10 88 24 V62 Q88 92 50 92 Q12 92 12 62 V24 Q12 10 26 10 Z",
+  long: "M50 4 C70 4 76 26 76 52 C76 80 66 96 50 96 C34 96 24 80 24 52 C24 26 30 4 50 4 Z",
+  heart: "M12 22 Q50 2 88 22 Q86 56 50 94 Q14 56 12 22 Z",
+};
+function shapeIcon(id, on) {
+  const wrap = el("figure", `shape-icon${on ? " is-on" : ""}`);
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 100 100");
+  svg.setAttribute("aria-hidden", "true");
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("d", SHAPE_PATHS[id]);
+  svg.append(path);
+  wrap.append(svg, el("figcaption", "", FACE_SHAPES[id].name.replace("갸름한 ", "")));
+  return wrap;
+}
+
+function detailsOf(summaryText, cards, shot) {
+  const details = el("details", "part-more group-more");
+  details.append(el("summary", "", summaryText));
+  const list = el("div", "part-cards is-compact");
+  list.append(...cards.map((part) => partCard(part, shot, true, true)));
+  details.append(list);
+  return details;
+}
+
+function renderShape(shot) {
+  const shape = classifyFaceShape(finalMeasurement);
+  if (!shape) { shapeBox.replaceChildren(); return; }
+  const card = el("article", "shape-card");
+  const icons = el("div", "shape-icons");
+  icons.append(...Object.keys(FACE_SHAPES).map((id) => shapeIcon(id, id === shape.id)));
+  const body = el("div", "part-body");
+  body.append(el("p", "kicker", "내 얼굴형"), el("h3", "shape-name", `${shape.name}에 가까운 얼굴`));
+  const row = el("div", "master-row is-card");
+  const master = createMaster({ scale: 3, pose: "point" });
+  const bubble = el("p", "part-summary bubble");
+  bubble.append(document.createTextNode(shape.text));
+  row.append(master.node, bubble);
+  body.append(row);
+  const mine = el("div", "part-row is-mine");
+  const measured = shape.mine.indexOf("보통은");
+  mine.append(el("span", "part-label", "내 얼굴"), rich("p", "", shape.mine.slice(0, measured), NUMBER, "num"));
+  mine.querySelector("p").append(el("span", "typical", shape.mine.slice(measured)));
+  body.append(mine);
+  card.append(icons, body);
+  if (parts.face.parts.length) body.append(detailsOf(`얼굴 전체 자세히 ${parts.face.parts.length}개`, parts.face.parts, shot));
+  shapeBox.replaceChildren(card);
+}
+
+function groupCard(group, shot) {
+  const card = el("article", "group-card");
+  const head = el("div", "group-head");
+  head.append(el("h3", "", group.name));
+  const chips = el("div", "chips");
+  for (const part of group.parts) chips.append(el("span", `chip is-${part.dir}`, part.name));
+  head.append(chips);
+  card.append(head);
+  if (group.lead?.summary) {
+    const row = el("div", "master-row is-card");
+    const master = createMaster({ scale: 3, pose: "idle" });
+    row.append(master.node, summaryBubble(group.lead.summary));
+    card.append(row);
+  }
+  card.append(detailsOf(`${group.name} 자세히 ${group.parts.length}개`, group.parts, shot));
   return card;
 }
 
@@ -672,7 +744,8 @@ function renderParts(shot) {
     if (i > 1) return rich("p", "", line, areas, "hl-domain");
     return p;
   }));
-  restCards.replaceChildren(...parts.rest.map((part) => partCard(part, shot, true)));
+  renderShape(shot);
+  groupCards.replaceChildren(...parts.groups.filter((g) => g.parts.length).map((g) => groupCard(g, shot)));
 }
 
 function renderClosing() {

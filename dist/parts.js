@@ -18,9 +18,32 @@ export const PART_RULES = {
   strongAt: 1.8,
   // How many cards are shown first, as "가장 두드러진 곳".
   topCount: 3,
+  // A face shape other than 계란형 needs at least this many typical steps of pull.
+  shapeAt: 0.6,
 };
 
 const finite = Number.isFinite;
+
+// How easily a visitor can see this on their own face in a mirror. A tiny
+// difference in eye gap or philtrum is real but nobody can check it, so those
+// cards rank lower and the plainly visible parts (face shape, eye size, nose,
+// mouth, jaw) come first.
+const VISIBILITY = {
+  eyeGap: 0.5, browInnerGap: 0.6, browEyeGap: 0.6, philtrum: 0.6,
+  thirds: 0.6, symmetry: 0.5, eyeAsym: 0.5, forehead: 0.85, noseLength: 0.85,
+};
+
+// The parts a visitor knows by name. Every card belongs to exactly one.
+export const FACE_GROUP = { id: "face", name: "얼굴 전체", ids: ["faceShape", "cheek", "thirds", "symmetry"] };
+export const GROUPS = [
+  { id: "eyes", name: "눈", ids: ["eyeSize", "eyeOpen", "eyeTilt", "eyeGap", "eyeAsym"] },
+  { id: "brows", name: "눈썹", ids: ["browLength", "browTilt", "browArch", "browEyeGap", "browInnerGap"] },
+  { id: "nose", name: "코", ids: ["noseWidth", "noseLength"] },
+  { id: "mouth", name: "입", ids: ["mouthFace", "lipFull", "lipRatio", "mouthLift", "philtrum"] },
+  { id: "forehead", name: "이마", ids: ["forehead"] },
+  { id: "jaw", name: "턱", ids: ["jaw", "chin"] },
+];
+const GROUP_OF = Object.fromEntries([FACE_GROUP, ...GROUPS].flatMap((g) => g.ids.map((id) => [id, g.id])));
 
 function direction(z, rules) {
   if (!finite(z)) return null;
@@ -101,7 +124,7 @@ export function readPart(card, values, calibration = CALIBRATION, rules = PART_R
     dir,
     reliability,
     // Ranking weight: how unusual, discounted when the landmark is less trustworthy.
-    score: Math.abs(z) * RELIABILITY_WEIGHT[reliability],
+    score: Math.abs(z) * RELIABILITY_WEIGHT[reliability] * (VISIBILITY[card.id] ?? 1),
     name: `${dir === "middle" ? "" : strengthWord(z, rules)}${name}`,
     mine: [fillTokens(card.mine, key, values, calibration), fillTokens(card.typical, key, values, calibration)].filter(Boolean).join(" "),
     readings: readings.map((r) => ({ text: r.text, domain: r.domain ?? "" })),
@@ -141,15 +164,88 @@ export function synthesize(top, partsContent, rules = PART_RULES) {
   return lines;
 }
 
-/** All cards for a face, most distinctive first. */
+/**
+ * All cards for a face, most distinctive first. The standout list takes the
+ * best card of each region (eyes, mouth, jaw ...), so three standouts are three
+ * different places instead of three eyebrow cards.
+ */
 export function readParts(values, partsContent, calibration = CALIBRATION, rules = PART_RULES) {
   const cards = partsContent.cards
     .map((card) => readPart(card, values, calibration, rules))
     .filter(Boolean)
     .sort((a, b) => b.score - a.score);
+  const seen = new Set();
+  const top = [];
+  for (const card of cards) {
+    const group = GROUP_OF[card.id] ?? card.id;
+    if (seen.has(group)) continue;
+    seen.add(group);
+    top.push(card);
+    if (top.length === rules.topCount) break;
+  }
   return {
-    top: cards.slice(0, rules.topCount),
-    rest: cards.slice(rules.topCount),
+    top,
+    rest: cards.filter((c) => !top.includes(c)),
     all: cards,
+    groups: GROUPS.map((g) => groupOf(g, cards)),
+    face: groupOf(FACE_GROUP, cards),
+  };
+}
+
+/** A region with its cards (most distinctive first) and the card that speaks for it. */
+function groupOf(group, all) {
+  const parts = all.filter((c) => group.ids.includes(c.id));
+  const leaning = parts.filter((c) => c.dir !== "middle");
+  return { id: group.id, name: group.name, parts, leaning, lead: leaning[0] ?? parts[0] ?? null };
+}
+
+// ---------- face shape ----------
+
+export const FACE_SHAPES = {
+  egg: {
+    name: "계란형",
+    text: "얼굴 가로세로와 턱 폭이 보통 범위에 있어 계란형에 가깝습니다. 관상에서는 균형이 잡힌 얼굴로 보고, 사람을 가리지 않고 두루 어울리며 무난하게 풀리는 상으로 읽습니다. 한쪽으로 치우친 풀이가 약한 대신 부위별 특징이 더 크게 작용한다고 봅니다.",
+  },
+  round: {
+    name: "둥근형",
+    text: "얼굴이 옆으로 넓고 턱선이 부드러워 둥근형에 가깝습니다. 관상에서는 복스럽고 정이 많아 사람이 따르는 얼굴로 보고, 먹을 복과 재물복이 있다고 풀이합니다. 한편 느긋해서 결단이 늦다는 말도 있습니다.",
+  },
+  square: {
+    name: "각진형",
+    text: "턱이 넓고 각이 잡혀 각진형에 가깝습니다. 관상에서는 의지가 굳고 책임감이 강하며 밀고 나가는 힘이 있는 얼굴로 봅니다. 한편 고집이 세고 양보가 적다는 풀이도 있습니다.",
+  },
+  long: {
+    name: "긴형",
+    text: "얼굴이 세로로 긴 편이라 긴형에 가깝습니다. 관상에서는 생각이 깊고 이지적이며 신중한 얼굴로 봅니다. 한편 시작이 더디고 중년 이후에 풀린다는 풀이도 있습니다.",
+  },
+  heart: {
+    name: "갸름한 역삼각형",
+    text: "턱이 갸름하고 위쪽이 상대적으로 넓은 역삼각형에 가깝습니다. 관상에서는 머리 회전이 빠르고 감각이 예민해 기획이나 예술 쪽 재능이 있는 얼굴로 봅니다. 한편 자존심이 강하고 예민하다는 풀이도 있습니다.",
+  },
+};
+
+/**
+ * One of five shapes everyone already knows (계란형, 둥근형, 각진형, 긴형,
+ * 역삼각형), from three ratios: face width against length, jaw against cheek,
+ * and how far each one sits from the average of the people measured.
+ */
+export function classifyFaceShape(values, calibration = CALIBRATION, rules = PART_RULES) {
+  const f = zScore("faceRatio", values.faceRatio, calibration);
+  const j = zScore("jawCheek", values.jawCheek, calibration);
+  if (!finite(f) || !finite(j)) return null;
+  const pull = { long: -f, wide: f, angular: j, narrow: -j };
+  const [lead, strength] = Object.entries(pull).sort((a, b) => b[1] - a[1])[0];
+  let id = "egg";
+  if (strength >= rules.shapeAt) {
+    if (lead === "long") id = "long";
+    else if (lead === "wide") id = j >= 0.5 ? "square" : "round";
+    else if (lead === "angular") id = "square";
+    else id = "heart";
+  }
+  const c = (key) => calibration[key]?.center;
+  return {
+    id,
+    ...FACE_SHAPES[id],
+    mine: `광대 폭이 얼굴 길이의 ${values.faceRatio.toFixed(0)}%, 턱 폭이 광대 폭의 ${values.jawCheek.toFixed(0)}%입니다. 보통은 ${c("faceRatio").toFixed(0)}%와 ${c("jawCheek").toFixed(0)}%쯤입니다.`,
   };
 }
