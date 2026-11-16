@@ -218,6 +218,7 @@ img { display: block; max-width: 100%; }
 .shape-icon.is-on { color: var(--ink); }
 .shape-icon.is-on svg { fill: none; stroke: var(--accent); stroke-width: 4; }
 .shape-icon.is-on figcaption { font-weight: 700; color: var(--accent); }
+.group-text { font-size: 0.9em; line-height: 1.75; color: var(--ink-2); }
 .shape-name { font-size: 1.4em; font-weight: 800; letter-spacing: -0.02em; }
 
 /* 기본 부위: 한 부위에 한 장. 아래에 특징을 짧은 이름표로 모은다 */
@@ -228,9 +229,6 @@ img { display: block; max-width: 100%; }
 .chip { font-size: 0.78em; font-weight: 500; color: var(--muted); }
 .chip + .chip::before { content: "·"; margin-right: 6px; color: var(--line); }
 .chip.is-high, .chip.is-low { color: var(--accent); font-weight: 700; }
-.group-more { border-top: 1px solid var(--line); padding-top: 0.6em; }
-.group-more .part-cards { gap: 14px; }
-.group-more .part-card { box-shadow: none; }
 
 /* 내 위치 눈금: 좁음, 보통, 넓음 */
 .scale { position: relative; padding-top: 0.9em; max-width: 22em; }

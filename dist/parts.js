@@ -197,6 +197,32 @@ function groupOf(group, all) {
   return { id: group.id, name: group.name, parts, leaning, lead: leaning[0] ?? parts[0] ?? null };
 }
 
+/**
+ * One paragraph for a whole region: what the leaning parts mean (strongest
+ * first, at most three), then which parts sit in the ordinary range. Nothing
+ * is folded away, so a visitor reads the region without opening anything.
+ */
+export function composeGroup(group, maxLeaning = 3) {
+  const leaning = group.leaning.slice(0, maxLeaning);
+  const picked = leaning.length ? leaning : (group.lead ? [group.lead] : []);
+  const seen = new Set();
+  const sentences = [];
+  for (const part of picked) {
+    for (const sentence of part.summary.match(/[^.]+\.\s*/g) ?? []) {
+      const key = sentence.trim();
+      if (!seen.has(key)) { seen.add(key); sentences.push(key); }
+    }
+  }
+  const ordinary = group.parts.filter((p) => p.dir === "middle" && !picked.includes(p)).map((p) => p.part);
+  if (ordinary.length) sentences.push(`${ordinary.join(", ")}${hasBatchim(ordinary.at(-1)) ? "은" : "는"} 보통 범위입니다.`);
+  return sentences.join(" ");
+}
+
+function hasBatchim(word) {
+  const code = word.charCodeAt(word.length - 1) - 0xac00;
+  return code >= 0 && code <= 11171 && code % 28 !== 0;
+}
+
 // ---------- face shape ----------
 
 export const FACE_SHAPES = {

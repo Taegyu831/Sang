@@ -4,7 +4,7 @@ import { CALIBRATION } from "./calibration.js";
 import { StableCapture, GUIDANCE, TURN_GUIDANCE } from "./capture.js";
 import { interpret } from "./interpret.js";
 import { applyPoseResidual } from "./residual.js";
-import { readParts, synthesize, classifyFaceShape, FACE_SHAPES } from "./parts.js";
+import { readParts, synthesize, composeGroup, classifyFaceShape, FACE_SHAPES } from "./parts.js";
 import { createMaster, mountMaster, say } from "./character.js";
 
 const MEDIAPIPE_VERSION = "1.1.1";
@@ -563,98 +563,6 @@ function summaryBubble(text) {
 
 // "내 얼굴": the measured sentence with its numbers highlighted, then "보통은 ..." in grey.
 const NUMBER = /\d+분의 1|\d+(?:\.\d+)?\s*(?:%|배|개|도|점)?/g;
-function mineRow(text) {
-  const row = el("div", "part-row is-mine");
-  const cut = text.indexOf("보통");
-  const measured = cut > 0 ? text.slice(0, cut) : text;
-  const p = rich("p", "", measured, NUMBER, "num");
-  if (cut > 0) p.append(el("span", "typical", text.slice(cut)));
-  row.append(el("span", "part-label", "내 얼굴"), p);
-  return row;
-}
-
-// Where this face sits between small and large next to the average of the people measured.
-const SCALE_LABELS = ["낮음", "보통", "높음"];
-function scaleRow(part) {
-  const idx = part.dir === "low" ? 0 : part.dir === "high" ? 2 : 1;
-  const at = 50 + (clamp(part.z, -2.5, 2.5) / 2.5) * 46;
-  const row = el("div", "part-row is-scale");
-  const scale = el("div", "scale");
-  scale.style.setProperty("--at", `${at.toFixed(1)}%`);
-  scale.append(el("span", "scale-mark"));
-  const bar = el("div", "scale-bar");
-  const lab = el("div", "scale-lab");
-  SCALE_LABELS.forEach((text, i) => {
-    bar.append(el("i", i === idx ? "on" : ""));
-    lab.append(el("span", i === idx ? "on" : "", text));
-  });
-  scale.append(bar, lab);
-  row.append(el("span", "part-label", "내 위치"), scale);
-  return row;
-}
-
-const DOMAIN_CLASS = {
-  재물: "is-money",
-  직업: "is-work", 명예: "is-work", 중년운: "is-work", 부하운: "is-work",
-  대인관계: "is-people", 형제운: "is-people", 부모운: "is-people", 가정: "is-people",
-  결혼: "is-love", 연애: "is-love", 자녀운: "is-love",
-  초년운: "is-time", 말년운: "is-time", 총운: "is-time", 수명: "is-time", 건강: "is-time",
-};
-
-// Readings grouped by what they are about (성격, 재물 ...), in the order the
-// most common reading of each group comes.
-function readingGroups(readings) {
-  const groups = new Map();
-  for (const r of readings) {
-    const key = r.domain || "기타";
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(r.text);
-  }
-  const wrap = el("div", "part-readings");
-  for (const [domain, texts] of groups) {
-    const row = el("div", "rd");
-    const body = el("div", "rd-text");
-    body.append(...texts.map((t) => el("p", "", t)));
-    row.append(el("span", `rd-tag ${DOMAIN_CLASS[domain] ?? ""}`.trim(), domain), body);
-    wrap.append(row);
-  }
-  return wrap;
-}
-
-function labelRow(label, text, className) {
-  const row = el("div", `part-row ${className}`);
-  row.append(el("span", "part-label", label), el("p", "", text));
-  return row;
-}
-
-function partCard(part, shot, compact, still = false) {
-  const card = el("article", `part-card is-${part.dir}`);
-  const body = el("div", "part-body");
-  const head = el("div", "part-head");
-  head.append(el("small", "", part.part), el("h3", "", part.name));
-  body.append(head);
-  // The conclusion first, then what it was built from.
-  if (part.summary) {
-    // The summary is the master speaking: a small still portrait and a bubble.
-    const row = el("div", "master-row is-card");
-    const master = createMaster({ scale: compact ? 2 : 3, pose: compact ? "idle" : "point", animate: !still });
-    row.append(master.node, summaryBubble(part.summary));
-    body.append(row);
-  }
-  body.append(mineRow(part.mine));
-  if (Number.isFinite(part.z)) body.append(scaleRow(part));
-  if (part.about) body.append(labelRow("이 부위는", part.about, "is-about"));
-  if (part.readings.length) {
-    // Readings come sorted by how many sources gave them.
-    const details = el("details", "part-more");
-    details.open = !compact;
-    details.append(el("summary", "", `풀이 근거 ${part.readings.length}개`), readingGroups(part.readings));
-    body.append(details);
-  }
-  card.append(partPicture(shot, part.draw), body);
-  return card;
-}
-
 // Five outlines everyone knows; the visitor's own shape is lit.
 const SHAPE_PATHS = {
   egg: "M50 6 C74 6 84 30 82 54 C80 78 66 94 50 94 C34 94 20 78 18 54 C16 30 26 6 50 6 Z",
@@ -673,15 +581,6 @@ function shapeIcon(id, on) {
   svg.append(path);
   wrap.append(svg, el("figcaption", "", FACE_SHAPES[id].name.replace("갸름한 ", "")));
   return wrap;
-}
-
-function detailsOf(summaryText, cards, shot) {
-  const details = el("details", "part-more group-more");
-  details.append(el("summary", "", summaryText));
-  const list = el("div", "part-cards is-compact");
-  list.append(...cards.map((part) => partCard(part, shot, true, true)));
-  details.append(list);
-  return details;
 }
 
 function renderShape(shot) {
@@ -704,7 +603,8 @@ function renderShape(shot) {
   mine.querySelector("p").append(el("span", "typical", shape.mine.slice(measured)));
   body.append(mine);
   card.append(icons, body);
-  if (parts.face.parts.length) body.append(detailsOf(`얼굴 전체 자세히 ${parts.face.parts.length}개`, parts.face.parts, shot));
+  const faceText = composeGroup(parts.face);
+  if (faceText) body.append(el("p", "group-text", faceText));
   shapeBox.replaceChildren(card);
 }
 
@@ -712,17 +612,14 @@ function groupCard(group, shot) {
   const card = el("article", "group-card");
   const head = el("div", "group-head");
   head.append(el("h3", "", group.name));
-  const chips = el("div", "chips");
-  for (const part of group.parts) chips.append(el("span", `chip is-${part.dir}`, part.name));
-  head.append(chips);
   card.append(head);
-  if (group.lead?.summary) {
+  const text = composeGroup(group);
+  if (text) {
     const row = el("div", "master-row is-card");
     const master = createMaster({ scale: 3, pose: "idle" });
-    row.append(master.node, summaryBubble(group.lead.summary));
+    row.append(master.node, summaryBubble(text));
     card.append(row);
   }
-  card.append(detailsOf(`${group.name} 자세히 ${group.parts.length}개`, group.parts, shot));
   return card;
 }
 
