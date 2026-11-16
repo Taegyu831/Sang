@@ -198,18 +198,18 @@ export function composeStory(parts, shape) {
       : `${josa(list(leak.items), "이라는", "라는")} 풀이가 있어, 들어온 것을 지키는 관리가 관건입니다.`);
     second.basis = [...new Set([...second.basis, ...leak.basis])];
   }
-  if (b) second.body.push(`한편 ${b.work}`);
+  if (b) second.body.push(`여기에 ${b.work}`);
 
   // 3. people and love
   const people = gather(entries, "people", 5);
-  const third = { title: "사람과 사랑", lead: `그리고 사람과 사랑에서는 ${main.love}`, body: [], basis: people.basis };
+  const third = { title: "사람과 사랑", lead: `이어서 사람과 사랑에서는 ${main.love}`, body: [], basis: people.basis };
   const peopleMinus = gather(entries, "peopleMinus", 3);
   if (people.items.length) third.body.push(`${josa(list(people.items), "이", "가")} 거론되는 얼굴입니다.`);
   if (peopleMinus.items.length) {
-    third.body.push(`${people.items.length ? "다만 " : ""}${josa(list(peopleMinus.items), "이라는", "라는")} 풀이도 있습니다.`);
+    third.body.push(`${people.items.length ? "한편으로는 " : ""}${josa(list(peopleMinus.items), "이라는", "라는")} 풀이도 있습니다.`);
     third.basis = [...new Set([...third.basis, ...peopleMinus.basis])];
   }
-  if (b) third.body.push(`또한 ${b.love}`);
+  if (b) third.body.push(`이와 함께 ${b.love}`);
 
   // 4. the life stages, together
   const early = gather(entries, "early", 4);
@@ -221,17 +221,17 @@ export function composeStory(parts, shape) {
   for (const [label, field] of [["초년", "earlyMinus"], ["중년", "midMinus"], ["말년", "lateMinus"]]) {
     const g = gather(entries, field, 3);
     if (!g.items.length) continue;
-    fourth.body.push(`다만 ${label}에는 ${josa(list(g.items), "이라는", "라는")} 풀이도 있습니다.`);
+    fourth.body.push(`하지만 ${label}에는 ${josa(list(g.items), "이라는", "라는")} 풀이도 있습니다.`);
     fourth.basis = [...new Set([...fourth.basis, ...g.basis])];
   }
-  if (b) fourth.body.push(`또한 ${b.stage}`);
+  if (b) fourth.body.push(`아울러 ${b.stage}`);
 
   // 5. who fits
   const fits = (poles.length ? poles.map((p) => FIT[p]) : [EVEN_FIT]);
   const fifth = { title: "잘 맞는 사람", lead: `그래서 잘 맞는 사람은 ${fits[0].desc} 사람입니다.`, body: [fits[0].why], basis: [] };
   const fitLooks = fits[0].to ? looksOf(fits[0].to) : [];
   if (fitLooks.length) fifth.body.push(`관상으로는 ${list(fitLooks)} 쪽에서 이런 성향이 주로 읽힙니다.`);
-  if (fits[1]) fifth.body.push(`또한 ${fits[1].desc} 사람과도 잘 어울립니다. ${fits[1].why}`);
+  if (fits[1]) fifth.body.push(`이에 더해 ${fits[1].desc} 사람과도 잘 어울립니다. ${fits[1].why}`);
 
   // 6. who to avoid, and what to watch in oneself
   const clashes = (poles.length ? poles.map((p) => CLASH[p]) : [EVEN_CLASH]);
