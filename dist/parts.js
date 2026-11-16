@@ -1,3 +1,4 @@
+import { facetsOf } from "./facets.js";
 // Part cards: one card per face part a visitor can picture ("미간", "코 폭").
 //
 // For each card the engine works out, from the measured ratios,
@@ -198,29 +199,71 @@ function groupOf(group, all) {
 }
 
 /**
- * One paragraph for a whole region: what the leaning parts mean (strongest
- * first, at most three), then which parts sit in the ordinary range. Nothing
- * is folded away, so a visitor reads the region without opening anything.
+ * One paragraph for a whole region, told in a fixed order so it reads as one
+ * story: what is measured, character, work and money, people, the life stages
+ * (초년, 중년, 말년 together), what to watch, and a closing summary. Parts in
+ * the ordinary range are not mentioned.
  */
-export function composeGroup(group, maxLeaning = 3) {
-  const leaning = group.leaning.slice(0, maxLeaning);
-  const picked = leaning.length ? leaning : (group.lead ? [group.lead] : []);
-  const seen = new Set();
-  const sentences = [];
-  for (const part of picked) {
-    for (const sentence of part.summary.match(/[^.]+\.\s*/g) ?? []) {
-      const key = sentence.trim();
-      if (!seen.has(key)) { seen.add(key); sentences.push(key); }
-    }
-  }
-  const ordinary = group.parts.filter((p) => p.dir === "middle" && !picked.includes(p)).map((p) => p.part);
-  if (ordinary.length) sentences.push(`${ordinary.join(", ")}${hasBatchim(ordinary.at(-1)) ? "은" : "는"} 보통 범위입니다.`);
-  return sentences.join(" ");
-}
+const STAGES = [["early", "초년"], ["mid", "중년"], ["late", "말년"]];
+const MAX_ITEMS = 4;
 
 function hasBatchim(word) {
   const code = word.charCodeAt(word.length - 1) - 0xac00;
   return code >= 0 && code <= 11171 && code % 28 !== 0;
+}
+function endsWithRieul(word) {
+  const code = word.charCodeAt(word.length - 1) - 0xac00;
+  return code >= 0 && code <= 11171 && code % 28 === 8;
+}
+const josa = (word, withBatchim, without) => `${word}${hasBatchim(word) ? withBatchim : without}`;
+const withRo = (word) => `${word}${hasBatchim(word) && !endsWithRieul(word) ? "으로" : "로"}`;
+
+function gather(facets, field) {
+  const seen = new Set();
+  const out = [];
+  for (const f of facets) for (const item of f[field] ?? []) {
+    if (!seen.has(item)) { seen.add(item); out.push(item); }
+  }
+  return out.slice(0, MAX_ITEMS);
+}
+
+export function composeGroup(group, { skip = [] } = {}) {
+  const leaning = group.leaning.filter((p) => !skip.includes(p.id));
+  const withFacets = leaning.map((p) => ({ part: p, facets: facetsOf(p) })).filter((x) => x.facets);
+  if (!withFacets.length) return fallbackText(group, skip);
+  const facets = withFacets.map((x) => x.facets);
+  const sentences = [];
+  const names = withFacets.map((x) => x.part.name);
+  sentences.push(`${josa(names.join(", "), "이", "가")} 이 부위에서 먼저 읽힙니다.`);
+  const traits = gather(facets, "traits");
+  if (traits.length) sentences.push(`성격으로는 ${josa(traits.join(", "), "이", "가")} 두드러집니다.`);
+  const work = gather(facets, "work");
+  if (work.length) sentences.push(`일과 재물에서는 ${josa(work.join(", "), "을", "를")} 꼽습니다.`);
+  const people = gather(facets, "people");
+  if (people.length) sentences.push(`사람과의 관계에서는 ${josa(people.join(", "), "이", "가")} 거론됩니다.`);
+  const stages = STAGES.map(([field, label]) => [label, gather(facets, field)]).filter(([, items]) => items.length);
+  if (stages.length) {
+    const told = stages.map(([label, items]) => `${label}에는 ${items.join(", ")}`).join(", ");
+    sentences.push(`시기별로는 ${told}에 관한 풀이가 모입니다.`);
+  }
+  const caution = gather(facets, "caution");
+  if (caution.length) sentences.push(`다만 ${josa(caution.join(", "), "은", "는")} 조심하라는 풀이가 있습니다.`);
+  const gists = [...new Set(withFacets.map((x) => x.part.gist).filter(Boolean))].slice(0, 2);
+  if (gists.length === 1) sentences.push(`정리하면 ${withRo(gists[0])} 봅니다.`);
+  else if (gists.length === 2) sentences.push(`정리하면 ${gists[0]}이며, ${withRo(gists[1])} 봅니다.`);
+  return sentences.join(" ");
+}
+
+// Every part is in the ordinary range: say what the tradition says about a
+// balanced one, never "보통 범위".
+function fallbackText(group, skip) {
+  const lead = group.parts.find((p) => !skip.includes(p.id));
+  if (!lead) return "";
+  const kept = (lead.summary.match(/[^.]+\.\s*/g) ?? [])
+    .map((x) => x.trim())
+    .filter((x) => !/해당하지 않|강하게 해당/.test(x));
+  if (kept.length) return kept.join(" ");
+  return `${josa(group.name, "은", "는")} 한쪽으로 크게 치우치지 않아 무난하고 균형 잡힌 쪽으로 봅니다.`;
 }
 
 // ---------- face shape ----------

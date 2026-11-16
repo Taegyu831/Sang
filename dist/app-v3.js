@@ -554,7 +554,7 @@ function summaryBubble(text) {
   const sentences = text.match(/[^.]+\.\s*/g) ?? [text];
   for (const sentence of sentences) {
     const trimmed = sentence.trim();
-    if (/^전체적으로/.test(trimmed)) p.append(el("span", "sum-key", sentence));
+    if (/^(전체적으로|정리하면)/.test(trimmed)) p.append(el("span", "sum-key", sentence));
     else if (/^(다만|한편)/.test(trimmed)) p.append(el("span", "sum-alt", sentence));
     else p.append(document.createTextNode(sentence));
   }
@@ -603,7 +603,7 @@ function renderShape(shot) {
   mine.querySelector("p").append(el("span", "typical", shape.mine.slice(measured)));
   body.append(mine);
   card.append(icons, body);
-  const faceText = composeGroup(parts.face);
+  const faceText = composeGroup(parts.face, { skip: ["faceShape"] });
   if (faceText) body.append(el("p", "group-text", faceText));
   shapeBox.replaceChildren(card);
 }
