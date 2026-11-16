@@ -166,7 +166,11 @@ export function leanings(entries) {
     .map(([axis, v]) => `${axis}${v > 0 ? "+" : "-"}`);
 }
 
-const list = (items) => items.join(", ");
+// ⟦word⟧ is shown bold in the accent colour, ⟪word⟫ bold in ink (see the app).
+const em = (text) => `⟦${text}⟧`;
+const strong = (text) => `⟪${text}⟫`;
+// Only the first three are marked, so a long list keeps a rhythm.
+const list = (items) => items.map((x, i) => (i < 3 ? em(x) : x)).join(", ");
 
 // An entry pulls against the kind of person the face mostly is when it leans
 // the other way on one of the two main axes. Its readings are told as "한편".
@@ -194,14 +198,14 @@ export function composeStory(parts, shape) {
   const poles = leanings(entries).slice(0, 2);
   const [a, b] = poles.map((p) => POLES[p]);
   const main = a ?? EVEN;
-  const headline = b ? `${a.conn}, ${b.adn} 사람입니다.` : `${main.adn} 사람입니다.`;
+  const headline = b ? `${em(a.conn)}, ${em(b.adn)} 사람입니다.` : `${em(main.adn)} 사람입니다.`;
 
   // 1. who this is
   const aligned = entries.filter((e) => !opposes(e.key, poles));
   const against = entries.filter((e) => opposes(e.key, poles));
   const traits = gather(aligned.length ? aligned : entries, "traits", 7);
   const first = { title: "이 사람은", lead: `이 사람은 ${headline}`, body: [], basis: traits.basis };
-  if (shape) first.body.push(shape.text.match(/[^.]+\.\s*/g)?.slice(0, 2).join("").trim() ?? "");
+  if (shape) first.body.push((shape.text.match(/[^.]+\.\s*/g)?.slice(0, 2).join("").trim() ?? "").replace(shape.name, em(shape.name)));
   if (traits.items.length) first.body.push(`성격으로는 ${josa(list(traits.items), "이", "가")} 함께 두드러집니다.`);
   const other = aligned.length ? gather(against, "traits", 3) : { items: [], basis: [] };
   if (other.items.length) {
@@ -239,36 +243,36 @@ export function composeStory(parts, shape) {
   const late = gather(entries, "late", 4);
   const stages = [["초년", early], ["중년", mid], ["말년", late]].filter(([, g]) => g.items.length);
   const fourth = { title: "시기", lead: `그러다 보면 시기로는 ${main.stage}`, body: [], basis: [...new Set([...early.basis, ...mid.basis, ...late.basis])] };
-  for (const [label, g] of stages) fourth.body.push(`${label}에는 ${list(g.items)}에 관한 풀이가 모입니다.`);
+  for (const [label, g] of stages) fourth.body.push(`${strong(label)}에는 ${list(g.items)}에 관한 풀이가 모입니다.`);
   for (const [label, field] of [["초년", "earlyMinus"], ["중년", "midMinus"], ["말년", "lateMinus"]]) {
     const g = gather(entries, field, 3);
     if (!g.items.length) continue;
-    fourth.body.push(`하지만 ${label}에는 ${josa(list(g.items), "이라는", "라는")} 풀이도 있습니다.`);
+    fourth.body.push(`하지만 ${strong(label)}에는 ${josa(list(g.items), "이라는", "라는")} 풀이도 있습니다.`);
     fourth.basis = [...new Set([...fourth.basis, ...g.basis])];
   }
   if (b) fourth.body.push(`아울러 ${b.stage}`);
 
   // 5. who fits
   const fits = (poles.length ? poles.map((p) => FIT[p]) : [EVEN_FIT]);
-  const fifth = { title: "잘 맞는 인연", bond: bondOf("fit", fits[0]), lead: `그래서 잘 맞는 인연은 ${fits[0].desc} 사람입니다.`, body: [fits[0].why], basis: [] };
+  const fifth = { title: "잘 맞는 인연", bond: bondOf("fit", fits[0]), lead: `그래서 잘 맞는 인연은 ${em(fits[0].desc)} 사람입니다.`, body: [fits[0].why], basis: [] };
   const fitLooks = fits[0].to ? looksOf(fits[0].to) : [];
   if (fitLooks.length) fifth.body.push(`관상으로는 ${list(fitLooks)} 쪽에서 이런 성향이 주로 읽힙니다.`);
-  if (fits[1]) fifth.body.push(`이에 더해 ${fits[1].desc} 사람과도 잘 어울립니다. ${fits[1].why}`);
+  if (fits[1]) fifth.body.push(`이에 더해 ${em(fits[1].desc)} 사람과도 잘 어울립니다. ${fits[1].why}`);
 
   // 6. who to avoid, and what to watch in oneself
   const clashes = (poles.length ? poles.map((p) => CLASH[p]) : [EVEN_CLASH]);
   const cautions = gather(entries, "caution", 6);
   const watch = poles.map((p) => POLES[p].watch).filter(Boolean);
-  const sixth = { title: "조심할 인연", bond: bondOf("clash", clashes[0]), lead: `다만 ${clashes[0].desc} 사람과는 부딪히기 쉽습니다.`, body: [clashes[0].why], basis: cautions.basis };
+  const sixth = { title: "조심할 인연", bond: bondOf("clash", clashes[0]), lead: `다만 ${em(clashes[0].desc)} 사람과는 부딪히기 쉽습니다.`, body: [clashes[0].why], basis: cautions.basis };
   const clashLooks = clashes[0].to ? looksOf(clashes[0].to) : [];
   if (clashLooks.length) sixth.body.push(`관상으로는 ${list(clashLooks)} 쪽에서 이런 성향이 주로 읽힙니다.`);
-  if (clashes[1]) sixth.body.push(`${clashes[1].desc} 사람 앞에서도 마찬가지입니다. ${clashes[1].why}`);
+  if (clashes[1]) sixth.body.push(`${em(clashes[1].desc)} 사람 앞에서도 마찬가지입니다. ${clashes[1].why}`);
   const own = [...cautions.items, ...watch].slice(0, 6);
   if (own.length) sixth.body.push(`스스로는 ${josa(list(own), "은", "는")} 조심하라는 풀이가 있습니다.`);
 
   // closing
-  const fitText = fits[0].desc;
-  const clashText = clashes[0].desc;
+  const fitText = em(fits[0].desc);
+  const clashText = em(clashes[0].desc);
   const closing = `정리하면 ${headline.replace(/입니다\.$/, "입니다.")} ${fitText} 사람과 가장 잘 맞고, ${clashText} 사람과는 거리를 두면 좋습니다.`;
 
   return { headline, poles, pages: [first, second, third, fourth, fifth, sixth], closing };

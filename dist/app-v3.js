@@ -515,11 +515,24 @@ function bondBlock(bond, withChoice) {
   return block;
 }
 
+// ⟦word⟧ -> bold in the accent colour, ⟪word⟫ -> bold in ink.
+function marked(tag, className, text) {
+  const node = el(tag, className);
+  let last = 0;
+  for (const m of text.matchAll(/⟦(.+?)⟧|⟪(.+?)⟫/g)) {
+    node.append(document.createTextNode(text.slice(last, m.index)));
+    node.append(el("strong", m[1] ? "em" : "ink", m[1] ?? m[2]));
+    last = m.index + m[0].length;
+  }
+  node.append(document.createTextNode(text.slice(last)));
+  return node;
+}
+
 function storyPage(page, { first = false } = {}) {
   const wrap = first ? storyFirst : el("div", "story-page");
-  wrap.append(el("h2", "story-lead", page.lead));
+  wrap.append(marked("h2", "story-lead", page.lead));
   if (page.bond) wrap.append(bondBlock(page.bond, page.bond.kind === "fit"));
-  for (const line of page.body.filter(Boolean)) wrap.append(el("p", "story-body", line));
+  for (const line of page.body.filter(Boolean)) wrap.append(marked("p", "story-body", line));
   if (page.basis.length) wrap.append(el("p", "story-basis", `근거 · ${page.basis.join(" · ")}`));
   return wrap;
 }
@@ -539,7 +552,7 @@ function renderStory() {
     slide.append(storyPage(page));
     pages.insertBefore(slide, closingPage);
   }
-  closingLead.textContent = story.closing;
+  closingLead.replaceChildren(...marked("span", "", story.closing).childNodes);
 }
 
 let closingSpoken = false;

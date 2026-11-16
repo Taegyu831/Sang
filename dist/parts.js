@@ -207,11 +207,15 @@ function groupOf(group, all) {
 const STAGES = [["early", "초년"], ["mid", "중년"], ["late", "말년"]];
 const MAX_ITEMS = 4;
 
+// Emphasis marks (⟦ ⟧ ⟪ ⟫) around words are ignored when picking a particle.
+const bare = (word) => word.replace(/[⟦⟧⟪⟫]/g, "");
 function hasBatchim(word) {
+  word = bare(word);
   const code = word.charCodeAt(word.length - 1) - 0xac00;
   return code >= 0 && code <= 11171 && code % 28 !== 0;
 }
 function endsWithRieul(word) {
+  word = bare(word);
   const code = word.charCodeAt(word.length - 1) - 0xac00;
   return code >= 0 && code <= 11171 && code % 28 === 8;
 }

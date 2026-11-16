@@ -328,3 +328,8 @@ img { display: block; max-width: 100%; }
 .chip-btn:hover { color: var(--ink); border-color: var(--muted); }
 .chip-btn.is-on { color: var(--accent); border-color: var(--accent); font-weight: 700; }
 @media (max-width: 760px) { .bond { flex-direction: column; align-items: flex-start; } }
+
+/* 이야기의 핵심 낱말: 고동색 굵게, 쪽 안의 갈래 이름은 먹색 굵게 */
+.story-body .em { font-weight: 700; color: var(--accent); }
+.story-body .ink { font-weight: 800; color: var(--ink); }
+.story-lead .em { color: var(--accent); }
