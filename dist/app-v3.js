@@ -85,7 +85,6 @@ for (const row of document.querySelectorAll("[data-master]")) {
 }
 const GREETINGS = {
   start: ["#startSay", "어서 오세요. 카메라 앞에 편히 앉으시면, 제가 얼굴을 하나하나 풀어 드리겠습니다."],
-  result: ["#resultSay", "자, 얼굴을 다 읽었습니다. 정리해 드리겠습니다."],
 };
 
 function greet(name) {
@@ -555,16 +554,7 @@ function renderStory() {
   closingLead.replaceChildren(...marked("span", "", story.closing).childNodes);
 }
 
-let closingSpoken = false;
-function speakClosing() {
-  closingSpoken = true;
-  const row = document.querySelector('[data-master="closing"]');
-  const text = row?.querySelector(".bubble p");
-  if (masters.closing && text) say(masters.closing, text, text.textContent, { speed: 14 });
-}
-
 function renderClosing() {
-  closingSpoken = false;
   resultClosing.textContent = "관상에서 이렇게들 풀이해 왔다는 이야기이며, 성격이나 미래를 정해 주지는 않습니다. 풀이가 여러 개면 해설마다 다르게 본다는 뜻입니다. 사진은 처음으로 돌아가면 지워집니다.";
 }
 
@@ -585,7 +575,6 @@ function showSlide(index, { force = false } = {}) {
     slide.scrollTop = 0;
   });
   slideDots.querySelectorAll("button").forEach((dot, i) => dot.classList.toggle("is-on", i === next));
-  if (slides[next]?.dataset.page === "last" && !closingSpoken) speakClosing();
 }
 
 function step(delta) {
