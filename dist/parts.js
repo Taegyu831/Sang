@@ -33,11 +33,13 @@ const VISIBILITY = {
   thirds: 0.6, symmetry: 0.5, eyeAsym: 0.5, forehead: 0.85, noseLength: 0.85,
 };
 
+// Eyebrows are left out: hair hides them and the readings say little.
+const LEFT_OUT = new Set(["browLength", "browTilt", "browArch", "browEyeGap", "browInnerGap"]);
+
 // The parts a visitor knows by name. Every card belongs to exactly one.
 export const FACE_GROUP = { id: "face", name: "얼굴 전체", ids: ["faceShape", "cheek", "thirds", "symmetry"] };
 export const GROUPS = [
   { id: "eyes", name: "눈", ids: ["eyeSize", "eyeOpen", "eyeTilt", "eyeGap", "eyeAsym"] },
-  { id: "brows", name: "눈썹", ids: ["browLength", "browTilt", "browArch", "browEyeGap", "browInnerGap"] },
   { id: "nose", name: "코", ids: ["noseWidth", "noseLength"] },
   { id: "mouth", name: "입", ids: ["mouthFace", "lipFull", "lipRatio", "mouthLift", "philtrum"] },
   { id: "forehead", name: "이마", ids: ["forehead"] },
@@ -151,7 +153,7 @@ export function synthesize(top, partsContent, rules = PART_RULES) {
     if (group) counts[group] = (counts[group] ?? 0) + 1;
   }
   const ranked = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-  const lines = ["얼굴형과 눈, 눈썹, 코, 입, 이마, 턱을 차례로 재어 보았습니다."];
+  const lines = ["얼굴형과 눈, 코, 입, 이마, 턱을 차례로 재어 보았습니다."];
   if (top.every((p) => Math.abs(p.z) < rules.clearAt)) lines.push(s.balanced);
   else if (ranked.length) {
     lines.push(s.lines[ranked[0][0]]);
@@ -168,7 +170,7 @@ export function synthesize(top, partsContent, rules = PART_RULES) {
 export function readParts(values, partsContent, calibration = CALIBRATION, rules = PART_RULES) {
   const cards = partsContent.cards
     .map((card) => readPart(card, values, calibration, rules))
-    .filter(Boolean)
+    .filter((card) => card && !LEFT_OUT.has(card.id))
     .sort((a, b) => b.score - a.score);
   const seen = new Set();
   const top = [];
