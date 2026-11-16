@@ -7,7 +7,6 @@ import { applyPoseResidual } from "./residual.js";
 import { readParts, classifyFaceShape } from "./parts.js";
 import { composeStory } from "./story.js";
 import { avatarSvg, paramsOf } from "./avatar.js";
-import { createMaster, mountMaster, say } from "./character.js";
 
 const MEDIAPIPE_VERSION = "1.1.1";
 const MEDIAPIPE_MODULE = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VERSION}/vision_bundle.mjs`;
@@ -77,24 +76,6 @@ let reading = null;
 let classificationComplete = false;
 let flowRun = 0;
 
-// ---------- the 역학원 master (pixel character with a speech bubble) ----------
-
-const masters = {};
-for (const row of document.querySelectorAll("[data-master]")) {
-  masters[row.dataset.master] = mountMaster(row, { scale: Number(row.dataset.scale) || 4, pose: row.dataset.pose || "idle" });
-}
-const GREETINGS = {
-  start: ["#startSay", "어서 오세요. 카메라 앞에 편히 앉으시면, 제가 얼굴을 하나하나 풀어 드리겠습니다."],
-};
-
-function greet(name) {
-  const entry = GREETINGS[name];
-  if (entry && masters[name]) say(masters[name], $(entry[0]), entry[1]);
-}
-
-// The measuring guidance changes often; the master just moves his mouth.
-new MutationObserver(() => masters.scan?.talk(500)).observe($("#statusMessage"), { childList: true, characterData: true, subtree: true });
-
 function clamp(value, minimum = 0, maximum = 1) { return Math.min(maximum, Math.max(minimum, value)); }
 
 function el(tag, className, text) {
@@ -119,7 +100,6 @@ const SCREENS = { start: startScreen, scan: scanScreen, loading: loadingScreen, 
 function showScreen(name) {
   for (const [key, node] of Object.entries(SCREENS)) node.hidden = key !== name;
   document.body.dataset.screen = name;
-  greet(name);
 }
 
 function setCameraButton(label, action, disabled = false) {
@@ -651,7 +631,7 @@ function showResult() {
   LOADING_LINES.forEach((line, index) => {
     window.setTimeout(() => {
       if (run !== flowRun) return;
-      say(masters.loading, loadLine, line);
+      loadLine.textContent = line;
       setProgress(loadBar, (index + 1) / LOADING_LINES.length);
     }, stepMs * index);
   });

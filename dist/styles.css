@@ -333,3 +333,8 @@ img { display: block; max-width: 100%; }
 .story-body .em { font-weight: 700; color: var(--accent); }
 .story-body .ink { font-weight: 800; color: var(--ink); }
 .story-lead .em { color: var(--accent); }
+
+/* 말풍선 없이 글만 */
+.start-sub { max-width: 28em; font-size: calc(var(--fs) * 1.05); line-height: 1.7; color: var(--ink-2); }
+.scan .scan-msg { text-align: center; }
+.load-line { font-size: calc(var(--fs) * 1.05); color: var(--ink-2); }

@@ -21,9 +21,7 @@
           <div class="start">
             <span class="seal" aria-hidden="true">相</span>
             <h1 class="headline">얼굴부터<br /><em>재어</em> 보겠습니다</h1>
-            <div class="master-row is-big" data-master="start" data-scale="5" data-pose="point">
-              <div class="bubble"><p id="startSay">어서 오세요. 카메라 앞에 편히 앉으시면, 제가 얼굴을 하나하나 풀어 드리겠습니다.</p></div>
-            </div>
+            <p class="start-sub" id="startSay">카메라 앞에 편히 앉아 주세요. 얼굴을 하나하나 재어 드리겠습니다.</p>
             <button class="btn primary big-btn" id="cameraButton" type="button" disabled><span>준비 중</span></button>
             <p class="note permission-note"></p>
             <p class="note">얼굴 영상은 이 화면에서만 쓰고 저장하지 않아요.</p>
@@ -47,9 +45,7 @@
                 </div>
               </div>
             </div>
-            <div class="master-row is-scan" data-master="scan" data-scale="3">
-              <div class="bubble"><p class="scan-msg" id="statusMessage" role="status">얼굴을 화면 가운데에 맞춰 주세요</p></div>
-            </div>
+            <p class="scan-msg" id="statusMessage" role="status">얼굴을 화면 가운데에 맞춰 주세요</p>
             <div class="bar"><i id="journeyProgress"></i></div>
             <div class="scan-actions">
               <button class="btn primary big-btn" id="toResultButton" type="button" hidden>풀이 보기 ▶</button>
@@ -63,9 +59,7 @@
           <div class="loading">
             <p class="headline small-headline">관상을 풀어 보는 중<span class="dots" aria-hidden="true"></span></p>
             <div class="bar"><i id="loadBar"></i></div>
-            <div class="master-row" data-master="loading" data-scale="4">
-              <div class="bubble"><p id="loadLine">관상서를 펼치는 중입니다</p></div>
-            </div>
+            <p class="load-line" id="loadLine">관상서를 펼치는 중입니다</p>
           </div>
         </section>
 
