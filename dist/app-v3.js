@@ -95,17 +95,6 @@ function greet(name) {
 // The measuring guidance changes often; the master just moves his mouth.
 new MutationObserver(() => masters.scan?.talk(500)).observe($("#statusMessage"), { childList: true, characterData: true, subtree: true });
 
-// Masters further down the reading speak once when scrolled into view.
-const speakOnView = new IntersectionObserver((entries) => {
-  for (const entry of entries) {
-    if (!entry.isIntersecting) continue;
-    speakOnView.unobserve(entry.target);
-    const master = entry.target._master;
-    const text = entry.target.querySelector(".bubble p, .part-summary");
-    if (master && text) say(master, text, text.textContent, { speed: 14 });
-  }
-}, { threshold: 0.6 });
-
 function clamp(value, minimum = 0, maximum = 1) { return Math.min(maximum, Math.max(minimum, value)); }
 
 function el(tag, className, text) {
@@ -647,50 +636,83 @@ function renderParts(shot) {
   groupCards.replaceChildren(...shown.map((g, i) => groupCard(g, i, shown.length)));
 }
 
+let closingSpoken = false;
+function speakClosing() {
+  closingSpoken = true;
+  const row = document.querySelector('[data-master="closing"]');
+  const text = row?.querySelector(".bubble p");
+  if (masters.closing && text) say(masters.closing, text, text.textContent, { speed: 14 });
+}
+
 function renderClosing() {
-  const closingRow = document.querySelector('[data-master="closing"]');
-  closingRow._master = masters.closing;
-  speakOnView.observe(closingRow);
+  closingSpoken = false;
   resultClosing.textContent = "관상에서 이렇게들 풀이해 왔다는 이야기이며, 성격이나 미래를 정해 주지는 않습니다. 풀이가 여러 개면 해설마다 다르게 본다는 뜻입니다. 사진은 처음으로 돌아가면 지워집니다.";
 }
 
-// ---------- slides: each region eases in, and a cue leads to the next ----------
-const slideIn = new IntersectionObserver((entries) => {
-  for (const entry of entries) if (entry.isIntersecting) entry.target.classList.add("is-in");
-}, { root: pages, threshold: 0.3 });
-
+// ---------- slides: one region on screen, the content itself changes ----------
+let slideIndex = 0;
+let slideLockedUntil = 0;
 const slidesOf = () => [...pages.querySelectorAll(".slide")];
+const slideDots = $("#slideDots");
 
-function goToSlide(delta) {
+function showSlide(index, { force = false } = {}) {
   const slides = slidesOf();
-  const here = slides.findIndex((s) => s.getBoundingClientRect().top > pages.getBoundingClientRect().top + 8) - 1;
-  const current = here < 0 ? slides.length - 1 : here;
-  const target = slides[Math.max(0, Math.min(slides.length - 1, current + delta))];
-  target?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const next = Math.max(0, Math.min(slides.length - 1, index));
+  if (next === slideIndex && !force) return;
+  slideIndex = next;
+  slides.forEach((slide, i) => {
+    slide.classList.toggle("is-active", i === next);
+    slide.classList.toggle("is-before", i < next);
+    slide.scrollTop = 0;
+  });
+  slideDots.querySelectorAll("button").forEach((dot, i) => dot.classList.toggle("is-on", i === next));
+  if (slides[next]?.dataset.page === "last" && !closingSpoken) speakClosing();
+}
+
+function step(delta) {
+  const now = performance.now();
+  if (now < slideLockedUntil) return;
+  const before = slideIndex;
+  showSlide(slideIndex + delta);
+  if (slideIndex !== before) slideLockedUntil = now + 900;
 }
 
 function buildSlides() {
-  pages.querySelectorAll(".next-cue").forEach((n) => n.remove());
   const slides = slidesOf();
-  slides.forEach((slide, i) => {
-    slide.classList.remove("is-in");
-    slideIn.unobserve(slide);
-    const next = slides[i + 1];
-    if (next) {
-      const cue = el("button", "next-cue");
-      cue.type = "button";
-      cue.append(el("span", "", `다음 · ${next.dataset.title}`), el("i", "", "▼"));
-      cue.addEventListener("click", () => next.scrollIntoView({ behavior: "smooth", block: "start" }));
-      (slide.querySelector(".overview-text") ?? slide).append(cue);
-    }
-    slideIn.observe(slide);
-  });
+  slideDots.replaceChildren(...slides.map((slide, i) => {
+    const dot = el("button", "slide-dot");
+    dot.type = "button";
+    dot.setAttribute("aria-label", slide.dataset.title || "요약");
+    dot.title = slide.dataset.title || "요약";
+    dot.addEventListener("click", () => showSlide(i));
+    return dot;
+  }));
+  showSlide(0, { force: true });
 }
 
+// A slide taller than the screen scrolls by itself first; only at its edge does the wheel turn the page.
+function atEdge(slide, delta) {
+  if (!slide || slide.scrollHeight <= slide.clientHeight + 2) return true;
+  return delta > 0 ? slide.scrollTop + slide.clientHeight >= slide.scrollHeight - 2 : slide.scrollTop <= 0;
+}
+pages.addEventListener("wheel", (event) => {
+  if (Math.abs(event.deltaY) < 12) return;
+  event.preventDefault();
+  if (atEdge(slidesOf()[slideIndex], event.deltaY)) step(event.deltaY > 0 ? 1 : -1);
+  else slidesOf()[slideIndex].scrollTop += event.deltaY;
+}, { passive: false });
+let touchStartY = null;
+pages.addEventListener("touchstart", (event) => { touchStartY = event.touches[0].clientY; }, { passive: true });
+pages.addEventListener("touchend", (event) => {
+  if (touchStartY === null) return;
+  const dy = touchStartY - event.changedTouches[0].clientY;
+  touchStartY = null;
+  if (Math.abs(dy) > 60 && atEdge(slidesOf()[slideIndex], dy)) step(dy > 0 ? 1 : -1);
+}, { passive: true });
 document.addEventListener("keydown", (event) => {
   if (resultView.hidden || event.target.closest?.("button, a, input")) return;
-  if (["ArrowDown", "PageDown", " "].includes(event.key)) { event.preventDefault(); goToSlide(1); }
-  else if (["ArrowUp", "PageUp"].includes(event.key)) { event.preventDefault(); goToSlide(-1); }
+  if (["ArrowDown", "ArrowRight", "PageDown", " "].includes(event.key)) { event.preventDefault(); step(1); }
+  else if (["ArrowUp", "ArrowLeft", "PageUp"].includes(event.key)) { event.preventDefault(); step(-1); }
 });
 
 function renderResult() {

@@ -5,7 +5,7 @@
 <iframe id="app"></iframe>
 <script>
 // Local helper for screenshots of the reading without a camera (127.0.0.1 only).
-//   ?scroll=900      how far down the reading to scroll
+//   ?slide=2         which page of the reading to show
 //   ?w=390&h=844     phone size (headless Chrome will not open a window narrower than about 500px)
 //   ?scan=1          the measuring screen with a still picture instead of the camera
 const q = new URLSearchParams(location.search);
@@ -32,8 +32,7 @@ app.addEventListener("load", () => setTimeout(() => {
     return;
   }
   d.querySelector("#loadingScreen").click();
-  // ?scroll=900 scrolls the reading down that many pixels.
-  d.querySelector("#pages").style.scrollBehavior = "auto";
-  d.querySelector("#pages").scrollTop = Number(q.get("scroll") || 0);
+  // ?slide=2 shows the third page of the reading (0 summary, 1 face shape, 2.. regions).
+  d.querySelectorAll(".slide-dot")[Number(q.get("slide") || 0)]?.click();
 }, 1500));
 </script>
