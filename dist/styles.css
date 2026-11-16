@@ -338,3 +338,6 @@ img { display: block; max-width: 100%; }
 .start-sub { max-width: 28em; font-size: calc(var(--fs) * 1.05); line-height: 1.7; color: var(--ink-2); }
 .scan .scan-msg { text-align: center; }
 .load-line { font-size: calc(var(--fs) * 1.05); color: var(--ink-2); }
+
+/* 시작 화면: 큰 도장 하나 */
+.start-seal { display: grid; place-items: center; aspect-ratio: 1; width: clamp(120px, min(18vw, 26vh), 220px); background: var(--seal); color: #fff; font-family: var(--seal-font); font-weight: 700; line-height: 1; font-size: clamp(76px, min(11.5vw, 17vh), 140px); border-radius: 3px; }

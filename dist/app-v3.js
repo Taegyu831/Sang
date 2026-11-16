@@ -14,7 +14,7 @@ const MEDIAPIPE_WASM = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${M
 const FACE_MODEL = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
 const PUBLIC_SITE_URL = "https://taegyu831.github.io/Sang/";
 const MODEL_LOAD_TIMEOUT = 40000;
-const CAMERA_LABEL = "▶ 관상 보기";
+const CAMERA_LABEL = "시작하기";
 
 const SEARCH_PARAMS = new URLSearchParams(window.location.search);
 // ?pose=raw turns the head pose correction off, to compare against the old behaviour.
