@@ -341,3 +341,15 @@ img { display: block; max-width: 100%; }
 
 /* 시작 화면: 큰 도장 하나 */
 .start-seal { display: grid; place-items: center; aspect-ratio: 1; width: clamp(120px, min(18vw, 26vh), 220px); background: var(--seal); color: #fff; font-family: var(--seal-font); font-weight: 700; line-height: 1; font-size: clamp(76px, min(11.5vw, 17vh), 140px); border-radius: 3px; }
+
+/* 휴대폰: 사진은 위에 작게, 이야기는 아래 (위쪽 공통 규칙보다 뒤에 있어야 적용된다) */
+@media (max-width: 760px) {
+  .reading { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); gap: 10px; align-items: stretch; }
+  .plate { width: min(30%, 120px); justify-self: center; }
+  .story { margin: 0; max-height: none; }
+  .story-page { padding: 8px 26px 8px 0; gap: 12px; }
+  .story-lead { font-size: clamp(20px, 5.4vw, 26px); }
+  .story-body { font-size: 0.92em; line-height: 1.75; }
+  .bond { flex-direction: row; align-items: center; gap: 12px; }
+  .avatar { width: 92px; }
+}

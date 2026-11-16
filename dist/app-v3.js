@@ -590,12 +590,20 @@ resultView.addEventListener("wheel", (event) => {
   else slidesOf()[slideIndex].scrollTop += event.deltaY;
 }, { passive: false });
 let touchStartY = null;
-resultView.addEventListener("touchstart", (event) => { touchStartY = event.touches[0].clientY; }, { passive: true });
+let touchEdge = { up: true, down: true };
+resultView.addEventListener("touchstart", (event) => {
+  touchStartY = event.touches[0].clientY;
+  // Only a swipe that began at the top or bottom edge of a long page turns the page.
+  const slide = slidesOf()[slideIndex];
+  touchEdge = { up: atEdge(slide, -1), down: atEdge(slide, 1) };
+}, { passive: true });
 resultView.addEventListener("touchend", (event) => {
   if (touchStartY === null) return;
   const dy = touchStartY - event.changedTouches[0].clientY;
   touchStartY = null;
-  if (Math.abs(dy) > 60 && atEdge(slidesOf()[slideIndex], dy)) step(dy > 0 ? 1 : -1);
+  if (Math.abs(dy) < 60) return;
+  if (dy > 0 && touchEdge.down) step(1);
+  else if (dy < 0 && touchEdge.up) step(-1);
 }, { passive: true });
 document.addEventListener("keydown", (event) => {
   if (resultView.hidden || event.target.closest?.("button, a, input")) return;
