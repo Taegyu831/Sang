@@ -148,13 +148,13 @@ img { display: block; max-width: 100%; }
 
 .overview-text { display: flex; flex-direction: column; gap: clamp(12px, 2.4vh, 24px); }
 .top-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4em; }
-.top-list li { display: grid; grid-template-columns: auto 1fr; align-items: baseline; gap: 0.8em; font-size: 1.12em; }
-.top-list li small { font-family: var(--mono); font-weight: 500; font-size: 0.68em; color: #fff; background: var(--accent); padding: 0.1em 0.6em; border-radius: 3px; }
+.top-list li { display: grid; grid-template-columns: 4.6em 1fr; align-items: baseline; gap: 0.8em; font-size: 0.98em; }
+.top-list li small { font-family: var(--mono); font-weight: 500; font-size: 0.68em; color: var(--muted); min-width: 3.4em; }
 .top-list li b { font-weight: 800; }
 
 /* 종합 풀이: 첫 문장은 크게, 부위 이름과 분야는 색으로 */
-.synthesis { display: grid; gap: 0.55em; padding: 1em 1.2em; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); line-height: 1.8; color: var(--ink-2); }
-.synthesis p:first-child { font-size: 1.08em; font-weight: 800; color: var(--ink); }
+.synthesis { display: grid; gap: 0.55em; padding: 0.2em 0 0; font-size: 0.92em; line-height: 1.8; color: var(--ink-2); }
+.synthesis p:first-child { font-size: 1em; font-weight: 800; color: var(--ink); }
 .synthesis .hl { font-weight: 800; color: var(--accent); }
 .synthesis .hl-domain { font-weight: 800; color: var(--gold); }
 
@@ -166,15 +166,15 @@ img { display: block; max-width: 100%; }
 .part-section { flex-direction: column; width: min(100%, 920px); margin: 0 auto; gap: clamp(14px, 2.6vh, 28px); }
 .sec-head { font-weight: 700; font-size: clamp(24px, min(2.6vw, 4.4vh), 40px); letter-spacing: -0.02em; }
 .part-cards { display: grid; gap: clamp(16px, 2.6vh, 28px); }
-.part-card { display: grid; grid-template-columns: minmax(150px, 30%) minmax(0, 1fr); gap: clamp(16px, 2.4vw, 32px); align-items: start; padding: clamp(16px, 2.4vh, 26px); background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); }
+.part-card { display: grid; grid-template-columns: minmax(150px, 30%) minmax(0, 1fr); gap: clamp(16px, 2.4vw, 32px); align-items: start; padding: clamp(10px, 1.6vh, 18px) 0; }
 .part-pic { margin: 0; aspect-ratio: 4 / 3; background: #222; border-radius: 4px; overflow: hidden; position: sticky; top: 8px; }
 .part-pic svg { display: block; width: 100%; height: 100%; }
 .part-line { stroke: #ffd84a; vector-effect: non-scaling-stroke; stroke-width: 3px; }
 .part-dot { fill: var(--accent); stroke: #fff; stroke-width: 1px; vector-effect: non-scaling-stroke; }
-.part-body { display: flex; flex-direction: column; gap: 0.9em; min-width: 0; max-width: 40em; font-size: 0.94em; }
+.part-body { display: flex; flex-direction: column; gap: 0.9em; min-width: 0; max-width: 40em; font-size: 0.86em; }
 .part-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.6em; }
-.part-head small { font-family: var(--mono); font-weight: 500; font-size: 0.78em; color: var(--muted); border: 1px solid var(--line); padding: 0.05em 0.55em; border-radius: 3px; }
-.part-head h3 { font-size: 1.45em; font-weight: 800; letter-spacing: -0.02em; }
+.part-head small { font-family: var(--mono); font-weight: 500; font-size: 0.78em; color: var(--muted); }
+.part-head h3 { font-size: 1.3em; font-weight: 800; letter-spacing: -0.02em; }
 .part-card.is-high .part-head h3 { color: var(--pos); }
 .part-card.is-low .part-head h3 { color: var(--neg); }
 
@@ -189,7 +189,7 @@ img { display: block; max-width: 100%; }
 
 /* 풀이 근거: 분야별 색 이름표 */
 .part-readings { display: grid; gap: 0.8em; }
-.rd-tag { display: inline-flex; align-items: center; gap: 0.45em; justify-self: start; padding: 0.1em 0.65em; border-radius: 3px; font-size: 0.76em; font-weight: 700; color: var(--ink-2); background: var(--d-other-bg); }
+.rd-tag { display: inline-flex; align-items: center; gap: 0.45em; justify-self: start; font-size: 0.76em; font-weight: 700; color: var(--ink-2); }
 .rd-tag::before { content: ""; width: 0.55em; height: 0.55em; border-radius: 50%; background: var(--dot, var(--d-other)); }
 .rd-tag.is-money { --dot: var(--d-money); }
 .rd-tag.is-work { --dot: var(--d-work); }
@@ -208,27 +208,29 @@ img { display: block; max-width: 100%; }
 
 /* 얼굴형: 다섯 윤곽 중 내 얼굴형이 켜진다 */
 #shapeBox, .group-cards { display: grid; gap: clamp(16px, 2.6vh, 28px); }
-.shape-card, .group-card { padding: clamp(16px, 2.4vh, 26px); background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); }
+.shape-card, .group-card { padding: clamp(6px, 1vh, 12px) 0; }
+.group-card + .group-card { border-top: 1px solid var(--line); padding-top: clamp(18px, 3vh, 32px); }
 .shape-card { display: flex; flex-direction: column; gap: clamp(14px, 2.4vh, 24px); }
 .shape-icons { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; max-width: 460px; padding-bottom: clamp(12px, 2vh, 20px); border-bottom: 1px solid var(--line); }
 .shape-icon { margin: 0; display: grid; gap: 4px; justify-items: center; color: var(--muted); }
 .shape-icon svg { width: 100%; max-width: 72px; height: auto; fill: none; stroke: var(--line); stroke-width: 3; }
 .shape-icon figcaption { font-size: 0.7em; font-weight: 500; white-space: nowrap; }
 .shape-icon.is-on { color: var(--ink); }
-.shape-icon.is-on svg { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 4; }
+.shape-icon.is-on svg { fill: none; stroke: var(--accent); stroke-width: 4; }
 .shape-icon.is-on figcaption { font-weight: 700; color: var(--accent); }
-.shape-name { font-size: 1.6em; font-weight: 800; letter-spacing: -0.02em; }
+.shape-name { font-size: 1.4em; font-weight: 800; letter-spacing: -0.02em; }
 
 /* 기본 부위: 한 부위에 한 장. 아래에 특징을 짧은 이름표로 모은다 */
 .group-card { display: flex; flex-direction: column; gap: 0.9em; }
 .group-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5em 1em; }
-.group-head h3 { font-size: 1.45em; font-weight: 800; letter-spacing: -0.02em; }
+.group-head h3 { font-size: 1.3em; font-weight: 800; letter-spacing: -0.02em; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.chip { font-size: 0.78em; font-weight: 500; padding: 0.1em 0.7em; border: 1px solid var(--line); border-radius: 3px; color: var(--muted); background: var(--paper); }
-.chip.is-high, .chip.is-low { color: var(--accent); border-color: #d9b9a8; background: var(--accent-soft); font-weight: 700; }
+.chip { font-size: 0.78em; font-weight: 500; color: var(--muted); }
+.chip + .chip::before { content: "·"; margin-right: 6px; color: var(--line); }
+.chip.is-high, .chip.is-low { color: var(--accent); font-weight: 700; }
 .group-more { border-top: 1px solid var(--line); padding-top: 0.6em; }
 .group-more .part-cards { gap: 14px; }
-.group-more .part-card { box-shadow: none; background: var(--paper); }
+.group-more .part-card { box-shadow: none; }
 
 /* 내 위치 눈금: 좁음, 보통, 넓음 */
 .scale { position: relative; padding-top: 0.9em; max-width: 22em; }
@@ -245,9 +247,9 @@ img { display: block; max-width: 100%; }
 /* ---------- 역학원 선생님 (픽셀 캐릭터와 말풍선) ---------- */
 .master { display: block; flex: none; height: auto; image-rendering: pixelated; image-rendering: crisp-edges; }
 .master-row { display: flex; align-items: flex-end; gap: clamp(8px, 1.2vw, 16px); text-align: left; }
-.bubble { position: relative; flex: 1 1 auto; min-width: 0; margin-bottom: 0.6em; padding: 0.7em 1em; background: var(--card); border: 1px solid var(--ink); border-radius: var(--radius); line-height: 1.6; font-weight: 500; }
+.bubble { position: relative; flex: 1 1 auto; min-width: 0; margin-bottom: 0.6em; padding: 0.7em 1em; border: 1px solid var(--ink); border-radius: var(--radius); line-height: 1.6; font-weight: 500; }
 /* 말꼬리: 돌려 놓은 네모 */
-.bubble::before { content: ""; position: absolute; left: -7px; bottom: 14px; width: 12px; height: 12px; background: var(--card); border-left: 1px solid var(--ink); border-bottom: 1px solid var(--ink); transform: rotate(45deg); }
+.bubble::before { content: ""; position: absolute; left: -7px; bottom: 14px; width: 12px; height: 12px; background: var(--paper); border-left: 1px solid var(--ink); border-bottom: 1px solid var(--ink); transform: rotate(45deg); }
 .master-row.is-big { max-width: 34em; }
 .master-row.is-big .bubble { font-size: 1.05em; }
 .master-row.is-scan { width: min(100%, 760px); }
@@ -255,8 +257,8 @@ img { display: block; max-width: 100%; }
 .loading .master-row { width: 100%; }
 
 /* 부위 카드의 정리: 선생님 말풍선. 마지막 결론 문장은 굵게, "다만, 한편" 문장은 한 톤 낮게 */
-.part-summary.bubble { padding: 0.8em 1em; background: var(--accent-soft); border: 1px solid #d9b9a8; font-size: 1.04em; font-weight: 400; line-height: 1.8; color: var(--ink-2); }
-.part-summary.bubble::before { background: var(--accent-soft); border-color: #d9b9a8; }
+.part-summary.bubble { padding: 0.7em 1em; border: 1px solid var(--line); font-size: 0.95em; font-weight: 400; line-height: 1.75; color: var(--ink-2); }
+.part-summary.bubble::before { background: var(--paper); border-color: var(--line); }
 .part-summary .sum-key { color: var(--accent); font-weight: 700; }
 .part-summary .sum-alt { color: var(--muted); }
 

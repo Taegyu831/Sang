@@ -151,11 +151,7 @@ export function synthesize(top, partsContent, rules = PART_RULES) {
     if (group) counts[group] = (counts[group] ?? 0) + 1;
   }
   const ranked = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-  const names = top.map((p) => p.part);
-  const gists = top.filter((p) => p.gist).map((p) => `${p.part}에서는 ${p.gist}`);
-  const lines = [`이 얼굴에서 가장 눈에 띄는 곳은 ${names.join(", ")}입니다.`];
-  // Each gist ends in a noun ("...두드러지는 얼굴"), so they read as one sentence.
-  if (gists.length) lines.push(`${gists.join(", ")}로 읽힙니다.`);
+  const lines = ["얼굴형과 눈, 눈썹, 코, 입, 이마, 턱을 차례로 재어 보았습니다."];
   if (top.every((p) => Math.abs(p.z) < rules.clearAt)) lines.push(s.balanced);
   else if (ranked.length) {
     lines.push(s.lines[ranked[0][0]]);

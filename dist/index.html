@@ -72,7 +72,7 @@
         <!-- 4. 풀이: 한 번에 아래로 내려 읽는다 -->
         <section class="screen" id="resultView" aria-label="관상 풀이" hidden>
           <div class="pages" id="pages">
-            <!-- 맨 위: 얼굴과 가장 두드러진 세 곳 -->
+            <!-- 맨 위: 얼굴과 기본 부위 요약 -->
             <article class="page" data-page="0">
               <div class="overview">
                 <figure class="plate" id="resultFrontFigure" hidden>
@@ -86,7 +86,7 @@
                   <div class="master-row" data-master="result" data-scale="4" data-pose="point">
                     <div class="bubble"><p id="resultSay">자, 얼굴을 다 읽었습니다. 정리해 드리겠습니다.</p></div>
                   </div>
-                  <p class="kicker">이 얼굴에서 가장 눈에 띄는 곳</p>
+                  <p class="kicker">부위별로 한눈에</p>
                   <ol class="top-list" id="topList"></ol>
                   <div class="synthesis" id="synthesis" aria-label="종합 풀이"></div>
                   <p class="hint">아래로 내려 부위별 풀이를 보세요 ▼</p>
@@ -104,12 +104,6 @@
             <section class="page part-section">
               <h2 class="sec-head">기본 부위</h2>
               <div class="group-cards" id="groupCards"></div>
-            </section>
-
-            <!-- 이 얼굴만의 특징 -->
-            <section class="page part-section">
-              <h2 class="sec-head">이 얼굴만의 특징 세 곳</h2>
-              <div class="part-cards" id="topCards"></div>
             </section>
 
             <article class="page" data-page="last">

@@ -46,7 +46,6 @@ const loadBar = $("#loadBar");
 const loadLine = $("#loadLine");
 const pages = $("#pages");
 const topList = $("#topList");
-const topCards = $("#topCards");
 const shapeBox = $("#shapeBox");
 const groupCards = $("#groupCards");
 const synthesisBox = $("#synthesis");
@@ -729,20 +728,21 @@ function groupCard(group, shot) {
 
 function renderParts(shot) {
   parts = readParts(finalMeasurement, partsContent);
-  topList.replaceChildren(...parts.top.map((part) => {
+  // Everyone is read on the same basics: face shape, then six regions.
+  const leads = parts.groups.filter((g) => g.lead).map((g) => ({ group: g.name, part: g.lead }));
+  const shape = classifyFaceShape(finalMeasurement);
+  topList.replaceChildren(...[
+    ...(shape ? [{ label: "얼굴형", name: shape.name }] : []),
+    ...leads.map((l) => ({ label: l.group, name: l.part.name })),
+  ].map((row) => {
     const item = el("li");
-    item.append(el("small", "", part.part), el("b", "", part.name));
+    item.append(el("small", "", row.label), el("b", "", row.name));
     return item;
   }));
-  topCards.replaceChildren(...parts.top.map((part) => partCard(part, shot, false)));
-  // Part names in red, life areas in gold.
-  const names = parts.top.map((p) => p.part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-  const highlight = new RegExp(names.join("|"), "g");
   const areas = /재물 이야기|일과 사회적 자리|사람과의 인연|연애와 결혼|인생의 시기|일과 사회|성격과 기질/g;
-  synthesisBox.replaceChildren(...synthesize(parts.top, partsContent).map((line, i) => {
-    const p = rich("p", "", line, i === 0 ? /$^/g : highlight, "hl");
+  synthesisBox.replaceChildren(...synthesize(leads.map((l) => l.part), partsContent).map((line, i) => {
     if (i > 1) return rich("p", "", line, areas, "hl-domain");
-    return p;
+    return rich("p", "", line, /$^/g, "hl");
   }));
   renderShape(shot);
   groupCards.replaceChildren(...parts.groups.filter((g) => g.parts.length).map((g) => groupCard(g, shot)));
