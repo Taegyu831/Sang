@@ -608,10 +608,11 @@ function renderShape(shot) {
   shapeBox.replaceChildren(card);
 }
 
-function groupCard(group, shot) {
-  const card = el("article", "group-card");
+function groupCard(group, index, total) {
+  const card = el("article", "group-card page slide");
+  card.dataset.title = group.name;
   const head = el("div", "group-head");
-  head.append(el("h3", "", group.name));
+  head.append(el("small", "", `기본 부위 ${index + 1} / ${total}`), el("h3", "", group.name));
   card.append(head);
   const text = composeGroup(group);
   if (text) {
@@ -626,11 +627,11 @@ function groupCard(group, shot) {
 function renderParts(shot) {
   parts = readParts(finalMeasurement, partsContent);
   // Everyone is read on the same basics: face shape, then six regions.
-  const leads = parts.groups.filter((g) => g.lead).map((g) => ({ group: g.name, part: g.lead }));
+  const leads = parts.groups.filter((g) => g.lead).map((g) => ({ group: g.name, part: g.lead, leaning: g.leaning.length > 0 }));
   const shape = classifyFaceShape(finalMeasurement);
   topList.replaceChildren(...[
     ...(shape ? [{ label: "얼굴형", name: shape.name }] : []),
-    ...leads.map((l) => ({ label: l.group, name: l.part.name })),
+    ...leads.map((l) => ({ label: l.group, name: l.leaning ? l.part.name : "치우침 없이 균형 잡힘" })),
   ].map((row) => {
     const item = el("li");
     item.append(el("small", "", row.label), el("b", "", row.name));
@@ -642,7 +643,8 @@ function renderParts(shot) {
     return rich("p", "", line, /$^/g, "hl");
   }));
   renderShape(shot);
-  groupCards.replaceChildren(...parts.groups.filter((g) => g.parts.length).map((g) => groupCard(g, shot)));
+  const shown = parts.groups.filter((g) => g.parts.length);
+  groupCards.replaceChildren(...shown.map((g, i) => groupCard(g, i, shown.length)));
 }
 
 function renderClosing() {
@@ -651,6 +653,45 @@ function renderClosing() {
   speakOnView.observe(closingRow);
   resultClosing.textContent = "관상에서 이렇게들 풀이해 왔다는 이야기이며, 성격이나 미래를 정해 주지는 않습니다. 풀이가 여러 개면 해설마다 다르게 본다는 뜻입니다. 사진은 처음으로 돌아가면 지워집니다.";
 }
+
+// ---------- slides: each region eases in, and a cue leads to the next ----------
+const slideIn = new IntersectionObserver((entries) => {
+  for (const entry of entries) if (entry.isIntersecting) entry.target.classList.add("is-in");
+}, { root: pages, threshold: 0.3 });
+
+const slidesOf = () => [...pages.querySelectorAll(".slide")];
+
+function goToSlide(delta) {
+  const slides = slidesOf();
+  const here = slides.findIndex((s) => s.getBoundingClientRect().top > pages.getBoundingClientRect().top + 8) - 1;
+  const current = here < 0 ? slides.length - 1 : here;
+  const target = slides[Math.max(0, Math.min(slides.length - 1, current + delta))];
+  target?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function buildSlides() {
+  pages.querySelectorAll(".next-cue").forEach((n) => n.remove());
+  const slides = slidesOf();
+  slides.forEach((slide, i) => {
+    slide.classList.remove("is-in");
+    slideIn.unobserve(slide);
+    const next = slides[i + 1];
+    if (next) {
+      const cue = el("button", "next-cue");
+      cue.type = "button";
+      cue.append(el("span", "", `다음 · ${next.dataset.title}`), el("i", "", "▼"));
+      cue.addEventListener("click", () => next.scrollIntoView({ behavior: "smooth", block: "start" }));
+      (slide.querySelector(".overview-text") ?? slide).append(cue);
+    }
+    slideIn.observe(slide);
+  });
+}
+
+document.addEventListener("keydown", (event) => {
+  if (resultView.hidden || event.target.closest?.("button, a, input")) return;
+  if (["ArrowDown", "PageDown", " "].includes(event.key)) { event.preventDefault(); goToSlide(1); }
+  else if (["ArrowUp", "PageUp"].includes(event.key)) { event.preventDefault(); goToSlide(-1); }
+});
 
 function renderResult() {
   if (!reading || !finalMeasurement) return;
@@ -662,6 +703,7 @@ function renderResult() {
   }
   renderParts(shot);
   renderClosing();
+  buildSlides();
 }
 
 const LOADING_LINES = ["관상서를 펼치는 중입니다", "삼정과 오안을 맞춰 보는 중입니다", "부위마다 풀이를 모으는 중입니다"];

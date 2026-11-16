@@ -73,7 +73,7 @@
         <section class="screen" id="resultView" aria-label="관상 풀이" hidden>
           <div class="pages" id="pages">
             <!-- 맨 위: 얼굴과 기본 부위 요약 -->
-            <article class="page" data-page="0">
+            <article class="page slide" data-page="0">
               <div class="overview">
                 <figure class="plate" id="resultFrontFigure" hidden>
                   <div class="face-plate">
@@ -89,24 +89,20 @@
                   <p class="kicker">부위별로 한눈에</p>
                   <ol class="top-list" id="topList"></ol>
                   <div class="synthesis" id="synthesis" aria-label="종합 풀이"></div>
-                  <p class="hint">아래로 내려 부위별 풀이를 보세요 ▼</p>
                 </div>
               </div>
             </article>
 
             <!-- 얼굴형: 누구나 아는 다섯 가지 중 하나 -->
-            <section class="page part-section">
+            <section class="page slide part-section" data-title="얼굴형">
               <h2 class="sec-head">얼굴형</h2>
               <div id="shapeBox"></div>
             </section>
 
-            <!-- 눈, 코, 입, 이마, 턱: 한 부위에 한 장 -->
-            <section class="page part-section">
-              <h2 class="sec-head">기본 부위</h2>
-              <div class="group-cards" id="groupCards"></div>
-            </section>
+            <!-- 눈, 코, 입, 이마, 턱: 한 부위에 한 장면. 쪽마다 부드럽게 들어온다 -->
+            <div class="group-cards" id="groupCards"></div>
 
-            <article class="page" data-page="last">
+            <article class="page slide" data-page="last" data-title="마무리">
               <div class="closing">
                 <span class="seal" aria-hidden="true">相</span>
                 <div class="master-row" data-master="closing" data-scale="4">
