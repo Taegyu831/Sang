@@ -306,3 +306,25 @@ img { display: block; max-width: 100%; }
   .slide, .slide .story-page > * { transition: none; }
   .slide:not(.is-active) .story-page > * { opacity: 1; transform: none; }
 }
+
+/* 가상의 인연: 부품으로 그린 얼굴 */
+.bond { display: flex; align-items: center; gap: clamp(14px, 2.4vw, 28px); }
+.avatar { margin: 0; flex: none; width: clamp(104px, 13vw, 160px); }
+.avatar-svg { display: block; width: 100%; height: auto; overflow: visible; }
+.av-face { fill: #f6e6d4; stroke: var(--ink); stroke-width: 2.4; stroke-linejoin: round; }
+.av-hair { fill: var(--ink); stroke: var(--ink); stroke-width: 1.5; stroke-linejoin: round; }
+.av-eye { fill: #fff; stroke: var(--ink); stroke-width: 2; }
+.av-pupil { fill: var(--ink); }
+.av-brow, .av-line { fill: none; stroke: var(--ink-2); stroke-width: 2.2; stroke-linecap: round; }
+.av-mouth { fill: none; stroke: var(--accent); stroke-linecap: round; }
+.avatar-svg.is-clash .av-face { fill: #ece6dc; stroke-dasharray: 5 4; }
+.avatar-svg.is-clash .av-hair { fill: #6a6258; stroke: #6a6258; }
+.avatar-svg.is-clash .av-mouth { stroke: var(--muted); }
+.bond-text { display: flex; flex-direction: column; gap: 0.35em; min-width: 0; }
+.bond-name { font-size: 1.25em; font-weight: 800; letter-spacing: -0.02em; }
+.bond-line { font-size: 0.9em; line-height: 1.7; color: var(--ink-2); }
+.bond-choice { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 0.4em; font-size: 0.78em; color: var(--muted); }
+.chip-btn { padding: 0.2em 0.9em; border: 1px solid var(--line); border-radius: 3px; color: var(--muted); font-weight: 500; transition: color 0.2s, border-color 0.2s; }
+.chip-btn:hover { color: var(--ink); border-color: var(--muted); }
+.chip-btn.is-on { color: var(--accent); border-color: var(--accent); font-weight: 700; }
+@media (max-width: 760px) { .bond { flex-direction: column; align-items: flex-start; } }

@@ -6,6 +6,7 @@ import { interpret } from "./interpret.js";
 import { applyPoseResidual } from "./residual.js";
 import { readParts, classifyFaceShape } from "./parts.js";
 import { composeStory } from "./story.js";
+import { avatarSvg, paramsOf } from "./avatar.js";
 import { createMaster, mountMaster, say } from "./character.js";
 
 const MEDIAPIPE_VERSION = "1.1.1";
@@ -478,9 +479,46 @@ function goHome() {
 
 // ---------- reading: the whole-person story ----------
 
+// Who the imagined 인연 looks like: "any" keeps the hair neutral.
+let bondGender = "any";
+const GENDERS = [["any", "상관없음"], ["female", "여자"], ["male", "남자"]];
+
+function drawBond(figure) {
+  figure.replaceChildren(avatarSvg(paramsOf(figure.dataset.to || null), { gender: bondGender, tone: figure.dataset.kind }));
+}
+
+function bondBlock(bond, withChoice) {
+  const block = el("div", `bond is-${bond.kind}`);
+  const figure = el("figure", "avatar");
+  figure.dataset.to = bond.to ?? "";
+  figure.dataset.kind = bond.kind;
+  drawBond(figure);
+  const text = el("div", "bond-text");
+  text.append(el("p", "kicker", bond.kind === "fit" ? "잘 맞는 인연" : "조심할 인연"), el("h3", "bond-name", bond.name));
+  for (const line of bond.lines) text.append(el("p", "bond-line", line));
+  if (withChoice) {
+    const choice = el("div", "bond-choice");
+    choice.append(el("span", "", "그려 볼 모습"));
+    for (const [id, label] of GENDERS) {
+      const b = el("button", `chip-btn${id === bondGender ? " is-on" : ""}`, label);
+      b.type = "button";
+      b.addEventListener("click", () => {
+        bondGender = id;
+        pages.querySelectorAll(".avatar").forEach(drawBond);
+        pages.querySelectorAll(".chip-btn").forEach((n, i) => n.classList.toggle("is-on", GENDERS[i % GENDERS.length][0] === id));
+      });
+      choice.append(b);
+    }
+    text.append(choice);
+  }
+  block.append(figure, text);
+  return block;
+}
+
 function storyPage(page, { first = false } = {}) {
   const wrap = first ? storyFirst : el("div", "story-page");
   wrap.append(el("h2", "story-lead", page.lead));
+  if (page.bond) wrap.append(bondBlock(page.bond, page.bond.kind === "fit"));
   for (const line of page.body.filter(Boolean)) wrap.append(el("p", "story-body", line));
   if (page.basis.length) wrap.append(el("p", "story-basis", `근거 · ${page.basis.join(" · ")}`));
   return wrap;

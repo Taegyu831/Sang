@@ -104,6 +104,28 @@ const CLASH = {
 const EVEN_FIT = { to: null, desc: "한 가지 색이 분명한", why: "고르게 균형 잡힌 사람은 대체로 누구와도 어울리지만, 뚜렷한 색을 가진 사람이 곁에 있을 때 자신의 색도 또렷해집니다." };
 const EVEN_CLASH = { to: null, desc: "한쪽으로 몰아붙이는", why: "고르게 받아 주는 성격을 이용해 일방적으로 끌고 가려는 사람 앞에서는 지치기 쉽습니다." };
 
+const SHORT = {
+  "drive+": "앞장서는 사람", "drive-": "차분히 살피는 사람",
+  "social+": "환하게 어울리는 사람", "social-": "깊게 아끼는 사람",
+  "feel+": "마음이 앞서는 사람", "feel-": "침착하게 따지는 사람",
+  "steady+": "꾸준히 가는 사람", "steady-": "빠르게 움직이는 사람",
+};
+
+/** The imagined 인연: who they are in a few lines (`to` is a kind of person). */
+function bondOf(kind, entry, even) {
+  if (!entry.to) {
+    return {
+      kind, to: null,
+      name: kind === "fit" ? "한 가지 색이 분명한 사람" : "한쪽으로 몰아붙이는 사람",
+      lines: [kind === "fit"
+        ? "연애 · 자기 색이 분명해 곁에서 기준이 되어 주는 편입니다."
+        : "연애 · 한쪽으로 끌고 가려는 편이라, 맞춰 주기만 하면 지치기 쉽습니다."],
+    };
+  }
+  const p = POLES[entry.to];
+  return { kind, to: entry.to, name: SHORT[entry.to], lines: [`연애 · ${p.love}`, `일 · ${p.work}`] };
+}
+
 const AXIS_NAMES = ["drive", "social", "feel", "steady"];
 
 /** Looks (face features) that carry a kind of person most strongly. */
@@ -228,7 +250,7 @@ export function composeStory(parts, shape) {
 
   // 5. who fits
   const fits = (poles.length ? poles.map((p) => FIT[p]) : [EVEN_FIT]);
-  const fifth = { title: "잘 맞는 사람", lead: `그래서 잘 맞는 사람은 ${fits[0].desc} 사람입니다.`, body: [fits[0].why], basis: [] };
+  const fifth = { title: "잘 맞는 인연", bond: bondOf("fit", fits[0]), lead: `그래서 잘 맞는 인연은 ${fits[0].desc} 사람입니다.`, body: [fits[0].why], basis: [] };
   const fitLooks = fits[0].to ? looksOf(fits[0].to) : [];
   if (fitLooks.length) fifth.body.push(`관상으로는 ${list(fitLooks)} 쪽에서 이런 성향이 주로 읽힙니다.`);
   if (fits[1]) fifth.body.push(`이에 더해 ${fits[1].desc} 사람과도 잘 어울립니다. ${fits[1].why}`);
@@ -237,7 +259,7 @@ export function composeStory(parts, shape) {
   const clashes = (poles.length ? poles.map((p) => CLASH[p]) : [EVEN_CLASH]);
   const cautions = gather(entries, "caution", 6);
   const watch = poles.map((p) => POLES[p].watch).filter(Boolean);
-  const sixth = { title: "조심할 사람", lead: `다만 ${clashes[0].desc} 사람과는 부딪히기 쉽습니다.`, body: [clashes[0].why], basis: cautions.basis };
+  const sixth = { title: "조심할 인연", bond: bondOf("clash", clashes[0]), lead: `다만 ${clashes[0].desc} 사람과는 부딪히기 쉽습니다.`, body: [clashes[0].why], basis: cautions.basis };
   const clashLooks = clashes[0].to ? looksOf(clashes[0].to) : [];
   if (clashLooks.length) sixth.body.push(`관상으로는 ${list(clashLooks)} 쪽에서 이런 성향이 주로 읽힙니다.`);
   if (clashes[1]) sixth.body.push(`${clashes[1].desc} 사람 앞에서도 마찬가지입니다. ${clashes[1].why}`);

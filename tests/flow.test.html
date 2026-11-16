@@ -74,7 +74,7 @@ check("measurement carries confidence and coverage", st.finalMeasurement.confide
 win.__sang.show();
 await sleep(200);
 const text = (sel) => doc.querySelector(sel)?.textContent ?? "";
-check("the story has seven pages that open with the connectors", doc.querySelectorAll("#pages .slide").length === 7 && /^이 사람은/.test(doc.querySelector("#storyFirst .story-lead")?.textContent ?? "") && [...doc.querySelectorAll("#pages .slide .story-lead")].some((e) => /^그래서 잘 맞는 사람은/.test(e.textContent)));
+check("the story has seven pages that open with the connectors", doc.querySelectorAll("#pages .slide").length === 7 && /^이 사람은/.test(doc.querySelector("#storyFirst .story-lead")?.textContent ?? "") && [...doc.querySelectorAll("#pages .slide .story-lead")].some((e) => /^그래서 잘 맞는 인연은/.test(e.textContent)));
 check("every page says something and nothing is folded away", [...doc.querySelectorAll("#pages .slide")].every((s) => s.textContent.length > 40) && doc.querySelectorAll("#resultView details").length === 0);
 check("closing line is filled", text("#resultClosing").length > 10);
 check("no placeholder text in the story", !/undefined|NaN|\{|보통 범위/.test(text("#pages")));
