@@ -264,41 +264,45 @@ img { display: block; max-width: 100%; }
 @media (max-width: 760px) {
   :root { --fs: 17px; }
   .panel { padding: 14px; }
-  .overview { grid-template-columns: 1fr; }
+  .reading { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); gap: 12px; }
   .part-card, .part-cards.is-compact .part-card { grid-template-columns: 1fr; }
   .master-row.is-big .master { width: 112px !important; }
   .part-pic { position: static; }
   .part-row, .rd { grid-template-columns: 1fr; gap: 0.25em; }
-  .plate { width: min(60%, 230px); justify-self: center; }
+  .plate { width: min(34%, 130px); justify-self: center; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 
-/* ---------- 장면 넘김: 화면 안의 내용이 천천히 바뀐다 ---------- */
-#groupCards { display: contents; }
-.group-card.slide { width: min(100%, 920px); margin: 0 auto; padding: clamp(28px, 6vh, 64px) 0; justify-content: center; align-items: stretch; }
-.group-head small { font-family: var(--mono); font-weight: 500; font-size: 0.78em; color: var(--muted); }
-.group-head { flex-direction: column; align-items: flex-start; gap: 0.2em; }
+/* ---------- 풀이: 왼쪽에 사진, 오른쪽에서 이야기가 쪽마다 넘어간다 ---------- */
+.reading { flex: 1 1 auto; min-height: 0; width: min(100%, 1180px); margin: 0 auto; display: grid; grid-template-columns: minmax(180px, 34%) minmax(0, 1fr); gap: clamp(18px, 4vw, 56px); align-items: center; }
+.story { position: relative; align-self: stretch; min-height: 0; max-height: 760px; margin: auto 0; width: 100%; height: 100%; }
+.story .pages { position: absolute; inset: 0; }
+.story-page { margin: auto 0; width: 100%; padding: clamp(12px, 3vh, 32px) clamp(30px, 3vw, 44px) clamp(12px, 3vh, 32px) 0; display: flex; flex-direction: column; gap: clamp(12px, 2.2vh, 22px); }
+.slide { justify-content: center; }
+.story-lead, .story-body { word-break: keep-all; overflow-wrap: break-word; }
+.story-lead { font-size: clamp(22px, min(2.5vw, 4vh), 34px); font-weight: 800; line-height: 1.45; letter-spacing: -0.02em; color: var(--ink); }
+.story-body { font-size: 0.95em; line-height: 1.85; color: var(--ink-2); max-width: 38em; }
+.story-basis { font-family: var(--mono); font-size: 0.74em; color: var(--muted); }
+.closing .story-lead { font-size: clamp(18px, min(1.9vw, 3vh), 26px); }
 
-.slide :is(.plate, .overview-text, .sec-head, #shapeBox, .group-head, .group-card > .master-row, .closing > *) {
-  transition: opacity 0.7s cubic-bezier(0.45, 0, 0.2, 1), transform 0.7s cubic-bezier(0.45, 0, 0.2, 1);
-}
-.slide:not(.is-active) :is(.plate, .overview-text, .sec-head, #shapeBox, .group-head, .group-card > .master-row, .closing > *) { opacity: 0; transform: translateY(28px); }
-.slide.is-before:not(.is-active) :is(.plate, .overview-text, .sec-head, #shapeBox, .group-head, .group-card > .master-row, .closing > *) { transform: translateY(-28px); }
-.slide.is-active .overview-text, .slide.is-active #shapeBox, .slide.is-active .group-card > .master-row { transition-delay: 0.15s; }
-.slide.is-active .closing > :nth-child(2) { transition-delay: 0.15s; }
-.slide.is-active .closing > :nth-child(3) { transition-delay: 0.3s; }
-.slide.is-active .closing > :nth-child(4) { transition-delay: 0.45s; }
+.slide :is(.story-page > *) { transition: opacity 0.7s cubic-bezier(0.45, 0, 0.2, 1), transform 0.7s cubic-bezier(0.45, 0, 0.2, 1); }
+.slide:not(.is-active) .story-page > * { opacity: 0; transform: translateY(28px); }
+.slide.is-before:not(.is-active) .story-page > * { transform: translateY(-28px); }
+.slide.is-active .story-page > :nth-child(2) { transition-delay: 0.12s; }
+.slide.is-active .story-page > :nth-child(3) { transition-delay: 0.24s; }
+.slide.is-active .story-page > :nth-child(4) { transition-delay: 0.36s; }
+.slide.is-active .story-page > :nth-child(5) { transition-delay: 0.48s; }
+.slide.is-active .story-page > :nth-child(6) { transition-delay: 0.6s; }
 
 /* 오른쪽 가장자리의 쪽 점 */
-#resultView { position: relative; }
-.slide-dots { position: absolute; right: clamp(8px, 1.6vw, 22px); top: 50%; transform: translateY(-50%); display: grid; gap: 4px; z-index: 3; }
+.slide-dots { position: absolute; right: 0; top: 50%; transform: translateY(-50%); display: grid; gap: 4px; z-index: 3; }
 .slide-dot { width: 22px; height: 22px; display: grid; place-items: center; }
 .slide-dot::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--line); transition: background 0.3s, transform 0.3s; }
 .slide-dot:hover::before { background: var(--muted); }
 .slide-dot.is-on::before { background: var(--accent); transform: scale(1.35); }
 @media (prefers-reduced-motion: reduce) {
-  .slide, .slide :is(.plate, .overview-text, .sec-head, #shapeBox, .group-head, .group-card > .master-row, .closing > *) { transition: none; }
-  .slide:not(.is-active) :is(.plate, .overview-text, .sec-head, #shapeBox, .group-head, .group-card > .master-row, .closing > *) { opacity: 1; transform: none; }
+  .slide, .slide .story-page > * { transition: none; }
+  .slide:not(.is-active) .story-page > * { opacity: 1; transform: none; }
 }

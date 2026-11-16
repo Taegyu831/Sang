@@ -4,7 +4,8 @@ import { CALIBRATION } from "./calibration.js";
 import { StableCapture, GUIDANCE, TURN_GUIDANCE } from "./capture.js";
 import { interpret } from "./interpret.js";
 import { applyPoseResidual } from "./residual.js";
-import { readParts, synthesize, composeGroup, classifyFaceShape, FACE_SHAPES } from "./parts.js";
+import { readParts, classifyFaceShape } from "./parts.js";
+import { composeStory } from "./story.js";
 import { createMaster, mountMaster, say } from "./character.js";
 
 const MEDIAPIPE_VERSION = "1.1.1";
@@ -45,10 +46,8 @@ const tgZones = Object.fromEntries([...turnGuide.querySelectorAll(".tg-zone")].m
 const loadBar = $("#loadBar");
 const loadLine = $("#loadLine");
 const pages = $("#pages");
-const topList = $("#topList");
-const shapeBox = $("#shapeBox");
-const groupCards = $("#groupCards");
-const synthesisBox = $("#synthesis");
+const storyFirst = $("#storyFirst");
+const closingLead = $("#closingLead");
 const resultClosing = $("#resultClosing");
 const resultFrontFigure = $("#resultFrontFigure");
 const resultFrontImage = $("#resultFrontImage");
@@ -67,6 +66,7 @@ let lastVideoTime = -1;
 let content = null;
 let partsContent = null;
 let parts = null;
+let story = null;
 let capture = new StableCapture();
 let latestLandmarks = null;
 let bestShot = null;
@@ -476,164 +476,32 @@ function goHome() {
   showScreen("start");
 }
 
-// ---------- reading: one scroll ----------
+// ---------- reading: the whole-person story ----------
 
-// A small crop of the visitor's own face with only this part's lines drawn.
-// The portrait is 640 x 800 (4:5), so it is drawn 80 units wide and 100 high
-// and every point's x is scaled by 0.8: the crop keeps the real proportions.
-const SHOT_W = 80;
-const SHOT_H = 100;
-
-function partPicture(shot, draw) {
-  const figure = el("figure", "part-pic");
-  if (!shot) return figure;
-  const p = Object.fromEntries(Object.entries(shot.points).map(([k, q]) => [k, { x: (q.x * SHOT_W) / 100, y: (q.y * SHOT_H) / 100 }]));
-  const segments = [];
-  const left = Math.min(p.faceLeft.x, p.faceRight.x);
-  const right = Math.max(p.faceLeft.x, p.faceRight.x);
-  for (const item of draw) {
-    if (typeof item === "string" && item.startsWith("h:")) {
-      const at = p[item.slice(2)];
-      if (at) segments.push([{ x: left, y: at.y }, { x: right, y: at.y }]);
-    } else if (Array.isArray(item) && p[item[0]] && p[item[1]]) {
-      segments.push([p[item[0]], p[item[1]]]);
-    }
-  }
-  const xs = segments.flat().map((q) => q.x);
-  const ys = segments.flat().map((q) => q.y);
-  const faceWidth = right - left;
-  // Crop around the drawn part with some face around it, 4:3, inside the photo.
-  let w = Math.max(faceWidth * 0.9, (Math.max(...xs) - Math.min(...xs)) * 1.4);
-  let h = Math.max((Math.max(...ys) - Math.min(...ys)) * 1.4, w * 0.75);
-  w = Math.min(SHOT_W, Math.max(w, h / 0.75));
-  h = Math.min(SHOT_H, w * 0.75);
-  const cx = segments.length ? (Math.max(...xs) + Math.min(...xs)) / 2 : SHOT_W / 2;
-  const cy = segments.length ? (Math.max(...ys) + Math.min(...ys)) / 2 : SHOT_H / 2;
-  const x0 = clamp(cx - w / 2, 0, SHOT_W - w);
-  const y0 = clamp(cy - h / 2, 0, SHOT_H - h);
-  const svg = svgNode("svg", { viewBox: `${x0.toFixed(2)} ${y0.toFixed(2)} ${w.toFixed(2)} ${h.toFixed(2)}`, preserveAspectRatio: "xMidYMid slice", "aria-hidden": "true" });
-  svg.append(svgNode("image", { href: shot.src, x: 0, y: 0, width: SHOT_W, height: SHOT_H, preserveAspectRatio: "none" }));
-  for (const [a, b] of segments) {
-    svg.append(svgNode("line", { x1: a.x.toFixed(2), y1: a.y.toFixed(2), x2: b.x.toFixed(2), y2: b.y.toFixed(2), class: "part-line" }));
-    for (const q of [a, b]) svg.append(svgNode("circle", { cx: q.x.toFixed(2), cy: q.y.toFixed(2), r: (w / 90).toFixed(2), class: "part-dot" }));
-  }
-  figure.append(svg);
-  return figure;
-}
-
-// ---------- reading text with emphasis ----------
-
-// Splits text by a regex and wraps the matches in <b class=...>; plain text otherwise.
-function rich(tag, className, text, pattern, markClass) {
-  const node = el(tag, className);
-  let last = 0;
-  for (const m of text.matchAll(pattern)) {
-    if (m.index > last) node.append(document.createTextNode(text.slice(last, m.index)));
-    node.append(el("b", markClass, m[0]));
-    last = m.index + m[0].length;
-  }
-  if (last < text.length) node.append(document.createTextNode(text.slice(last)));
-  return node;
-}
-
-// The summary bubble: the closing "전체적으로 ..." sentence in bold red, the
-// "다만 / 한편" counter-view sentences one shade lighter.
-function summaryBubble(text) {
-  const p = el("p", "part-summary bubble");
-  const sentences = text.match(/[^.]+\.\s*/g) ?? [text];
-  for (const sentence of sentences) {
-    const trimmed = sentence.trim();
-    if (/^(전체적으로|정리하면)/.test(trimmed)) p.append(el("span", "sum-key", sentence));
-    else if (/^(다만|한편)/.test(trimmed)) p.append(el("span", "sum-alt", sentence));
-    else p.append(document.createTextNode(sentence));
-  }
-  return p;
-}
-
-// "내 얼굴": the measured sentence with its numbers highlighted, then "보통은 ..." in grey.
-const NUMBER = /\d+분의 1|\d+(?:\.\d+)?\s*(?:%|배|개|도|점)?/g;
-// Five outlines everyone knows; the visitor's own shape is lit.
-const SHAPE_PATHS = {
-  egg: "M50 6 C74 6 84 30 82 54 C80 78 66 94 50 94 C34 94 20 78 18 54 C16 30 26 6 50 6 Z",
-  round: "M50 10 C78 10 92 30 92 54 C92 78 74 92 50 92 C26 92 8 78 8 54 C8 30 22 10 50 10 Z",
-  square: "M26 10 H74 Q88 10 88 24 V62 Q88 92 50 92 Q12 92 12 62 V24 Q12 10 26 10 Z",
-  long: "M50 4 C70 4 76 26 76 52 C76 80 66 96 50 96 C34 96 24 80 24 52 C24 26 30 4 50 4 Z",
-  heart: "M12 22 Q50 2 88 22 Q86 56 50 94 Q14 56 12 22 Z",
-};
-function shapeIcon(id, on) {
-  const wrap = el("figure", `shape-icon${on ? " is-on" : ""}`);
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("viewBox", "0 0 100 100");
-  svg.setAttribute("aria-hidden", "true");
-  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  path.setAttribute("d", SHAPE_PATHS[id]);
-  svg.append(path);
-  wrap.append(svg, el("figcaption", "", FACE_SHAPES[id].name.replace("갸름한 ", "")));
+function storyPage(page, { first = false } = {}) {
+  const wrap = first ? storyFirst : el("div", "story-page");
+  wrap.append(el("h2", "story-lead", page.lead));
+  for (const line of page.body.filter(Boolean)) wrap.append(el("p", "story-body", line));
+  if (page.basis.length) wrap.append(el("p", "story-basis", `근거 · ${page.basis.join(" · ")}`));
   return wrap;
 }
 
-function renderShape(shot) {
-  const shape = classifyFaceShape(finalMeasurement);
-  if (!shape) { shapeBox.replaceChildren(); return; }
-  const card = el("article", "shape-card");
-  const icons = el("div", "shape-icons");
-  icons.append(...Object.keys(FACE_SHAPES).map((id) => shapeIcon(id, id === shape.id)));
-  const body = el("div", "part-body");
-  body.append(el("p", "kicker", "내 얼굴형"), el("h3", "shape-name", `${shape.name}에 가까운 얼굴`));
-  const row = el("div", "master-row is-card");
-  const master = createMaster({ scale: 3, pose: "point" });
-  const bubble = el("p", "part-summary bubble");
-  bubble.append(document.createTextNode(shape.text));
-  row.append(master.node, bubble);
-  body.append(row);
-  const mine = el("div", "part-row is-mine");
-  const measured = shape.mine.indexOf("보통은");
-  mine.append(el("span", "part-label", "내 얼굴"), rich("p", "", shape.mine.slice(0, measured), NUMBER, "num"));
-  mine.querySelector("p").append(el("span", "typical", shape.mine.slice(measured)));
-  body.append(mine);
-  card.append(icons, body);
-  const faceText = composeGroup(parts.face, { skip: ["faceShape"] });
-  if (faceText) body.append(el("p", "group-text", faceText));
-  shapeBox.replaceChildren(card);
-}
-
-function groupCard(group, index, total) {
-  const card = el("article", "group-card page slide");
-  card.dataset.title = group.name;
-  const head = el("div", "group-head");
-  head.append(el("small", "", `기본 부위 ${index + 1} / ${total}`), el("h3", "", group.name));
-  card.append(head);
-  const text = composeGroup(group);
-  if (text) {
-    const row = el("div", "master-row is-card");
-    const master = createMaster({ scale: 3, pose: "idle" });
-    row.append(master.node, summaryBubble(text));
-    card.append(row);
-  }
-  return card;
-}
-
-function renderParts(shot) {
+function renderStory() {
   parts = readParts(finalMeasurement, partsContent);
-  // Everyone is read on the same basics: face shape, then six regions.
-  const leads = parts.groups.filter((g) => g.lead).map((g) => ({ group: g.name, part: g.lead, leaning: g.leaning.length > 0 }));
   const shape = classifyFaceShape(finalMeasurement);
-  topList.replaceChildren(...[
-    ...(shape ? [{ label: "얼굴형", name: shape.name }] : []),
-    ...leads.map((l) => ({ label: l.group, name: l.leaning ? l.part.name : "치우침 없이 균형 잡힘" })),
-  ].map((row) => {
-    const item = el("li");
-    item.append(el("small", "", row.label), el("b", "", row.name));
-    return item;
-  }));
-  const areas = /재물 이야기|일과 사회적 자리|사람과의 인연|연애와 결혼|인생의 시기|일과 사회|성격과 기질/g;
-  synthesisBox.replaceChildren(...synthesize(leads.map((l) => l.part), partsContent).map((line, i) => {
-    if (i > 1) return rich("p", "", line, areas, "hl-domain");
-    return rich("p", "", line, /$^/g, "hl");
-  }));
-  renderShape(shot);
-  const shown = parts.groups.filter((g) => g.parts.length);
-  groupCards.replaceChildren(...shown.map((g, i) => groupCard(g, i, shown.length)));
+  story = composeStory(parts.all, shape);
+  // The first page keeps the teacher's greeting; the rest are rebuilt each time.
+  storyFirst.querySelectorAll(".story-lead, .story-body, .story-basis").forEach((n) => n.remove());
+  storyPage(story.pages[0], { first: true });
+  pages.querySelectorAll(".slide.is-story").forEach((n) => n.remove());
+  const closingPage = pages.querySelector('[data-page="last"]');
+  for (const page of story.pages.slice(1)) {
+    const slide = el("article", "page slide is-story");
+    slide.dataset.title = page.title;
+    slide.append(storyPage(page));
+    pages.insertBefore(slide, closingPage);
+  }
+  closingLead.textContent = story.closing;
 }
 
 let closingSpoken = false;
@@ -695,15 +563,15 @@ function atEdge(slide, delta) {
   if (!slide || slide.scrollHeight <= slide.clientHeight + 2) return true;
   return delta > 0 ? slide.scrollTop + slide.clientHeight >= slide.scrollHeight - 2 : slide.scrollTop <= 0;
 }
-pages.addEventListener("wheel", (event) => {
+resultView.addEventListener("wheel", (event) => {
   if (Math.abs(event.deltaY) < 12) return;
   event.preventDefault();
   if (atEdge(slidesOf()[slideIndex], event.deltaY)) step(event.deltaY > 0 ? 1 : -1);
   else slidesOf()[slideIndex].scrollTop += event.deltaY;
 }, { passive: false });
 let touchStartY = null;
-pages.addEventListener("touchstart", (event) => { touchStartY = event.touches[0].clientY; }, { passive: true });
-pages.addEventListener("touchend", (event) => {
+resultView.addEventListener("touchstart", (event) => { touchStartY = event.touches[0].clientY; }, { passive: true });
+resultView.addEventListener("touchend", (event) => {
   if (touchStartY === null) return;
   const dy = touchStartY - event.changedTouches[0].clientY;
   touchStartY = null;
@@ -723,7 +591,7 @@ function renderResult() {
     resultFrontImage.src = shot.src;
     renderFrontAnnotation(resultFrontOverlay, shot.points);
   }
-  renderParts(shot);
+  renderStory();
   renderClosing();
   buildSlides();
 }

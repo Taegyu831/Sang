@@ -74,13 +74,10 @@ check("measurement carries confidence and coverage", st.finalMeasurement.confide
 win.__sang.show();
 await sleep(200);
 const text = (sel) => doc.querySelector(sel)?.textContent ?? "";
-check("an overall reading is written for the top three", doc.querySelectorAll("#synthesis p").length >= 2);
-check("every region is one paragraph with no folded tabs", [...doc.querySelectorAll("#groupCards .group-card")].every((c) => (c.querySelector(".part-summary")?.textContent ?? "").length > 20) && doc.querySelectorAll("#resultView details").length === 0);
-check("overview lists face shape and five regions", doc.querySelectorAll("#topList li").length === 6);
-check("a face shape is named", doc.querySelectorAll("#shapeBox .shape-name").length === 1 && doc.querySelectorAll("#shapeBox .shape-icon.is-on").length === 1, doc.querySelector("#shapeBox .shape-name")?.textContent);
-check("eyes, nose, mouth, forehead and jaw each get one card", doc.querySelectorAll("#groupCards .group-card").length === 5, [...doc.querySelectorAll("#groupCards .group-head h3")].map((e) => e.textContent).join(" "));
+check("the story has seven pages that open with the connectors", doc.querySelectorAll("#pages .slide").length === 7 && /^이 사람은/.test(doc.querySelector("#storyFirst .story-lead")?.textContent ?? "") && [...doc.querySelectorAll("#pages .slide .story-lead")].some((e) => /^그래서 잘 맞는 사람은/.test(e.textContent)));
+check("every page says something and nothing is folded away", [...doc.querySelectorAll("#pages .slide")].every((s) => s.textContent.length > 40) && doc.querySelectorAll("#resultView details").length === 0);
 check("closing line is filled", text("#resultClosing").length > 10);
-check("no placeholder text in the overall reading", !/undefined|NaN|\{/.test(text("#synthesis")));
+check("no placeholder text in the story", !/undefined|NaN|\{|보통 범위/.test(text("#pages")));
 check("no NaN or undefined anywhere in the reading", !/NaN|undefined/.test(doc.querySelector("#resultView").textContent));
 check("no em dash in the reading", !/[\u2014\u2013]/.test(doc.querySelector("#resultView").textContent));
 check("no unfilled tokens in the cards", !/\{[a-z]/.test(doc.querySelector("#resultView").textContent));

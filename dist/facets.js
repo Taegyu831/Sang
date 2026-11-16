@@ -53,3 +53,72 @@ export const FACETS = {
 export function facetsOf(part) {
   return FACETS[`${part.id}.${part.key}.${part.dir}`] ?? FACETS[`${part.id}.${part.dir}`] ?? null;
 }
+
+// How each reading leans on four axes (+ or -, 2 is strong) and how it looks on
+// a face. The axes are what the whole-person story is built from:
+//   drive  주도(+) 신중(-)     social 사교(+) 내향(-)
+//   feel   감성(+) 이성(-)     steady 꾸준(+) 순발(-)
+export const AXES = {
+  "forehead.high": { social: 1, feel: -1 },
+  "forehead.low": { steady: 1, feel: 1, social: -1 },
+  "thirds.upperThird.low": { feel: 1, drive: 1 },
+  "thirds.middleThird.high": { drive: 1, social: 1 },
+  "thirds.lowerThird.high": { steady: 2, feel: 1 },
+  "thirds.lowerThird.low": { steady: -2, social: 1 },
+  "eyeGap.high": { social: 1, steady: 1 },
+  "eyeGap.low": { feel: 2, drive: -1 },
+  "eyeSize.high": { feel: 2, social: 2 },
+  "eyeSize.low": { feel: -2, drive: -1, steady: 2, social: -1 },
+  "eyeOpen.high": { social: 1, feel: 1 },
+  "eyeOpen.low": { drive: -1, steady: 1, social: -1 },
+  "eyeTilt.high": { drive: 2 },
+  "eyeTilt.low": { feel: 2, social: 1, drive: -1 },
+  "noseWidth.high": { drive: 2 },
+  "noseWidth.low": { drive: -1, steady: 1 },
+  "noseLength.high": { steady: 2, drive: -1 },
+  "noseLength.low": { steady: -1, drive: 1 },
+  "mouthFace.high": { drive: 2, social: 1 },
+  "mouthFace.low": { drive: -2, steady: 1 },
+  "lipFull.high": { feel: 2, steady: 1 },
+  "lipFull.low": { feel: -2, social: 1, steady: -1 },
+  "lipRatio.high": { feel: 2, social: 1 },
+  "mouthLift.high": { social: 2 },
+  "mouthLift.low": { drive: -1, steady: 1 },
+  "philtrum.high": { steady: 2 },
+  "philtrum.low": { steady: -2, social: 1 },
+  "cheek.high": { drive: 2 },
+  "cheek.low": { drive: -1 },
+  "jaw.high": { drive: 1, steady: 2 },
+  "jaw.low": { feel: 1 },
+  "chin.high": { feel: 1, social: 1, steady: 1 },
+  "chin.low": { drive: 2 },
+  "symmetry.high": { steady: 1 },
+};
+
+export const LOOKS = {
+  "forehead.high": "넓은 이마", "forehead.low": "좁은 이마",
+  "thirds.upperThird.high": "긴 상정", "thirds.upperThird.low": "짧은 상정",
+  "thirds.middleThird.high": "긴 중정", "thirds.middleThird.low": "짧은 중정",
+  "thirds.lowerThird.high": "긴 하정", "thirds.lowerThird.low": "짧은 하정",
+  "eyeGap.high": "먼 눈 사이", "eyeGap.low": "가까운 눈 사이",
+  "eyeSize.high": "큰 눈", "eyeSize.low": "작은 눈",
+  "eyeOpen.high": "동그랗게 열린 눈", "eyeOpen.low": "가늘고 긴 눈",
+  "eyeTilt.high": "올라간 눈꼬리", "eyeTilt.low": "처진 눈꼬리",
+  "eyeAsym.high": "크기가 다른 두 눈",
+  "noseWidth.high": "넓은 콧방울", "noseWidth.low": "좁은 콧방울",
+  "noseLength.high": "긴 코", "noseLength.low": "짧은 코",
+  "mouthFace.high": "큰 입", "mouthFace.low": "작은 입",
+  "lipFull.high": "도톰한 입술", "lipFull.low": "얇은 입술",
+  "lipRatio.high": "도톰한 윗입술", "lipRatio.low": "도톰한 아랫입술",
+  "mouthLift.high": "올라간 입꼬리", "mouthLift.low": "처진 입꼬리",
+  "philtrum.high": "긴 인중", "philtrum.low": "짧은 인중",
+  "cheek.high": "발달한 광대", "cheek.low": "도드라지지 않은 광대",
+  "jaw.high": "넓고 각진 턱", "jaw.low": "갸름한 턱",
+  "chin.high": "둥글고 넓은 턱끝", "chin.low": "뾰족한 턱끝",
+  "symmetry.high": "좌우가 고른 얼굴", "symmetry.low": "좌우 차이가 있는 얼굴",
+};
+
+export function entryKey(part) {
+  const long = `${part.id}.${part.key}.${part.dir}`;
+  return long in FACETS ? long : `${part.id}.${part.dir}`;
+}

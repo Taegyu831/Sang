@@ -69,54 +69,44 @@
           </div>
         </section>
 
-        <!-- 4. 풀이: 한 번에 아래로 내려 읽는다 -->
+        <!-- 4. 풀이: 왼쪽에 사진, 오른쪽에서 이야기가 쪽마다 넘어간다 -->
         <section class="screen" id="resultView" aria-label="관상 풀이" hidden>
-          <div class="pages" id="pages">
-            <!-- 맨 위: 얼굴과 기본 부위 요약 -->
-            <article class="page slide" data-page="0">
-              <div class="overview">
-                <figure class="plate" id="resultFrontFigure" hidden>
-                  <div class="face-plate">
-                    <img id="resultFrontImage" alt="측정할 때의 얼굴" />
-                    <svg id="resultFrontOverlay" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"></svg>
-                  </div>
-                  <div class="stamp" aria-hidden="true">相</div>
-                </figure>
-                <div class="overview-text">
-                  <div class="master-row" data-master="result" data-scale="4" data-pose="point">
-                    <div class="bubble"><p id="resultSay">자, 얼굴을 다 읽었습니다. 정리해 드리겠습니다.</p></div>
-                  </div>
-                  <p class="kicker">부위별로 한눈에</p>
-                  <ol class="top-list" id="topList"></ol>
-                  <div class="synthesis" id="synthesis" aria-label="종합 풀이"></div>
-                </div>
+          <div class="reading">
+            <figure class="plate" id="resultFrontFigure" hidden>
+              <div class="face-plate">
+                <img id="resultFrontImage" alt="측정할 때의 얼굴" />
+                <svg id="resultFrontOverlay" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"></svg>
               </div>
-            </article>
+              <div class="stamp" aria-hidden="true">相</div>
+            </figure>
+            <div class="story">
+              <div class="pages" id="pages">
+                <article class="page slide" data-page="first" data-title="이 사람은">
+                  <div class="story-page" id="storyFirst">
+                    <div class="master-row" data-master="result" data-scale="4" data-pose="point">
+                      <div class="bubble"><p id="resultSay">자, 얼굴을 다 읽었습니다. 정리해 드리겠습니다.</p></div>
+                    </div>
+                  </div>
+                </article>
 
-            <!-- 얼굴형: 누구나 아는 다섯 가지 중 하나 -->
-            <section class="page slide part-section" data-title="얼굴형">
-              <h2 class="sec-head">얼굴형</h2>
-              <div id="shapeBox"></div>
-            </section>
-
-            <!-- 눈, 코, 입, 이마, 턱: 한 부위에 한 장면. 쪽마다 부드럽게 들어온다 -->
-            <div class="group-cards" id="groupCards"></div>
-
-            <article class="page slide" data-page="last" data-title="마무리">
-              <div class="closing">
-                <span class="seal" aria-hidden="true">相</span>
-                <div class="master-row" data-master="closing" data-scale="4">
-                  <div class="bubble"><p id="closingSay">풀이는 여기까지입니다. 재미있게 보셨나요?</p></div>
-                </div>
-                <p class="closing-line" id="resultClosing"></p>
-                <div class="closing-actions">
-                  <button class="btn primary big-btn" id="restartButton" type="button">한 번 더 재기</button>
-                  <button class="btn" id="homeButton" type="button">처음으로</button>
-                </div>
+                <article class="page slide" data-page="last" data-title="마무리">
+                  <div class="story-page closing">
+                    <span class="seal" aria-hidden="true">相</span>
+                    <p class="story-lead" id="closingLead"></p>
+                    <div class="master-row" data-master="closing" data-scale="4">
+                      <div class="bubble"><p id="closingSay">풀이는 여기까지입니다. 재미있게 보셨나요?</p></div>
+                    </div>
+                    <p class="closing-line" id="resultClosing"></p>
+                    <div class="closing-actions">
+                      <button class="btn primary big-btn" id="restartButton" type="button">한 번 더 재기</button>
+                      <button class="btn" id="homeButton" type="button">처음으로</button>
+                    </div>
+                  </div>
+                </article>
               </div>
-            </article>
+              <nav class="slide-dots" id="slideDots" aria-label="풀이 쪽"></nav>
+            </div>
           </div>
-          <nav class="slide-dots" id="slideDots" aria-label="풀이 쪽"></nav>
         </section>
       </div>
     </main>

@@ -215,8 +215,8 @@ function endsWithRieul(word) {
   const code = word.charCodeAt(word.length - 1) - 0xac00;
   return code >= 0 && code <= 11171 && code % 28 === 8;
 }
-const josa = (word, withBatchim, without) => `${word}${hasBatchim(word) ? withBatchim : without}`;
-const withRo = (word) => `${word}${hasBatchim(word) && !endsWithRieul(word) ? "으로" : "로"}`;
+export const josa = (word, withBatchim, without) => `${word}${hasBatchim(word) ? withBatchim : without}`;
+export const withRo = (word) => `${word}${hasBatchim(word) && !endsWithRieul(word) ? "으로" : "로"}`;
 
 function gather(facets, field) {
   const seen = new Set();
