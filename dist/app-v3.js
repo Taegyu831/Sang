@@ -808,7 +808,8 @@ async function initialize() {
       "얼굴 측정 모델을 준비하는 시간이 초과되었습니다.",
     );
     drawingUtils = new DrawingUtils(ctx);
-    loadHairSegmenter(module, vision);
+    // The hair model is opt-in (?hair=1) until it is confirmed safe in Safari.
+    if (SEARCH_PARAMS.get("hair") === "1") loadHairSegmenter(module, vision);
     setCameraButton(CAMERA_LABEL, "camera");
     permissionNote.textContent = "";
   } catch (error) {

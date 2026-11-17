@@ -282,10 +282,10 @@ export const COMPARE = {
   graceMs: 1200,
   windowMs: 2400,
   // Give up (and read the face without this comparison) after this long without enough frames.
-  giveUpMs: 6000,
+  giveUpMs: 4500,
   minFrames: 8,
-  maxYaw: 10,
-  maxPitch: 14,
+  maxYaw: 16,
+  maxPitch: 24,
 };
 
 export class PoseCompare {
