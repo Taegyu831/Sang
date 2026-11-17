@@ -356,7 +356,7 @@ img { display: block; max-width: 100%; }
 
 /* 안내 자막: 카메라 영상 위, 살짝 투명한 흰 글씨 */
 .camera-frame .scan-msg {
-  position: absolute; left: 50%; bottom: clamp(14px, 4vh, 44px); transform: translateX(-50%);
+  position: absolute; left: 50%; top: calc(clamp(8px, 2vh, 18px) + 104px); transform: translateX(-50%);
   width: max-content; max-width: 92%; padding: 0.15em 0.6em; z-index: 2; pointer-events: none;
   font-size: clamp(18px, min(2.1vw, 3.6vh), 32px); font-weight: 700; line-height: 1.4; text-align: center;
   color: rgba(255, 255, 255, 0.88); text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55), 0 0 2px rgba(0, 0, 0, 0.45);
