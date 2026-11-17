@@ -37,6 +37,9 @@ const cameraButton = $("#cameraButton");
 const permissionNote = $(".permission-note");
 const stopButton = $("#stopButton");
 const toResultButton = $("#toResultButton");
+const scanActions = $("#scanActions");
+// ?debug=1 (collecting samples) keeps the manual 풀이 보기 and 그만하기 buttons; the real exhibit goes on by itself.
+scanActions.hidden = !DEBUG_MODE;
 const statusMessage = $("#statusMessage");
 const journeyProgress = $("#journeyProgress");
 const turnGuide = $("#turnGuide");
@@ -385,11 +388,16 @@ function completeClassification() {
   classificationComplete = true;
   setProgress(journeyProgress, 1);
   turnGuide.hidden = true;
-  statusMessage.textContent = "다 쟀습니다! 준비되시면 아래 버튼을 눌러 주세요";
-  // The camera keeps running (and ?debug=1 keeps recording) until the visitor
-  // chooses to see the reading.
-  toResultButton.hidden = false;
-  toResultButton.focus({ preventScroll: true });
+  if (DEBUG_MODE) {
+    statusMessage.textContent = "다 쟀습니다! 준비되시면 아래 버튼을 눌러 주세요";
+    // The camera keeps running and ?debug=1 keeps recording until 풀이 보기 is pressed.
+    toResultButton.hidden = false;
+    toResultButton.focus({ preventScroll: true });
+  } else {
+    statusMessage.textContent = "다 쟀습니다! 풀이로 넘어갑니다";
+    const run = flowRun;
+    window.setTimeout(() => { if (run === flowRun && classificationComplete && !scanScreen.hidden) showResult(); }, 1400);
+  }
 }
 
 async function predict() {

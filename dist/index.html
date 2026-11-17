@@ -42,10 +42,11 @@
                   <span class="tg-head" id="tgHead"></span>
                 </div>
               </div>
+              <!-- 안내 자막은 카메라 영상 위에 띄운다 (고개를 돌릴 때도 읽히도록) -->
+              <p class="scan-msg" id="statusMessage" role="status">얼굴을 화면 가운데에 맞춰 주세요</p>
             </div>
-            <p class="scan-msg" id="statusMessage" role="status">얼굴을 화면 가운데에 맞춰 주세요</p>
             <div class="bar"><i id="journeyProgress"></i></div>
-            <div class="scan-actions">
+            <div class="scan-actions" id="scanActions" hidden>
               <button class="btn primary big-btn" id="toResultButton" type="button" hidden>풀이 보기 ▶</button>
               <button class="btn small" id="stopButton" type="button">그만하기</button>
             </div>

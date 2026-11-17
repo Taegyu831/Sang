@@ -60,12 +60,10 @@ while (!win.__sang.state().done && frames < 1200) {
 }
 st = win.__sang.state();
 check("capture finishes by itself while the head keeps moving", st.done, `${frames} fed, ${st.finalMeasurement?.frames} used`);
-await sleep(1500);
-check("finishing the capture does not open the reading by itself", !doc.querySelector("#scanScreen").hidden && doc.querySelector("#loadingScreen").hidden && doc.querySelector("#resultView").hidden);
-check("a 풀이 보기 button appears instead", !doc.querySelector("#toResultButton").hidden);
-// frames keep coming in after the capture is complete (debug recording keeps going)
-win.__sang.feed(landmarksFor(base, 5, 0, 0));
-check("the camera keeps being read after completion", doc.querySelector("#resultView").hidden);
+check("the 풀이 보기 and 그만하기 buttons are not shown in the real flow", doc.querySelector("#scanActions").hidden);
+check("the guide line sits over the camera picture", !!doc.querySelector("#cameraFrame #statusMessage"));
+await sleep(2200);
+check("the reading starts by itself after the capture", doc.querySelector("#scanScreen").hidden && (!doc.querySelector("#loadingScreen").hidden || !doc.querySelector("#resultView").hidden), "");
 check("five themes and three frames are produced", st.reading?.themes.length === 5 && Object.keys(st.reading.frames.axes).length === 3);
 check("measurement carries confidence and coverage", st.finalMeasurement.confidence > 40 && st.finalMeasurement.coverage.yaw[1] - st.finalMeasurement.coverage.yaw[0] > 10, `confidence ${st.finalMeasurement.confidence}`);
 // (the canonical face is no longer the average: centres now come from real people)
