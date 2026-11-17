@@ -122,3 +122,10 @@ export function entryKey(part) {
   const long = `${part.id}.${part.key}.${part.dir}`;
   return long in FACETS ? long : `${part.id}.${part.dir}`;
 }
+
+// The hairline based top third reads exactly like the mesh based one.
+for (const table of [FACETS, AXES, LOOKS]) {
+  for (const key of Object.keys(table)) {
+    if (key.startsWith("thirds.upperThird.")) table[key.replace("upperThird", "upperThirdHair")] = table[key];
+  }
+}

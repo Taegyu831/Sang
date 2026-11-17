@@ -55,3 +55,10 @@ python3 -m http.server 8000 --directory dist --bind 127.0.0.1
 [Figma 작업 파일](https://www.figma.com/design/zzQuyeeS0rzyvR8pGNAG61?node-id=8-6601)
 
 이 결과는 관상에서 이렇게들 풀이해 왔다는 이야기를 얼굴의 상대 비율에 연결한 것이며, 성격, 능력, 미래에 대한 과학적 진단이 아닙니다.
+
+## Measurement extras (2026-11-17)
+
+- The relaxed capture counts the right, front and left head turns equally (`StableCapture.estimate`).
+- After it, two short posed shots follow: jaw clenched, then a small smile (`dist/capture.js`, `PoseCompare`). Their difference from the relaxed face gives `jawFlex` and `smileLift`, told in `dist/extras.js`. The thresholds there are guesses until visitors are recorded with `?debug=1`.
+- The iris is used as a ruler (`faceWidthMm` and the other `*Mm` values in `dist/features.js`).
+- One frame of the clench shot goes through MediaPipe's hair segmenter (`dist/hair.js`); the top third then starts at the hairline (`upperThirdHair`, centre 33 is a guess). If the model does not load, or a fringe covers the forehead, the mesh based top third stays.

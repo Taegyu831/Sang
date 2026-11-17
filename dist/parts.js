@@ -129,7 +129,9 @@ export function readPart(card, values, calibration = CALIBRATION, rules = PART_R
     // Ranking weight: how unusual, discounted when the landmark is less trustworthy.
     score: Math.abs(z) * RELIABILITY_WEIGHT[reliability] * (VISIBILITY[card.id] ?? 1),
     name: `${dir === "middle" ? "" : strengthWord(z, rules)}${name}`,
-    mine: [fillTokens(card.mine, key, values, calibration), fillTokens(card.typical, key, values, calibration)].filter(Boolean).join(" "),
+    mine: (card.mineHair && finite(values.upperThirdHair)
+      ? [fillTokens(card.mineHair, key, values, calibration), card.typicalHair]
+      : [fillTokens(card.mine, key, values, calibration), fillTokens(card.typical, key, values, calibration)]).filter(Boolean).join(" "),
     readings: readings.map((r) => ({ text: r.text, domain: r.domain ?? "" })),
     summary: slot(card.summary, card, key, dir) ?? "",
     gist: slot(card.gist, card, key, dir) ?? "",

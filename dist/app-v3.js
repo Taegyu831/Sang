@@ -1,5 +1,5 @@
 import { estimatePose, frontalizePoints, poseFromMatrix } from "./pose.js";
-import { LANDMARK, getPoints, computeFrontFeatures, vertical, mean } from "./features.js";
+import { LANDMARK, getPoints, computeFrontFeatures, vertical, horizontal, mean } from "./features.js";
 import { CALIBRATION } from "./calibration.js";
 import { StableCapture, GUIDANCE, TURN_GUIDANCE, COMPARE_STEPS, PoseCompare, compareDeltas } from "./capture.js";
 import { interpret } from "./interpret.js";
@@ -7,11 +7,13 @@ import { applyPoseResidual } from "./residual.js";
 import { readParts, classifyFaceShape } from "./parts.js";
 import { composeStory } from "./story.js";
 import { extrasOf } from "./extras.js";
+import { findHairline, hairThirds } from "./hair.js";
 import { avatarSvg, paramsOf } from "./avatar.js";
 
 const MEDIAPIPE_VERSION = "1.1.1";
 const MEDIAPIPE_MODULE = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VERSION}/vision_bundle.mjs`;
 const MEDIAPIPE_WASM = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VERSION}/wasm`;
+const HAIR_MODEL = "https://storage.googleapis.com/mediapipe-models/image_segmenter/hair_segmenter/float32/latest/hair_segmenter.tflite";
 const FACE_MODEL = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
 const PUBLIC_SITE_URL = "https://taegyu831.github.io/Sang/";
 const MODEL_LOAD_TIMEOUT = 40000;
@@ -83,6 +85,10 @@ let compare = null;
 let compareIndex = -1;
 let compareResults = {};
 let compareBase = null;
+// The hairline, found once from a hair mask during the clench shot (null: not measured).
+let hairSegmenter = null;
+let hairTried = false;
+let hairResult = null;
 // The sim hook (tests) skips the waiting times.
 const COMPARE_OPTIONS = new URLSearchParams(window.location.search).get("sim") === "1" ? { graceMs: 0, windowMs: 0, giveUpMs: 1500 } : {};
 let flowRun = 0;
@@ -139,6 +145,8 @@ function resetClassification() {
   compareIndex = -1;
   compareResults = {};
   compareBase = null;
+  hairTried = false;
+  hairResult = null;
   toResultButton.hidden = true;
   setProgress(journeyProgress, 0);
   smoothYaw = 0;
@@ -367,7 +375,7 @@ function handleFace(landmarks, blend, matrixData) {
   }
   if (classificationComplete) return;
   if (compare) {
-    stepCompare(values, blend, pose);
+    stepCompare(values, blend, pose, raw);
     return;
   }
   updateTurnGuide(pose.yaw);
@@ -407,11 +415,54 @@ function beginCompare() {
   statusMessage.textContent = COMPARE_STEPS[0].prompt;
 }
 
-function stepCompare(values, blend, pose) {
+// One frame of the clench shot goes through the hair segmenter; the top third then
+// starts at the hairline. Runs once and in the background; any failure leaves the
+// mesh based reading in place.
+function measureHair(raw) {
+  try {
+    const result = hairSegmenter.segment(video);
+    const mask = result.categoryMask.getAsUint8Array();
+    const mw = result.categoryMask.width;
+    const mh = result.categoryMask.height;
+    const sx = mw / video.videoWidth;
+    const sy = mh / video.videoHeight;
+    const faceWidth = horizontal(raw.faceLeft, raw.faceRight);
+    const faceHeight = vertical(raw.meshTop, raw.chin);
+    const found = findHairline(mask, mw, mh, {
+      xs: [-0.2, -0.1, 0, 0.1, 0.2].map((f) => (raw.meshTop.x + f * faceWidth) * sx),
+      y: raw.meshTop.y * sy,
+      reach: faceHeight * 0.7 * sy,
+    });
+    result.close?.();
+    hairResult = { status: found.status };
+    if (found.status === "found" && compareBase) {
+      const thirds = hairThirds(raw, compareBase, found.y / sy);
+      if (thirds) hairResult = { status: "found", ...thirds };
+    }
+  } catch (error) {
+    console.warn("hair measurement", error);
+  }
+}
+
+function hairExtra() {
+  if (!hairResult) return {};
+  if (hairResult.status === "found" && Number.isFinite(hairResult.upperThirdHair)) {
+    const { upperThirdHair, middleThirdHair, lowerThirdHair, hairRatio } = hairResult;
+    // The mesh based top third steps aside; the part card reads the hairline based one.
+    return { upperThirdHair, middleThirdHair, lowerThirdHair, hairRatio, upperThird: NaN };
+  }
+  return {};
+}
+
+function stepCompare(values, blend, pose, raw) {
   const t = performance.now();
   const want = COMPARE_STEPS[compareIndex].prompt;
   if (statusMessage.textContent !== want) statusMessage.textContent = want;
-  compare.add({ values, blend, pose, t });
+  const kept = compare.add({ values, blend, pose, t });
+  if (kept && hairSegmenter && !hairTried && COMPARE_STEPS[compareIndex].id === "clench" && Math.abs(pose.yaw) <= 5 && Math.abs(pose.pitch) <= 8) {
+    hairTried = true;
+    measureHair(raw);
+  }
   if (!compare.finished(t)) return;
   compareResults[COMPARE_STEPS[compareIndex].id] = compare.result();
   compareIndex += 1;
@@ -421,7 +472,7 @@ function stepCompare(values, blend, pose) {
     return;
   }
   compare = null;
-  completeClassification(compareDeltas(compareBase, compareResults.clench, compareResults.smile));
+  completeClassification({ ...compareDeltas(compareBase, compareResults.clench, compareResults.smile), ...hairExtra() });
 }
 
 function completeClassification(extra = {}) {
@@ -711,6 +762,24 @@ async function loadContent() {
   partsContent = await partsResponse.json();
 }
 
+// Optional: without the hair model the top third simply stays mesh based.
+async function loadHairSegmenter(module, vision) {
+  if (!module.ImageSegmenter) return;
+  for (const delegate of ["GPU", "CPU"]) {
+    try {
+      hairSegmenter = await module.ImageSegmenter.createFromOptions(vision, {
+        baseOptions: { modelAssetPath: HAIR_MODEL, delegate },
+        runningMode: "IMAGE",
+        outputCategoryMask: true,
+        outputConfidenceMasks: false,
+      });
+      return;
+    } catch (error) {
+      console.warn(`hair model (${delegate})`, error);
+    }
+  }
+}
+
 async function initialize() {
   if (window.location.protocol === "file:") return;
   if (!navigator.mediaDevices?.getUserMedia) {
@@ -739,6 +808,7 @@ async function initialize() {
       "얼굴 측정 모델을 준비하는 시간이 초과되었습니다.",
     );
     drawingUtils = new DrawingUtils(ctx);
+    loadHairSegmenter(module, vision);
     setCameraButton(CAMERA_LABEL, "camera");
     permissionNote.textContent = "";
   } catch (error) {

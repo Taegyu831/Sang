@@ -26,6 +26,9 @@
 // stable (dist/capture.js), so measuring does not take longer.
 // Numbers: ~/Documents/sang-research/recordings-2026-11-08.json (outside the repo).
 export const CALIBRATION = {
+  // Hairline based top third (dist/hair.js). No recordings yet: center and scale are a
+  // guess (33 : 30 : 37 is the usual textbook face), to be moved to measured values with ?debug=1.
+  upperThirdHair: { label: "상정 비율(머리선 기준)", unit: "%", digits: 1, center: 33, scale: 3, captureScale: 4, reliability: "medium", from: "guess" },
   upperThird: { label: "상정 비율", unit: "%", digits: 1, center: 28.77, scale: 0.86, captureScale: 3.0, reliability: "low", from: "people" },
   middleThird: { label: "중정 비율", unit: "%", digits: 1, center: 29.93, scale: 0.84, captureScale: 2.5, reliability: "medium", from: "people" },
   lowerThird: { label: "하정 비율", unit: "%", digits: 1, center: 41.3, scale: 1.39, captureScale: 3.5, reliability: "medium", from: "people" },

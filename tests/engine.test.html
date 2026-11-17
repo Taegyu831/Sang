@@ -9,6 +9,8 @@ import { CALIBRATION } from "../dist/calibration.js";
 import { classifyAxes, classifySanjeong, classifyOgan, classifyOak } from "../dist/reading.js";
 import { StableCapture, weightedMedian } from "../dist/capture.js";
 import { interpret, evaluateTheme, buildTone } from "../dist/interpret.js";
+import { findHairline, hairThirds } from "../dist/hair.js";
+import { readParts } from "../dist/parts.js";
 import { applyPoseResidual, POSE_RESIDUAL } from "../dist/residual.js";
 
 const lines = [];
@@ -53,7 +55,8 @@ function pose3(points, yaw, pitch, roll, noise = 0, rng = Math.random) {
   return out;
 }
 const truth = computeFrontFeatures(canonical);
-const featureKeys = Object.keys(CALIBRATION);
+const CALIBRATION_CENTERS = () => Object.fromEntries(Object.entries(CALIBRATION).map(([k, c]) => [k, c.center]));
+const featureKeys = Object.keys(CALIBRATION).filter((k) => k in truth);
 // The five-theme and three-frame engines (no longer on the visitor screen) are
 // tested against the canonical face as the average, as they were designed.
 // The live calibration now centres most ratios on real people instead.
@@ -172,6 +175,26 @@ for (const [yaw, pitch, roll] of [[22, 0, 0], [-24, 12, 0], [0, -18, 0], [15, 15
       return Math.abs(mm / 10 - widthCm) / widthCm;
     });
     check("real face width from the iris ruler holds at every turn", Math.max(...errors) < 0.04, `worst error ${(Math.max(...errors) * 100).toFixed(1)}%, width ${widthCm.toFixed(1)} cm`);
+  }
+  {
+    // Hairline from a mask: 100x100, hair above y=30 (forehead 30..60), 5 columns.
+    const W = 100, H = 100;
+    const clear = new Uint8Array(W * H);
+    for (let y = 0; y < 30; y += 1) for (let x = 20; x < 80; x += 1) clear[y * W + x] = 1;
+    const probe = { xs: [40, 45, 50, 55, 60], y: 60, reach: 50 };
+    const a = findHairline(clear, W, H, probe);
+    check("hairline is found above a clear forehead", a.status === "found" && Math.abs(a.y - 29) <= 1, JSON.stringify(a));
+    const fringe = clear.slice();
+    for (let y = 30; y < 66; y += 1) for (let x = 20; x < 80; x += 1) fringe[y * W + x] = 1;
+    check("a fringe over the forehead is reported as covered", findHairline(fringe, W, H, probe).status === "covered");
+    check("no hair at all reads as none", findHairline(new Uint8Array(W * H), W, H, probe).status === "none");
+    const raw = { meshTop: { y: 60 }, glabella: { y: 90 } };
+    const t = hairThirds(raw, { upperThird: 28, middleThird: 30, lowerThird: 42 }, 29);
+    check("hairline thirds lengthen the top third and sum to 100", t && t.upperThirdHair > 28 && Math.abs(t.upperThirdHair + t.middleThirdHair + t.lowerThirdHair - 100) < 1e-9, t ? t.upperThirdHair.toFixed(1) : "null");
+    check("a hairline below the mesh top is rejected", hairThirds(raw, { upperThird: 28, middleThird: 30, lowerThird: 42 }, 70) === null);
+    const partsContent = await (await fetch("../dist/parts.json")).json();
+    const withHair = readParts({ ...CALIBRATION_CENTERS(), upperThird: NaN, upperThirdHair: 38, middleThirdHair: 28, lowerThirdHair: 34 }, partsContent).all.find((p) => p.id === "thirds");
+    check("the thirds card reads the hairline value when it is there", withHair && withHair.key === "upperThirdHair" && withHair.dir === "high" && /머리선/.test(withHair.mine), withHair ? `${withHair.key} ${withHair.dir} | ${withHair.mine}` : "no card");
   }
   check("weighted median ignores outliers", weightedMedian([[1, 1], [1.1, 1], [0.9, 1], [50, 1], [1.05, 1]]) < 1.2);
 
