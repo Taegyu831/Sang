@@ -53,13 +53,20 @@ doc.querySelector("#scanScreen").hidden = false;
 
 // ----- natural movement until the capture finishes by itself -----
 let frames = 0;
-while (!win.__sang.state().done && frames < 1200) {
+while (!win.__sang.state().comparing && !win.__sang.state().done && frames < 1200) {
   const t = frames / 18;
   win.__sang.feed(landmarksFor(base, 20 * Math.sin(t), 12 * Math.sin(t * 1.3 + 1), 5 * Math.sin(t * 0.6)));
   frames += 1;
 }
+check("after the relaxed capture the jaw-clench shot is asked for", win.__sang.state().comparing && win.__sang.state().status.includes("턱에 힘"), win.__sang.state().status);
+// jaw clenched: the jaw points move outward a little, then a smile
+const clenched = { ...base, jawLeft: { ...base.jawLeft, x: base.jawLeft.x - 4 }, jawRight: { ...base.jawRight, x: base.jawRight.x + 4 } };
+for (let i = 0; i < 14; i += 1) win.__sang.feed(landmarksFor(clenched, 0, 0, 0));
+check("then the smile shot is asked for", win.__sang.state().comparing && win.__sang.state().status.includes("웃어"), win.__sang.state().status);
+const smiling = { ...base, mouthLeft: { ...base.mouthLeft, x: base.mouthLeft.x - 6, y: base.mouthLeft.y - 5 }, mouthRight: { ...base.mouthRight, x: base.mouthRight.x + 6, y: base.mouthRight.y - 5 } };
+for (let i = 0; i < 14; i += 1) win.__sang.feed(landmarksFor(smiling, 0, 0, 0), { mouthSmileLeft: 0.6, mouthSmileRight: 0.6 });
 st = win.__sang.state();
-check("capture finishes by itself while the head keeps moving", st.done, `${frames} fed, ${st.finalMeasurement?.frames} used`);
+check("capture finishes by itself while the head keeps moving", st.done && st.finalMeasurement?.jawFlex > 2 && st.finalMeasurement?.smileLift > 2, `${frames} fed, ${st.finalMeasurement?.frames} used, jawFlex ${st.finalMeasurement?.jawFlex?.toFixed(2)}, smileLift ${st.finalMeasurement?.smileLift?.toFixed(2)}`);
 check("the 풀이 보기 and 그만하기 buttons are not shown in the real flow", doc.querySelector("#scanActions").hidden);
 check("the guide line sits over the camera picture", !!doc.querySelector("#cameraFrame #statusMessage"));
 await sleep(2200);

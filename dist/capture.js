@@ -185,6 +185,12 @@ export class StableCapture {
     return values;
   }
 
+  /** Median of the frames within a few degrees of straight-on, the fair partner for a frontal posed shot. */
+  frontEstimate(limit = 8) {
+    const front = this.frames.filter((f) => Math.abs(f.yaw) <= limit);
+    return front.reduce((a, f) => a + f.weight, 0) >= 3 ? this.estimate(front) : null;
+  }
+
   /**
    * 0..1. Compares the estimate from the older half with the newer half; if the
    * ratios still drift, more frames are needed. calibration supplies the step
@@ -257,3 +263,83 @@ export const GUIDANCE = {
   frown: "표정을 풀고 편안하게 있어주세요",
   blink: null,
 };
+
+// ---------- posed shots: the same face, tensed and smiling ----------
+//
+// The relaxed capture above is the baseline. Two more short shots follow, each
+// asked for by a line on screen: the jaw clenched, and a small smile. Their
+// difference from the relaxed face says what is bone and what is muscle (a
+// clenched jaw widens when the chewing muscles are strong) and how far the
+// mouth corners travel when smiling.
+
+export const COMPARE_STEPS = [
+  { id: "clench", prompt: "이번에는 입을 다문 채 턱에 힘을 꽉 줘 보세요", accepts: (e) => e.jawOpen < 0.12 && e.blink < 0.6 },
+  { id: "smile", prompt: "마지막으로 입꼬리를 살짝 올려 웃어 보세요", accepts: (e) => e.smile >= 0.25 && e.jawOpen < 0.4 && e.blink < 0.6 },
+];
+
+export const COMPARE = {
+  // Time to get into the pose, then the window in which frames are kept.
+  graceMs: 1200,
+  windowMs: 2400,
+  // Give up (and read the face without this comparison) after this long without enough frames.
+  giveUpMs: 6000,
+  minFrames: 8,
+  maxYaw: 10,
+  maxPitch: 14,
+};
+
+export class PoseCompare {
+  constructor(step, options = {}) {
+    this.step = step;
+    this.options = { ...COMPARE, ...options };
+    this.frames = [];
+    this.startedAt = null;
+  }
+
+  /** Returns true when the frame was kept. */
+  add({ values, blend = {}, pose, t }) {
+    this.startedAt ??= t;
+    const o = this.options;
+    const elapsed = t - this.startedAt;
+    if (elapsed < o.graceMs) return false;
+    if (Math.abs(pose.yaw) > o.maxYaw || Math.abs(pose.pitch) > o.maxPitch) return false;
+    if (!this.step.accepts(expressionScores(blend))) return false;
+    this.frames.push({ values, weight: 1, t });
+    return true;
+  }
+
+  /** Enough frames are in (after the window opened), or time ran out. */
+  finished(t) {
+    const o = this.options;
+    if (this.startedAt === null) return false;
+    const elapsed = t - this.startedAt;
+    if (this.frames.length >= o.minFrames && elapsed >= o.graceMs + o.windowMs) return true;
+    return elapsed >= o.giveUpMs;
+  }
+
+  get inWindow() { return this.frames.length > 0; }
+
+  /** Median of every ratio over the kept frames, or null when there were too few. */
+  result() {
+    if (this.frames.length < this.options.minFrames) return null;
+    const keys = new Set(this.frames.flatMap((f) => Object.keys(f.values)));
+    const out = {};
+    for (const key of keys) out[key] = weightedMedian(this.frames.map((f) => [f.values[key], 1]));
+    return out;
+  }
+}
+
+/** Differences of each posed shot from the relaxed baseline (all in the ratios' own units, mostly percent points). */
+export function compareDeltas(base, clench, smile) {
+  const out = {};
+  const put = (name, v) => { if (Number.isFinite(v)) out[name] = v; };
+  if (base && clench) {
+    put("jawFlex", clench.jawCheek - base.jawCheek);
+    put("chinFlex", clench.chinWidth - base.chinWidth);
+  }
+  if (base && smile) {
+    put("smileLift", smile.mouthLift - base.mouthLift);
+    put("smileWiden", smile.mouthFace - base.mouthFace);
+  }
+  return out;
+}

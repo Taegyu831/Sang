@@ -49,6 +49,12 @@ export const LANDMARK = {
   chinRight: 400,
 };
 
+// The iris ring (landmarks 468 to 477, present when the model gives 478 points).
+// Left and right ends of each iris, used as a ruler: a human iris is almost the
+// same size in everyone (about 11.7 mm across).
+export const IRIS_LANDMARK = { irisLeftA: 469, irisLeftB: 471, irisRightA: 474, irisRightB: 476 };
+export const IRIS_MM = 11.7;
+
 const finite = Number.isFinite;
 export const horizontal = (a, b) => Math.abs(a.x - b.x);
 export const vertical = (a, b) => Math.abs(a.y - b.y);
@@ -64,7 +70,9 @@ export function getPoints(landmarks, width, height) {
   return Object.fromEntries(Object.entries(LANDMARK).map(([name, index]) => {
     const item = landmarks[index];
     return [name, { x: item.x * width, y: item.y * height, z: item.z * width }];
-  }));
+  }).concat(landmarks.length >= 478
+    ? Object.entries(IRIS_LANDMARK).map(([name, index]) => [name, { x: landmarks[index].x * width, y: landmarks[index].y * height, z: landmarks[index].z * width }])
+    : []));
 }
 
 // Positive when the outer corner sits higher than the inner corner.
@@ -152,6 +160,22 @@ export function computeFrontFeatures(p) {
     symmetry: calculateSymmetry(p, faceWidth, faceHeight, leftEyeWidth, rightEyeWidth),
     ...detailFeatures(p, { faceWidth, faceHeight, jawWidth, averageEyeWidth, leftEyeWidth, rightEyeWidth, mouthWidth, eyeGapPx }),
     faceHeightPx: faceHeight,
+    ...sizeFeatures(p, { faceWidth, faceHeight, averageEyeWidth, mouthWidth, noseWidth }),
+  };
+}
+
+/** Real sizes in millimetres, from the iris ruler (empty when there are no iris points). */
+function sizeFeatures(p, m) {
+  if (!(p.irisLeftA && p.irisLeftB && p.irisRightA && p.irisRightB)) return {};
+  const iris = mean(horizontal(p.irisLeftA, p.irisLeftB), horizontal(p.irisRightA, p.irisRightB));
+  if (!(iris > 0)) return {};
+  const mm = IRIS_MM / iris;
+  return {
+    faceWidthMm: m.faceWidth * mm,
+    faceHeightMm: m.faceHeight * mm,
+    eyeWidthMm: m.averageEyeWidth * mm,
+    noseWidthMm: m.noseWidth * mm,
+    mouthWidthMm: m.mouthWidth * mm,
   };
 }
 

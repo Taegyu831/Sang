@@ -154,6 +154,25 @@ for (const [yaw, pitch, roll] of [[22, 0, 0], [-24, 12, 0], [0, -18, 0], [15, 15
     const est = g.estimate().x;
     check("both sides count the same however long one was held", Math.abs(est - 12) < 0.01, `estimate ${est.toFixed(2)} (plain median would be 10)`);
   }
+  {
+    // Iris ruler: a face with a 1.17 cm iris must read its real width at any turn.
+    const withIris = canonicalPoints(14);
+    const half = 0.585 * 14;
+    const ec = (o, i) => ({ x: (withIris[o].x + withIris[i].x) / 2, y: (withIris[o].y + withIris[i].y) / 2, z: (withIris[o].z + withIris[i].z) / 2 });
+    const l = ec("eyeLeftOuter", "eyeLeftInner"), r = ec("eyeRightOuter", "eyeRightInner");
+    Object.assign(withIris, {
+      irisLeftA: { ...l, x: l.x - half }, irisLeftB: { ...l, x: l.x + half },
+      irisRightA: { ...r, x: r.x - half }, irisRightB: { ...r, x: r.x + half },
+    });
+    const widthCm = Math.abs(withIris.faceLeft.x - withIris.faceRight.x) / 14;
+    const errors = [-24, -12, 0, 12, 24].map((yaw) => {
+      const rotated = pose3(withIris, yaw, 0, 0);
+      const pose = estimatePose(rotated);
+      const mm = computeFrontFeatures(frontalizePoints(rotated, pose)).faceWidthMm;
+      return Math.abs(mm / 10 - widthCm) / widthCm;
+    });
+    check("real face width from the iris ruler holds at every turn", Math.max(...errors) < 0.04, `worst error ${(Math.max(...errors) * 100).toFixed(1)}%, width ${widthCm.toFixed(1)} cm`);
+  }
   check("weighted median ignores outliers", weightedMedian([[1, 1], [1.1, 1], [0.9, 1], [50, 1], [1.05, 1]]) < 1.2);
 
   function sweep(kind) {

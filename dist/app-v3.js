@@ -1,7 +1,7 @@
 import { estimatePose, frontalizePoints, poseFromMatrix } from "./pose.js";
 import { LANDMARK, getPoints, computeFrontFeatures, vertical, mean } from "./features.js";
 import { CALIBRATION } from "./calibration.js";
-import { StableCapture, GUIDANCE, TURN_GUIDANCE } from "./capture.js";
+import { StableCapture, GUIDANCE, TURN_GUIDANCE, COMPARE_STEPS, PoseCompare, compareDeltas } from "./capture.js";
 import { interpret } from "./interpret.js";
 import { applyPoseResidual } from "./residual.js";
 import { readParts, classifyFaceShape } from "./parts.js";
@@ -77,6 +77,13 @@ let lastShotAt = 0;
 let finalMeasurement = null;
 let reading = null;
 let classificationComplete = false;
+// After the relaxed capture, two posed shots (jaw clenched, smiling) are compared with it.
+let compare = null;
+let compareIndex = -1;
+let compareResults = {};
+let compareBase = null;
+// The sim hook (tests) skips the waiting times.
+const COMPARE_OPTIONS = new URLSearchParams(window.location.search).get("sim") === "1" ? { graceMs: 0, windowMs: 0, giveUpMs: 1500 } : {};
 let flowRun = 0;
 
 function clamp(value, minimum = 0, maximum = 1) { return Math.min(maximum, Math.max(minimum, value)); }
@@ -127,6 +134,10 @@ function resetClassification() {
   finalMeasurement = null;
   reading = null;
   classificationComplete = false;
+  compare = null;
+  compareIndex = -1;
+  compareResults = {};
+  compareBase = null;
   toResultButton.hidden = true;
   setProgress(journeyProgress, 0);
   smoothYaw = 0;
@@ -354,6 +365,10 @@ function handleFace(landmarks, blend, matrixData) {
     });
   }
   if (classificationComplete) return;
+  if (compare) {
+    stepCompare(values, blend, pose);
+    return;
+  }
   updateTurnGuide(pose.yaw);
 
   const verdict = capture.assess({ pose, blend, faceFill, centerOffset });
@@ -367,7 +382,7 @@ function handleFace(landmarks, blend, matrixData) {
     const next = capture.zoneTimedOut ? null : capture.nextZone;
     const line = next ? TURN_GUIDANCE[next] : TURN_GUIDANCE.done;
     if (statusMessage.textContent !== line) statusMessage.textContent = line;
-    if (capture.isDone(CALIBRATION)) completeClassification();
+    if (capture.isDone(CALIBRATION)) beginCompare();
   } else if (verdict.reason && GUIDANCE[verdict.reason]) {
     statusMessage.textContent = GUIDANCE[verdict.reason];
   }
@@ -379,11 +394,40 @@ function noFace() {
   statusMessage.textContent = "얼굴이 보이도록 화면 가운데에 앉아 주세요";
 }
 
-function completeClassification() {
+// The relaxed capture is done; ask for the two posed shots one after the other.
+function beginCompare() {
+  if (classificationComplete || compare || !content) return;
+  compareBase = capture.frontEstimate();
+  turnGuide.hidden = true;
+  setProgress(journeyProgress, 1);
+  if (!compareBase) { completeClassification(); return; }
+  compareIndex = 0;
+  compare = new PoseCompare(COMPARE_STEPS[0], COMPARE_OPTIONS);
+  statusMessage.textContent = COMPARE_STEPS[0].prompt;
+}
+
+function stepCompare(values, blend, pose) {
+  const t = performance.now();
+  const want = COMPARE_STEPS[compareIndex].prompt;
+  if (statusMessage.textContent !== want) statusMessage.textContent = want;
+  compare.add({ values, blend, pose, t });
+  if (!compare.finished(t)) return;
+  compareResults[COMPARE_STEPS[compareIndex].id] = compare.result();
+  compareIndex += 1;
+  if (compareIndex < COMPARE_STEPS.length) {
+    compare = new PoseCompare(COMPARE_STEPS[compareIndex], COMPARE_OPTIONS);
+    statusMessage.textContent = COMPARE_STEPS[compareIndex].prompt;
+    return;
+  }
+  compare = null;
+  completeClassification(compareDeltas(compareBase, compareResults.clench, compareResults.smile));
+}
+
+function completeClassification(extra = {}) {
   if (classificationComplete || !content) return;
   const snapshot = capture.snapshot(CALIBRATION);
   const confidence = Math.round(60 * snapshot.stability + 40 * clamp(snapshot.totalWeight / capture.options.targetWeight));
-  finalMeasurement = { ...snapshot.values, confidence, frames: snapshot.frames, stability: snapshot.stability, coverage: snapshot.coverage };
+  finalMeasurement = { ...snapshot.values, ...extra, confidence, frames: snapshot.frames, stability: snapshot.stability, coverage: snapshot.coverage };
   reading = interpret(finalMeasurement, content);
   classificationComplete = true;
   setProgress(journeyProgress, 1);
@@ -757,7 +801,7 @@ if (isLocal && SEARCH_PARAMS.get("sim") === "1") {
     Object.defineProperty(video, "videoHeight", { value: 720, configurable: true });
     window.__sang = {
       feed: (landmarks, blend = {}) => handleFace(landmarks, blend, null),
-      state: () => ({ done: classificationComplete, progress: capture.progress, frames: capture.frames.length, reading, finalMeasurement, status: statusMessage.textContent }),
+      state: () => ({ done: classificationComplete, comparing: Boolean(compare), progress: capture.progress, frames: capture.frames.length, reading, finalMeasurement, status: statusMessage.textContent }),
       show: showResult,
     };
     window.__sangReady = true;
