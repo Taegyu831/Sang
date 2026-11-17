@@ -16,8 +16,8 @@ export const CAPTURE = {
   maxYaw: 26,
   maxPitch: 20,
   maxRoll: 28,
-  minFaceFill: 0.28,
-  maxFaceFill: 0.88,
+  minFaceFill: 0.34,
+  maxFaceFill: 0.82,
   maxCenterOffset: 0.2,
   // Blendshape scores (0..1) above which the expression is not neutral.
   limits: { smile: 0.3, jawOpen: 0.12, blink: 0.5, frown: 0.35 },
@@ -38,6 +38,9 @@ export const CAPTURE = {
     right: { min: -26, max: -8, frames: 10 },
   },
   zoneOrder: ["front", "left", "right"],
+  // estimate(): groups split at this yaw, and the weight a group needs to count.
+  sideYaw: 6,
+  groupMinWeight: 3,
   // Someone who cannot or will not turn still finishes after this long.
   zoneTimeoutMs: 15000,
   zoneTimeoutFrames: 450,
@@ -157,11 +160,28 @@ export class StableCapture {
     return clamp(0.5 * clamp(this.totalWeight / o.targetWeight) + 0.5 * zones);
   }
 
-  /** Estimate from a list of frames (default: all). */
+  /**
+   * Estimate from a list of frames (default: all).
+   *
+   * The frames are split by head turn (right, front, left) and each group gets
+   * its own weighted median; the estimate is the plain mean of the groups that
+   * have enough frames. Pose correction leaves a small error that has the
+   * opposite sign on the two sides, so giving both sides the same say cancels
+   * it, however long the visitor stayed on one side.
+   */
   estimate(frames = this.frames) {
     const keys = new Set(frames.flatMap((f) => Object.keys(f.values)));
+    const o = this.options;
+    const groups = { right: [], front: [], left: [] };
+    for (const f of frames) groups[f.yaw > o.sideYaw ? "left" : f.yaw < -o.sideYaw ? "right" : "front"].push(f);
+    const used = Object.values(groups).filter((g) => g.reduce((a, f) => a + f.weight, 0) >= o.groupMinWeight);
     const values = {};
-    for (const key of keys) values[key] = weightedMedian(frames.map((f) => [f.values[key], f.weight]));
+    for (const key of keys) {
+      const single = weightedMedian(frames.map((f) => [f.values[key], f.weight]));
+      if (used.length < 2) { values[key] = single; continue; }
+      const parts = used.map((g) => weightedMedian(g.map((f) => [f.values[key], f.weight]))).filter(Number.isFinite);
+      values[key] = parts.length ? parts.reduce((a, b) => a + b, 0) / parts.length : single;
+    }
     return values;
   }
 

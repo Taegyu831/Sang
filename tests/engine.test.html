@@ -145,6 +145,15 @@ for (const [yaw, pitch, roll] of [[22, 0, 0], [-24, 12, 0], [0, -18, 0], [15, 15
   check("rejects head too far up", cap.assess({ ...good, pose: { yaw: 0, pitch: 30, roll: 0 } }).reason === "pitch-up");
   check("rejects a tiny face", cap.assess({ ...good, faceFill: 0.1 }).reason === "far");
   check("a turned head counts less than a frontal one", cap.assess({ ...good, pose: { yaw: 20, pitch: 0, roll: 0 } }).weight < cap.assess(good).weight);
+  {
+    // 60 frames on the left read 10, 5 on the right read 14, 10 in front read 12:
+    // the left side must not drown out the right side.
+    const g = new StableCapture();
+    const put = (n, yaw, v) => { for (let i = 0; i < n; i += 1) g.add({ x: v }, 1, { yaw, pitch: 0 }); };
+    put(60, 15, 10); put(5, -15, 14); put(10, 0, 12);
+    const est = g.estimate().x;
+    check("both sides count the same however long one was held", Math.abs(est - 12) < 0.01, `estimate ${est.toFixed(2)} (plain median would be 10)`);
+  }
   check("weighted median ignores outliers", weightedMedian([[1, 1], [1.1, 1], [0.9, 1], [50, 1], [1.05, 1]]) < 1.2);
 
   function sweep(kind) {
