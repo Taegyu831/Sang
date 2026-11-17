@@ -6,6 +6,7 @@ import { interpret } from "./interpret.js";
 import { applyPoseResidual } from "./residual.js";
 import { readParts, classifyFaceShape } from "./parts.js";
 import { composeStory } from "./story.js";
+import { extrasOf } from "./extras.js";
 import { avatarSvg, paramsOf } from "./avatar.js";
 
 const MEDIAPIPE_VERSION = "1.1.1";
@@ -571,7 +572,7 @@ function storyPage(page, { first = false } = {}) {
 function renderStory() {
   parts = readParts(finalMeasurement, partsContent);
   const shape = classifyFaceShape(finalMeasurement);
-  story = composeStory(parts.all, shape);
+  story = composeStory(parts.all, shape, extrasOf(finalMeasurement, parts.all));
   // The first page keeps the teacher's greeting; the rest are rebuilt each time.
   storyFirst.querySelectorAll(".story-lead, .story-body, .story-basis").forEach((n) => n.remove());
   storyPage(story.pages[0], { first: true });

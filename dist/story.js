@@ -189,7 +189,7 @@ function opposes(key, poles) {
  * @returns       { headline, pages: [{ title, lead, body: [], basis: [] }], closing }
  *                pages[0] is the first page; the closing page is built by the app.
  */
-export function composeStory(parts, shape) {
+export function composeStory(parts, shape, extras = { lines: [], size: null }) {
   const entries = parts
     .filter((p) => p.dir !== "middle" && p.id !== "faceShape")
     .map((part) => ({ part, key: entryKey(part), facets: FACETS[entryKey(part)] }))
@@ -212,6 +212,9 @@ export function composeStory(parts, shape) {
     first.body.push(`한편 ${list(other.items)} 같은 면도 함께 읽혀, 한 가지로만 단정하기 어려운 사람입니다.`);
     first.basis = [...new Set([...first.basis, ...other.basis])];
   }
+
+  for (const line of extras.lines ?? []) first.body.push(line);
+  if (extras.size) first.body.push(extras.size);
 
   // 2. work and money
   const work = gather(entries, "work", 5);
