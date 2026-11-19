@@ -57,7 +57,6 @@ const loadLine = $("#loadLine");
 const pages = $("#pages");
 const storyFirst = $("#storyFirst");
 const closingLead = $("#closingLead");
-const resultClosing = $("#resultClosing");
 const closingNotes = $("#closingNotes");
 const resultFrontFigure = $("#resultFrontFigure");
 const resultFrontImage = $("#resultFrontImage");
@@ -654,13 +653,11 @@ function bondBlock(bond) {
 
 // ---------- last page: a few lines about fortune, one at a time ----------
 const CLOSING_NOTES = [
-  "관상학은 얼굴에서 ⟦타고난 기질과 흐름⟧을 읽습니다.",
-  "그 풀이에는 때로 ⟪바깥의 변수나 고난⟫도 함께 말해집니다.",
-  "그러나 운이 좋다거나 나쁘다는 것은 ⟦정해진 결과⟧가 아닙니다.",
-  "같은 운이 와도 그것을 잡는 것은 그만큼 ⟦내가 준비되어 있느냐⟧에 달려 있습니다.",
-  "어떻게 살아갈지는 결국 ⟦나의 선택이고 몫⟧입니다.",
+  "동양철학에서 운이 좋다는 것은, 단순히 재수가 좋다는 뜻이 아닙니다.",
+  "좋은 기운이 들어왔을 때 그것을 제 것으로 만들 만큼, ⟦준비되어 있다⟧는 뜻입니다.",
+  "그러니 운을 기다리기보다, ⟦내가 할 수 있는 일⟧에 집중하면 됩니다.",
 ];
-// The last thing on the page: a line from the I Ching (周易), in hanja and hangul.
+// The quotation that opens the last page: a line from the I Ching (周易), in hanja and hangul.
 const CLOSING_QUOTE = {
   han: "君子藏器於身 待時而動",
   ko: "군자장기어신 대시이동",
@@ -683,12 +680,17 @@ function playClosingNotes() {
   quote.append(el("p", "cq-han", CLOSING_QUOTE.han), el("p", "cq-ko", CLOSING_QUOTE.ko), el("p", "cq-mean", CLOSING_QUOTE.meaning), el("p", "cq-src", CLOSING_QUOTE.source));
   const notes = CLOSING_NOTES.map((t) => marked("p", "closing-note", t));
   notes[notes.length - 1].classList.add("is-key");
-  closingNotes.replaceChildren(...notes, quote);
+  closingNotes.replaceChildren(quote, ...notes);
   const lines = [...closingNotes.children];
   const finish = () => { lines.forEach((n) => n.classList.add("is-shown")); closing.classList.add("is-done"); };
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return finish();
-  lines.forEach((n, i) => closingTimers.push(setTimeout(() => n.classList.add("is-shown"), 600 + i * CLOSING_STEP_MS)));
-  closingTimers.push(setTimeout(() => closing.classList.add("is-done"), 600 + lines.length * CLOSING_STEP_MS));
+  // The quotation first, and it stays a little longer than the lines that follow.
+  let at = 600;
+  lines.forEach((n, i) => {
+    closingTimers.push(setTimeout(() => n.classList.add("is-shown"), at));
+    at += i === 0 ? CLOSING_STEP_MS + 1000 : CLOSING_STEP_MS;
+  });
+  closingTimers.push(setTimeout(() => closing.classList.add("is-done"), at));
 }
 // A tap or key on the page shows the rest at once.
 pages.addEventListener("click", (event) => {
@@ -741,7 +743,6 @@ function renderStory() {
 }
 
 function renderClosing() {
-  resultClosing.textContent = "관상에서 이렇게들 풀이해 왔다는 이야기이며, 성격이나 미래를 정해 주지는 않습니다. 풀이가 여러 개면 해설마다 다르게 본다는 뜻입니다. 사진은 처음으로 돌아가면 지워집니다.";
 }
 
 // ---------- slides: one region on screen, the content itself changes ----------

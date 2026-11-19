@@ -181,13 +181,12 @@ img { display: block; max-width: 100%; }
 .closing-note .em { color: var(--accent); font-weight: 800; }
 .closing-note .ink { font-weight: 800; }
 .closing-note.is-key { font-size: clamp(20px, min(2.6vw, 3.9vh), 34px); font-weight: 800; }
-.closing-quote { margin-top: clamp(2px, 0.8vh, 10px); padding-top: clamp(8px, 1.6vh, 16px); border-top: 1px solid var(--line); display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.closing-quote { margin-bottom: clamp(4px, 1.4vh, 16px); padding-bottom: clamp(10px, 2vh, 20px); border-bottom: 1px solid var(--line); display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .closing-quote p { margin: 0; }
 .cq-han { font-family: var(--seal-font, serif); font-size: clamp(20px, min(2.4vw, 3.8vh), 32px); font-weight: 700; letter-spacing: 0.08em; color: var(--accent); }
 .cq-ko { font-size: clamp(14px, min(1.5vw, 2.4vh), 19px); letter-spacing: 0.04em; color: var(--ink-2); }
 .cq-mean { font-size: clamp(13px, min(1.35vw, 2.1vh), 17px); color: var(--ink-2); }
 .cq-src { font-size: clamp(11px, min(1.1vw, 1.8vh), 14px); color: var(--muted); }
-.fortune .closing-line { max-width: 40em; font-size: calc(var(--fs) * 0.72); line-height: 1.55; }
 .home-count { margin-left: 0.35em; color: var(--muted); font-variant-numeric: tabular-nums; font-weight: 500; }
 .fortune .closing-actions { justify-content: center; }
 .closing-after { opacity: 0; pointer-events: none; transition: opacity 1s ease; }

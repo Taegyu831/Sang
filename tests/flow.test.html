@@ -88,14 +88,13 @@ check("every page says something and nothing is folded away", [...doc.querySelec
   await sleep(1500);
   const shown = () => doc.querySelectorAll("#closingNotes .closing-note.is-shown").length;
   const early = shown();
-  check("the closing lines come one at a time", early >= 1 && early < 6, `shown ${early}`);
+  check("the closing lines come one at a time", early >= 1 && early < 4, `shown ${early}`);
   check("the buttons wait for the last line", !doc.querySelector(".fortune").classList.contains("is-done"));
-  await sleep(16000);
+  await sleep(14000);
   check("the picture steps aside on the fortune page", doc.querySelector(".reading").classList.contains("is-fortune"));
-  check("all five lines and the quotation are shown, then the buttons", shown() === 6 && doc.querySelector(".fortune").classList.contains("is-done"));
+  check("all five lines and the quotation are shown, then the buttons", shown() === 4 && doc.querySelector(".fortune").classList.contains("is-done"));
 }
 check("the posed shots add their lines to the first page", /힘을 주면 각이|더 뚜렷|웃으면|절제된|달라지지 않습니다/.test(text("#storyFirst")), text("#storyFirst").slice(-160));
-check("closing line is filled", text("#resultClosing").length > 10);
 check("no placeholder text in the story", !/undefined|NaN|\{|보통 범위/.test(text("#pages")));
 check("no NaN or undefined anywhere in the reading", !/NaN|undefined/.test(doc.querySelector("#resultView").textContent));
 check("no em dash in the reading", !/[\u2014\u2013]/.test(doc.querySelector("#resultView").textContent));
