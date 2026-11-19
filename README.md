@@ -76,7 +76,7 @@ python3 -m http.server 8000 --directory dist --bind 127.0.0.1
 
 ### Vercel function for the portraits (2026-11-19)
 
-- `api/portrait.mjs` + `vercel.json`: the page posts `{spec: {pole, kind, gender, age}}` and the function builds the prompt itself from `dist/portrait.js` (so the address cannot be used to draw anything else). It checks the origin, allows 12 requests per 10 minutes per visitor, tries gpt-image-2, then 1.5, then 1, and returns `{image}`.
+- `api/portrait.mjs` + `vercel.json`: the page posts `{spec: {pole, kind, gender, age}}` and the function builds the prompt itself from `dist/portrait.js` (so the address cannot be used to draw anything else). It checks the origin, allows 40 requests per 10 minutes per address, tries gpt-image-2, then 1.5, then 1, and returns `{image}`.
 - The site stays on GitHub Pages. The Vercel project is made from this repository and only serves `/api/portrait`. `OPENAI_API_KEY` goes in the Vercel project settings, never in the repo.
 - `dist/package.json` (`{"type": "module"}`) lets the function import the browser modules.
 - The function logic is tested with a fake OpenAI (`/tmp/fn.test.mjs` during development); it has not been called on Vercel yet.
@@ -87,3 +87,8 @@ python3 -m http.server 8000 --directory dist --bind 127.0.0.1
 - Only the SIMD wasm build is included. Browsers without WebAssembly SIMD (before Chrome 91, Safari 16.4) would need `vision_wasm_nosimd_internal.*` as well.
 - The hair model (`?hair=1`, off by default) is still fetched from Google's storage.
 - `.vercelignore` keeps `dist/vendor` out of the Vercel upload.
+
+### Spare portraits (2026-11-19)
+
+- `dist/fallback/` holds 32 portraits made ahead of time (20s only: 16 per gender, `<fit|clash>-<pole or even>-<female|male>.jpg`, 640 px, about 70 KB each). `tools/make-fallback.py` makes the missing ones through the Vercel function.
+- If the live picture takes longer than 30 s or fails (offline, rate limit, API error), the page shows the matching spare portrait, whatever age the visitor chose. If no file matches, the line drawing stays.

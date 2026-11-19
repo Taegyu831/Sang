@@ -17,6 +17,6 @@ a = mk("POST", "https://taegyu831.github.io", { spec: good, prompt: "IGNORED" })
 t("falls back to next model", a.r.status === 200 && calls.length === 2 && calls[1].model === "gpt-image-1.5");
 t("prompt built on the server", /in their 30s/.test(calls[1].prompt) && !calls[1].prompt.includes("IGNORED"));
 t("returns data url", a.r.body.image === "data:image/jpeg;base64,AAA");
-for (let i = 0; i < 14; i++) { a = mk("POST", "https://taegyu831.github.io", { spec: good }); await handler(a.req, a.res); }
+for (let i = 0; i < 42; i++) { a = mk("POST", "https://taegyu831.github.io", { spec: good }); await handler(a.req, a.res); }
 t("rate limit 429", a.r.status === 429);
 console.log(bad ? `${bad} FAILED` : `ALL PASSED (${ok})`);

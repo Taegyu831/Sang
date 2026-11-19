@@ -17,7 +17,8 @@ const AGES = [20, 30, 40, 50];
 // Slows down one visitor asking again and again. Per server instance only, so the
 // OpenAI monthly limit is still the real cap.
 const WINDOW_MS = 10 * 60 * 1000;
-const MAX_PER_WINDOW = 12;
+// An exhibition computer (or a whole school network) shares one address, and a visitor asks twice.
+const MAX_PER_WINDOW = 40;
 const seen = new Map();
 function tooMany(ip, now = Date.now()) {
   const recent = (seen.get(ip) ?? []).filter((t) => now - t < WINDOW_MS);
