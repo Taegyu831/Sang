@@ -655,7 +655,7 @@ function bondBlock(bond) {
 const CLOSING_NOTES = [
   "동양철학에서 운이 좋다는 것은, 단순히 재수가 좋다는 뜻이 아닙니다.",
   "좋은 기운이 들어왔을 때 그것을 제 것으로 만들 만큼, ⟦준비되어 있다⟧는 뜻입니다.",
-  "그러니 운을 기다리기보다, ⟦내가 할 수 있는 일⟧에 집중하면 됩니다.",
+  "관상 풀이는 ⟦날씨⟧처럼 참고하고,\n각자의 몫은 ⟦밭을 어떻게 일구어 나갈지⟧입니다.",
 ];
 // The quotation that opens the last page: a line from the I Ching (周易), in hanja and hangul.
 const CLOSING_QUOTE = {
@@ -705,13 +705,18 @@ pages.addEventListener("click", (event) => {
 // ⟦word⟧ -> bold in the accent colour, ⟪word⟫ -> bold in ink.
 function marked(tag, className, text) {
   const node = el(tag, className);
+  // A "\n" in the text is a line break.
+  const plain = (chunk) => chunk.split("\n").forEach((part, i) => {
+    if (i) node.append(document.createElement("br"));
+    if (part) node.append(document.createTextNode(part));
+  });
   let last = 0;
   for (const m of text.matchAll(/⟦(.+?)⟧|⟪(.+?)⟫/g)) {
-    node.append(document.createTextNode(text.slice(last, m.index)));
+    plain(text.slice(last, m.index));
     node.append(el("strong", m[1] ? "em" : "ink", m[1] ?? m[2]));
     last = m.index + m[0].length;
   }
-  node.append(document.createTextNode(text.slice(last)));
+  plain(text.slice(last));
   return node;
 }
 
