@@ -690,7 +690,8 @@ function playClosingNotes() {
     closingTimers.push(setTimeout(() => n.classList.add("is-shown"), at));
     at += i === 0 ? CLOSING_STEP_MS + 1000 : CLOSING_STEP_MS;
   });
-  closingTimers.push(setTimeout(() => closing.classList.add("is-done"), at));
+  // The seal and the buttons come in together with the last line.
+  closingTimers.push(setTimeout(() => closing.classList.add("is-done"), at - (lines.length > 1 ? CLOSING_STEP_MS : 0)));
 }
 // A tap or key on the page shows the rest at once.
 pages.addEventListener("click", (event) => {

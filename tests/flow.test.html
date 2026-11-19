@@ -90,7 +90,9 @@ check("every page says something and nothing is folded away", [...doc.querySelec
   const early = shown();
   check("the closing lines come one at a time", early >= 1 && early < 4, `shown ${early}`);
   check("the buttons wait for the last line", !doc.querySelector(".fortune").classList.contains("is-done"));
-  await sleep(14000);
+  await sleep(8500);
+  check("the buttons come with the last line", doc.querySelector(".fortune").classList.contains("is-done") === (shown() === 4));
+  await sleep(5500);
   check("the picture steps aside on the fortune page", doc.querySelector(".reading").classList.contains("is-fortune"));
   check("all five lines and the quotation are shown, then the buttons", shown() === 4 && doc.querySelector(".fortune").classList.contains("is-done"));
 }
