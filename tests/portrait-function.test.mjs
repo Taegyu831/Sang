@@ -1,0 +1,22 @@
+import handler, { cleanSpec } from "../api/portrait.mjs";
+let ok = 0, bad = 0; const t = (n, c) => { c ? ok++ : (bad++, console.log("FAIL", n)); };
+const mk = (method, origin, body) => { const r = { status: 0, body: null, h: {} }; const res = { setHeader: (k, v) => (r.h[k] = v), status: (c) => ((r.status = c), res), json: (b) => ((r.body = b), res), end: () => res }; return { req: { method, headers: { origin }, body }, res, r }; };
+const good = { pole: "drive+", kind: "fit", gender: "female", age: 30 };
+t("clean ok", cleanSpec(good)?.age === 30);
+t("bad pole", cleanSpec({ ...good, pole: "x" }) === null);
+t("null pole ok", cleanSpec({ ...good, pole: null }) !== null);
+t("bad age", cleanSpec({ ...good, age: 60 }) === null);
+t("string age ok", cleanSpec({ ...good, age: "40" }).age === 40);
+let a = mk("POST", "https://evil.example", { spec: good }); await handler(a.req, a.res); t("bad origin 403", a.r.status === 403);
+a = mk("POST", "https://taegyu831.github.io", { spec: { ...good, kind: "x" } }); await handler(a.req, a.res); t("bad spec 400", a.r.status === 400);
+a = mk("POST", "https://taegyu831.github.io", { spec: good }); await handler(a.req, a.res); t("no key 500", a.r.status === 500);
+process.env.OPENAI_API_KEY = "k";
+let calls = [];
+globalThis.fetch = async (url, init) => { const b = JSON.parse(init.body); calls.push(b); if (b.model === "gpt-image-2") return { ok: false, status: 400, text: async () => '{"error":{"message":"The model does not exist"}}' }; return { ok: true, json: async () => ({ data: [{ b64_json: "AAA" }] }) }; };
+a = mk("POST", "https://taegyu831.github.io", { spec: good, prompt: "IGNORED" }); await handler(a.req, a.res);
+t("falls back to next model", a.r.status === 200 && calls.length === 2 && calls[1].model === "gpt-image-1.5");
+t("prompt built on the server", /in their 30s/.test(calls[1].prompt) && !calls[1].prompt.includes("IGNORED"));
+t("returns data url", a.r.body.image === "data:image/jpeg;base64,AAA");
+for (let i = 0; i < 14; i++) { a = mk("POST", "https://taegyu831.github.io", { spec: good }); await handler(a.req, a.res); }
+t("rate limit 429", a.r.status === 429);
+console.log(bad ? `${bad} FAILED` : `ALL PASSED (${ok})`);

@@ -1,0 +1,3 @@
+{
+  "functions": { "api/portrait.mjs": { "maxDuration": 60 } }
+}

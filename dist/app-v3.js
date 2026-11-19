@@ -9,7 +9,7 @@ import { composeStory } from "./story.js";
 import { extrasOf } from "./extras.js";
 import { findHairline, hairThirds } from "./hair.js";
 import { avatarSvg, paramsOf } from "./avatar.js";
-import { portraitEndpoint, portraitPrompt, requestPortrait, partnerOf } from "./portrait.js";
+import { portraitEndpoint, requestPortrait, partnerOf } from "./portrait.js";
 
 const MEDIAPIPE_VERSION = "1.1.1";
 const MEDIAPIPE_MODULE = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VERSION}/vision_bundle.mjs`;
@@ -610,7 +610,7 @@ function attachPortrait(figure, bond) {
   const spec = { pole: bond.to ?? null, kind: bond.kind, gender: bondGender(), age: myAge ?? 20 };
   const key = `${spec.kind}|${spec.pole}|${spec.gender}|${spec.age}`;
   if (!PORTRAITS.has(key)) {
-    PORTRAITS.set(key, requestPortrait(endpoint, portraitPrompt(spec)).catch((error) => {
+    PORTRAITS.set(key, requestPortrait(endpoint, spec).catch((error) => {
       console.warn("portrait failed, keeping the drawing", error);
       PORTRAITS.delete(key);
       return null;

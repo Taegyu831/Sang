@@ -73,3 +73,10 @@ python3 -m http.server 8000 --directory dist --bind 127.0.0.1
   - public: `tools/portrait-worker.js` as a Cloudflare Worker with secret `OPENAI_API_KEY`, then `?portrait=https://<worker>.workers.dev`
   - `?portrait=off` forgets the address. With no relay set, the line drawing stays.
 - Model (tries gpt-image-2, then 1.5, then 1), size and quality are fixed on the relay side (`IMAGE_MODEL`, comma list, `IMAGE_SIZE`, `IMAGE_QUALITY`), so the page cannot ask for more.
+
+### Vercel function for the portraits (2026-11-19)
+
+- `api/portrait.mjs` + `vercel.json`: the page posts `{spec: {pole, kind, gender, age}}` and the function builds the prompt itself from `dist/portrait.js` (so the address cannot be used to draw anything else). It checks the origin, allows 12 requests per 10 minutes per visitor, tries gpt-image-2, then 1.5, then 1, and returns `{image}`.
+- The site stays on GitHub Pages. The Vercel project is made from this repository and only serves `/api/portrait`. `OPENAI_API_KEY` goes in the Vercel project settings, never in the repo.
+- `dist/package.json` (`{"type": "module"}`) lets the function import the browser modules.
+- The function logic is tested with a fake OpenAI (`/tmp/fn.test.mjs` during development); it has not been called on Vercel yet.

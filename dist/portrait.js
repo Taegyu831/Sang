@@ -125,15 +125,20 @@ export function portraitPrompt({ pole, kind, gender, age = 20 }) {
 
 // ---------- request ----------
 
-/** Ask the relay for a picture. Resolves to an image URL (data URL) or throws. */
-export async function requestPortrait(endpoint, prompt, { timeoutMs = 90000 } = {}) {
+/**
+ * Ask the relay for a picture. The spec is for the Vercel function (it builds
+ * its own prompt); the prompt is for the local relay. Resolves to an image URL
+ * (data URL) or throws.
+ */
+export async function requestPortrait(endpoint, spec, { timeoutMs = 90000 } = {}) {
+  const prompt = portraitPrompt(spec);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt }),
+      body: JSON.stringify({ spec, prompt }),
       signal: controller.signal,
     });
     if (!response.ok) throw new Error(`portrait relay answered ${response.status}`);
