@@ -126,7 +126,8 @@ img { display: block; max-width: 100%; }
 /* ---------- 4. 풀이 ---------- */
 .pages { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; overscroll-behavior: contain; }
 .page { display: flex; min-width: 0; box-sizing: border-box; padding: clamp(28px, 6vh, 64px) 0; }
-.slide { position: absolute; inset: 0; overflow-y: auto; box-sizing: border-box; visibility: hidden; pointer-events: none; transition: visibility 0s linear 0.7s; }
+.slide::-webkit-scrollbar { display: none; }
+.slide { position: absolute; inset: 0; overflow-y: auto; scrollbar-width: none; box-sizing: border-box; visibility: hidden; pointer-events: none; transition: visibility 0s linear 0.7s; }
 .slide.is-active { visibility: visible; pointer-events: auto; transition-delay: 0s; }
 .page[data-page="0"] { min-height: 100%; padding-top: 0; }
 
