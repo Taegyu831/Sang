@@ -645,8 +645,10 @@ function bondBlock(bond) {
   const text = el("div", "bond-text");
   text.append(el("p", "kicker", bond.kind === "fit" ? "잘 맞는 인연" : "조심할 인연"), el("h3", "bond-name", bond.name));
   for (const line of bond.lines) text.append(el("p", "bond-line", line));
-  text.append(el("p", "bond-note", "그림과 사진은 AI가 만든 가상의 인물이며, 촬영한 얼굴은 어디에도 저장되지 않습니다."));
-  block.append(figure, text);
+  // The note sits right under the picture.
+  const column = el("div", "avatar-col");
+  column.append(figure, el("p", "bond-note", "그림과 사진은 AI가 만든 가상의 인물이며, 촬영한 얼굴은 어디에도 저장되지 않습니다."));
+  block.append(column, text);
   return block;
 }
 
