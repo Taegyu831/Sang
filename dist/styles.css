@@ -165,11 +165,21 @@ img { display: block; max-width: 100%; }
 .closing-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .start-lead strong { font-weight: 800; color: var(--ink); }
 .start-lead { max-width: min(30em, 100%); font-size: calc(var(--fs) * 0.95); line-height: 1.8; color: var(--ink-2); word-break: keep-all; }
-/* 마지막 쪽: 운에 대한 말을 한 줄씩 천천히 */
-.closing-notes { display: flex; flex-direction: column; gap: clamp(8px, 1.8vh, 16px); min-height: 1em; }
-.closing-note { margin: 0; font-size: clamp(16px, min(1.6vw, 2.6vh), 22px); line-height: 1.7; color: var(--ink); word-break: keep-all; opacity: 0; transform: translateY(8px); transition: opacity 1s ease, transform 1s ease; }
+/* 마지막 두 쪽: 정리 한 쪽, 그다음 운에 대한 말을 가운데에서 한 줄씩 천천히 */
+.scroll-cue { position: absolute; left: 50%; bottom: clamp(14px, 5vh, 40px); transform: translateX(-50%); width: 44px; height: 44px; display: grid; place-items: center; color: var(--muted); }
+.scroll-cue span { width: 14px; height: 14px; border-right: 2.5px solid currentColor; border-bottom: 2.5px solid currentColor; transform: rotate(45deg); animation: cue-bounce 1.6s ease-in-out infinite; }
+@keyframes cue-bounce { 0%, 100% { transform: translateY(-4px) rotate(45deg); opacity: 0.35; } 50% { transform: translateY(6px) rotate(45deg); opacity: 1; } }
+.reading.is-fortune { grid-template-columns: minmax(0, 1fr); }
+.reading.is-fortune .plate { display: none; }
+.fortune { align-items: center; text-align: center; width: min(100%, 860px); gap: clamp(16px, 3.4vh, 34px); padding-right: 0; }
+.closing-notes { display: flex; flex-direction: column; gap: clamp(14px, 3vh, 30px); min-height: 1em; }
+.closing-note { margin: 0; font-size: clamp(19px, min(2.3vw, 3.6vh), 30px); line-height: 1.65; letter-spacing: -0.01em; color: var(--ink); word-break: keep-all; opacity: 0; transform: translateY(10px); transition: opacity 1s ease, transform 1s ease; }
 .closing-note.is-shown { opacity: 1; transform: none; }
-.closing-note:last-child.is-shown { font-weight: 700; }
+.closing-note .em { color: var(--accent); font-weight: 800; }
+.closing-note .ink { font-weight: 800; }
+.closing-note:last-child { font-size: clamp(22px, min(2.9vw, 4.4vh), 38px); font-weight: 800; }
+.fortune .closing-line { max-width: 40em; }
+.fortune .closing-actions { justify-content: center; }
 .closing-after { opacity: 0; pointer-events: none; transition: opacity 1s ease; }
 .closing.is-done .closing-after { opacity: 1; pointer-events: auto; }
 @media (prefers-reduced-motion: reduce) { .closing-note, .closing-after { transition: none; transform: none; } }

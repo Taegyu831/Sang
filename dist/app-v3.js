@@ -654,11 +654,11 @@ function bondBlock(bond) {
 
 // ---------- last page: a few lines about fortune, one at a time ----------
 const CLOSING_NOTES = [
-  "관상학은 얼굴에서 타고난 기질과 흐름을 읽습니다.",
-  "그 풀이에는 때로 바깥의 변수나 고난도 함께 말해집니다.",
-  "그러나 운이 좋다거나 나쁘다는 것은 정해진 결과가 아닙니다.",
-  "같은 운이 와도 그것을 잡는 것은 그만큼 내가 준비되어 있느냐에 달려 있습니다.",
-  "어떻게 살아갈지는 결국 나의 몫이고, 나의 책임입니다.",
+  "관상학은 얼굴에서 ⟦타고난 기질과 흐름⟧을 읽습니다.",
+  "그 풀이에는 때로 ⟪바깥의 변수나 고난⟫도 함께 말해집니다.",
+  "그러나 운이 좋다거나 나쁘다는 것은 ⟦정해진 결과⟧가 아닙니다.",
+  "같은 운이 와도 그것을 잡는 것은 그만큼 ⟦내가 준비되어 있느냐⟧에 달려 있습니다.",
+  "어떻게 살아갈지는 결국 ⟦나의 선택이고 몫⟧입니다.",
 ];
 const CLOSING_STEP_MS = 2800;
 let closingTimers = [];
@@ -670,9 +670,9 @@ function stopClosingNotes() {
 
 function playClosingNotes() {
   stopClosingNotes();
-  const closing = pages.querySelector(".closing");
+  const closing = pages.querySelector(".fortune");
   closing.classList.remove("is-done");
-  closingNotes.replaceChildren(...CLOSING_NOTES.map((t) => el("p", "closing-note", t)));
+  closingNotes.replaceChildren(...CLOSING_NOTES.map((t) => marked("p", "closing-note", t)));
   const lines = [...closingNotes.children];
   const finish = () => { lines.forEach((n) => n.classList.add("is-shown")); closing.classList.add("is-done"); };
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return finish();
@@ -681,8 +681,8 @@ function playClosingNotes() {
 }
 // A tap or key on the page shows the rest at once.
 pages.addEventListener("click", (event) => {
-  const closing = pages.querySelector(".closing");
-  if (closing && !closing.classList.contains("is-done") && event.target.closest(".closing")) {
+  const closing = pages.querySelector(".fortune");
+  if (closing && !closing.classList.contains("is-done") && event.target.closest(".fortune")) {
     stopClosingNotes();
     closingNotes.querySelectorAll(".closing-note").forEach((n) => n.classList.add("is-shown"));
     closing.classList.add("is-done");
@@ -746,12 +746,15 @@ function showSlide(index, { force = false } = {}) {
   slideIndex = next;
   slides.forEach((slide, i) => {
     slide.classList.toggle("is-active", i === next);
-    if (slide.dataset.page === "last") { if (i === next) playClosingNotes(); else stopClosingNotes(); }
+    if (slide.dataset.page === "fortune") { if (i === next) playClosingNotes(); else stopClosingNotes(); }
     slide.classList.toggle("is-before", i < next);
     slide.scrollTop = 0;
   });
   slideDots.querySelectorAll("button").forEach((dot, i) => dot.classList.toggle("is-on", i === next));
+  // The fortune page has no picture on the left: only the lines, in the middle.
+  document.querySelector(".reading").classList.toggle("is-fortune", slides[next].dataset.page === "fortune");
 }
+$("#scrollCue").addEventListener("click", () => showSlide(slideIndex + 1));
 
 function step(delta) {
   const now = performance.now();
