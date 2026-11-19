@@ -272,8 +272,8 @@ export function composeStory(parts, shape, extras = { lines: [], size: null }) {
   const fits = (poles.length ? poles.map((p) => FIT[p]) : [EVEN_FIT]);
   const fifth = { title: "잘 맞는 인연", bond: bondOf("fit", fits[0]), lead: `그래서 잘 맞는 인연은 ${em(fits[0].desc)} 사람입니다.`, body: [fits[0].why], basis: [] };
   const fitLooks = fits[0].to ? looksOf(fits[0].to) : [];
-  if (fitLooks.length) fifth.body.push(`관상으로는 ${list(fitLooks)} 쪽에서 이런 성향이 주로 읽힙니다.`);
-  if (fits[1]) fifth.body.push(`이에 더해 ${em(fits[1].desc)} 사람과도 잘 어울립니다. ${fits[1].why}`);
+  if (fitLooks.length) fifth.body.push(`이런 상대는 얼굴에서 ${list(fitLooks)} 쪽에 그 성향이 주로 드러납니다.`);
+  if (fits[1]) fifth.body.push(`이에 더해 본인은 ${em(fits[1].desc)} 사람과도 잘 어울립니다. ${fits[1].why}`);
 
   // 6. who to avoid, and what to watch in oneself
   const clashes = (poles.length ? poles.map((p) => CLASH[p]) : [EVEN_CLASH]);
@@ -281,10 +281,10 @@ export function composeStory(parts, shape, extras = { lines: [], size: null }) {
   const watch = poles.map((p) => POLES[p].watch).filter(Boolean);
   const sixth = { title: "조심할 인연", bond: bondOf("clash", clashes[0]), lead: `다만 ${em(clashes[0].desc)} 사람과는 부딪히기 쉽습니다.`, body: [clashes[0].why], basis: cautions.basis };
   const clashLooks = clashes[0].to ? looksOf(clashes[0].to) : [];
-  if (clashLooks.length) sixth.body.push(`관상으로는 ${list(clashLooks)} 쪽에서 이런 성향이 주로 읽힙니다.`);
-  if (clashes[1]) sixth.body.push(`${em(clashes[1].desc)} 사람 앞에서도 마찬가지입니다. ${clashes[1].why}`);
+  if (clashLooks.length) sixth.body.push(`이런 상대는 얼굴에서 ${list(clashLooks)} 쪽에 그 성향이 주로 드러납니다.`);
+  if (clashes[1]) sixth.body.push(`${em(clashes[1].desc)} 사람과도 마찬가지로 부딪히기 쉽습니다. ${clashes[1].why}`);
   const own = [...cautions.items, ...watch].slice(0, 6);
-  if (own.length) sixth.body.push(`스스로는 ${josa(list(own), "은", "는")} 조심하라는 풀이가 있습니다.`);
+  if (own.length) sixth.body.push(`상대와 별개로, 본인의 얼굴에는 ${josa(list(own), "을", "를")} 조심하라는 풀이가 있습니다.`);
 
   // closing
   const fitText = em(fits[0].desc);
