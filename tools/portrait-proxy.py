@@ -16,7 +16,9 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 PORT = int(os.environ.get("PORT", "8787"))
-MODEL = os.environ.get("IMAGE_MODEL", "gpt-image-1")
+# Tried in order; the first one this account can use is remembered.
+MODELS = [m for m in os.environ.get("IMAGE_MODEL", "gpt-image-2,gpt-image-1.5,gpt-image-1").split(",") if m]
+MODEL = MODELS[0]
 SIZE = os.environ.get("IMAGE_SIZE", "1024x1024")
 QUALITY = os.environ.get("IMAGE_QUALITY", "low")  # low | medium | high
 ALLOWED = set(filter(None, os.environ.get(
@@ -62,24 +64,32 @@ class Handler(BaseHTTPRequestHandler):
         if not prompt or len(prompt) > MAX_PROMPT:
             return self._send(400, {"error": "prompt missing or too long"})
 
-        payload = {"model": MODEL, "prompt": prompt, "size": SIZE, "quality": QUALITY, "n": 1,
-                   "output_format": "jpeg", "output_compression": 82}
-        request = urllib.request.Request(
-            "https://api.openai.com/v1/images/generations",
-            data=json.dumps(payload).encode(),
-            headers={"Authorization": f"Bearer {KEY}", "Content-Type": "application/json"},
-        )
-        try:
-            with urllib.request.urlopen(request, timeout=120) as reply:
-                data = json.load(reply)
-            image = data["data"][0]["b64_json"]
-        except urllib.error.HTTPError as error:
-            detail = error.read().decode(errors="replace")[:400]
-            print(f"OpenAI {error.code}: {detail}", file=sys.stderr)
-            return self._send(502, {"error": f"OpenAI answered {error.code}"})
-        except Exception as error:  # network, timeout, odd reply
-            print(f"relay failed: {error}", file=sys.stderr)
-            return self._send(502, {"error": "relay failed"})
+        global MODELS
+        image = None
+        for model in list(MODELS):
+            payload = {"model": model, "prompt": prompt, "size": SIZE, "quality": QUALITY, "n": 1,
+                       "output_format": "jpeg", "output_compression": 82}
+            request = urllib.request.Request(
+                "https://api.openai.com/v1/images/generations",
+                data=json.dumps(payload).encode(),
+                headers={"Authorization": f"Bearer {KEY}", "Content-Type": "application/json"},
+            )
+            try:
+                with urllib.request.urlopen(request, timeout=120) as reply:
+                    image = json.load(reply)["data"][0]["b64_json"]
+                MODELS = [model]  # remember the one that worked
+                break
+            except urllib.error.HTTPError as error:
+                detail = error.read().decode(errors="replace")[:400]
+                print(f"OpenAI {error.code} ({model}): {detail}", file=sys.stderr)
+                if error.code in (400, 403, 404) and "model" in detail and model != MODELS[-1]:
+                    continue  # this account cannot use that model, try the next
+                return self._send(502, {"error": f"OpenAI answered {error.code}"})
+            except Exception as error:  # network, timeout, odd reply
+                print(f"relay failed: {error}", file=sys.stderr)
+                return self._send(502, {"error": "relay failed"})
+        if image is None:
+            return self._send(502, {"error": "no usable image model"})
         print(f"portrait ok ({len(prompt)} chars)")
         self._send(200, {"image": f"data:image/jpeg;base64,{image}"})
 
@@ -90,5 +100,5 @@ class Handler(BaseHTTPRequestHandler):
 if __name__ == "__main__":
     if not KEY:
         sys.exit("Set OPENAI_API_KEY first:  export OPENAI_API_KEY=sk-...")
-    print(f"portrait relay on http://127.0.0.1:{PORT}  model={MODEL} size={SIZE} quality={QUALITY}")
+    print(f"portrait relay on http://127.0.0.1:{PORT}  models={",".join(MODELS)} size={SIZE} quality={QUALITY}")
     ThreadingHTTPServer(("127.0.0.1", PORT), Handler).serve_forever()

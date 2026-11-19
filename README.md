@@ -72,4 +72,4 @@ python3 -m http.server 8000 --directory dist --bind 127.0.0.1
   - local: `export OPENAI_API_KEY=sk-...` then `python3 tools/portrait-proxy.py`, open the app (served from 127.0.0.1:8001) with `?portrait=http://127.0.0.1:8787`
   - public: `tools/portrait-worker.js` as a Cloudflare Worker with secret `OPENAI_API_KEY`, then `?portrait=https://<worker>.workers.dev`
   - `?portrait=off` forgets the address. With no relay set, the line drawing stays.
-- Model, size and quality are fixed on the relay side (`IMAGE_MODEL`, `IMAGE_SIZE`, `IMAGE_QUALITY`), so the page cannot ask for more.
+- Model (tries gpt-image-2, then 1.5, then 1), size and quality are fixed on the relay side (`IMAGE_MODEL`, comma list, `IMAGE_SIZE`, `IMAGE_QUALITY`), so the page cannot ask for more.

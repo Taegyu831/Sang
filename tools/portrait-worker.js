@@ -7,7 +7,7 @@
 //   2. Settings > Variables: add secret OPENAI_API_KEY.
 //   3. Open the app with  ?portrait=https://<your-worker>.workers.dev
 const ALLOWED = ["https://taegyu831.github.io", "http://127.0.0.1:8001", "http://localhost:8001"];
-const MODEL = "gpt-image-1";
+const MODELS = ["gpt-image-2", "gpt-image-1.5", "gpt-image-1"]; // first one the account can use
 const SIZE = "1024x1024";
 const QUALITY = "low";
 
@@ -30,14 +30,20 @@ export default {
     try { prompt = String((await request.json()).prompt || "").trim(); } catch { /* falls through */ }
     if (!prompt || prompt.length > 2000) return json(400, { error: "prompt missing or too long" });
 
-    const reply = await fetch("https://api.openai.com/v1/images/generations", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${env.OPENAI_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: MODEL, prompt, size: SIZE, quality: QUALITY, n: 1, output_format: "jpeg", output_compression: 82 }),
-    });
-    if (!reply.ok) return json(502, { error: `OpenAI answered ${reply.status}` });
-    const data = await reply.json();
-    const image = data?.data?.[0]?.b64_json;
-    return image ? json(200, { image: `data:image/jpeg;base64,${image}` }) : json(502, { error: "no image" });
+    for (const model of MODELS) {
+      const reply = await fetch("https://api.openai.com/v1/images/generations", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${env.OPENAI_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ model, prompt, size: SIZE, quality: QUALITY, n: 1, output_format: "jpeg", output_compression: 82 }),
+      });
+      if (!reply.ok) {
+        const detail = await reply.text();
+        if ([400, 403, 404].includes(reply.status) && detail.includes("model")) continue;
+        return json(502, { error: `OpenAI answered ${reply.status}` });
+      }
+      const image = (await reply.json())?.data?.[0]?.b64_json;
+      return image ? json(200, { image: `data:image/jpeg;base64,${image}` }) : json(502, { error: "no image" });
+    }
+    return json(502, { error: "no usable image model" });
   },
 };
