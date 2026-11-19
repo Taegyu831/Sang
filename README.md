@@ -62,3 +62,14 @@ python3 -m http.server 8000 --directory dist --bind 127.0.0.1
 - After it, two short posed shots follow: jaw clenched, then a small smile (`dist/capture.js`, `PoseCompare`). Their difference from the relaxed face gives `jawFlex` and `smileLift`, told in `dist/extras.js`. The thresholds there are guesses until visitors are recorded with `?debug=1`.
 - The iris is used as a ruler (`faceWidthMm` and the other `*Mm` values in `dist/features.js`).
 - One frame of the clench shot goes through MediaPipe's hair segmenter (`dist/hair.js`); the top third then starts at the hairline (`upperThirdHair`, centre 33 is a guess). If the model does not load, or a fringe covers the forehead, the mesh based top third stays.
+
+## Portraits of the imagined 인연 (2026-11-19)
+
+- The first screen asks the visitor's gender. The imagined 인연 is the opposite (fixed for now, `partnerOf` in `dist/portrait.js`).
+- Only the two bonds in the reading are drawn: 잘 맞는 인연 and 조심할 인연, one picture each.
+- `portraitPrompt({ pole, kind, gender })` builds the prompt from the kind of person (`MOOD` per pole), the face features (`featureWords`, same parameters as `avatar.js`) and the role (`ROLE`: fit is warm, clash is cooler). `LOOK` and `AGE` at the top of `portrait.js` change every picture.
+- The browser never holds the API key. It posts `{prompt}` to a relay, which adds the key:
+  - local: `export OPENAI_API_KEY=sk-...` then `python3 tools/portrait-proxy.py`, open the app (served from 127.0.0.1:8001) with `?portrait=http://127.0.0.1:8787`
+  - public: `tools/portrait-worker.js` as a Cloudflare Worker with secret `OPENAI_API_KEY`, then `?portrait=https://<worker>.workers.dev`
+  - `?portrait=off` forgets the address. With no relay set, the line drawing stays.
+- Model, size and quality are fixed on the relay side (`IMAGE_MODEL`, `IMAGE_SIZE`, `IMAGE_QUALITY`), so the page cannot ask for more.

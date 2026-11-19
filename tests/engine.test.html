@@ -12,6 +12,7 @@ import { interpret, evaluateTheme, buildTone } from "../dist/interpret.js";
 import { findHairline, hairThirds } from "../dist/hair.js";
 import { readParts } from "../dist/parts.js";
 import { applyPoseResidual, POSE_RESIDUAL } from "../dist/residual.js";
+import { portraitPrompt, partnerOf, featureWords } from "../dist/portrait.js";
 
 const lines = [];
 let failed = 0;
@@ -270,6 +271,19 @@ for (const [yaw, pitch, roll] of [[22, 0, 0], [-24, 12, 0], [0, -18, 0], [15, 15
   check("never extrapolates beyond the fitted range", featureKeys.every((k) => far[k] === edge[k]));
   check("keeps keys it does not know about", applyPoseResidual({ ...truth, extra: 5 }, { yaw: 10, pitch: 10 }).extra === 5);
   check("every residual key is a calibrated ratio", Object.keys(POSE_RESIDUAL).every((k) => CALIBRATION[k]));
+}
+
+{
+  // portrait prompts: partner gender, kind of person, role
+  check("partner is the opposite gender", partnerOf("male") === "female" && partnerOf("female") === "male" && partnerOf(null) === "any");
+  const poles = ["drive+", "drive-", "social+", "social-", "feel+", "feel-", "steady+", "steady-", null];
+  const prompts = poles.map((pole) => portraitPrompt({ pole, kind: "fit", gender: "female" }));
+  check("every kind of person has its own prompt", new Set(prompts).size === poles.length);
+  check("fit and clash differ for the same person", portraitPrompt({ pole: "drive+", kind: "fit", gender: "male" }) !== portraitPrompt({ pole: "drive+", kind: "clash", gender: "male" }));
+  check("gender reaches the prompt", /woman/.test(prompts[0]) && /man/.test(portraitPrompt({ pole: "drive+", kind: "fit", gender: "male" })));
+  check("prompt says it is a fictional person", /fictional person/.test(prompts[0]));
+  check("no em dash in prompts", !prompts.some((t) => t.includes("\u2014")));
+  check("face features show up as words", featureWords("drive+").length > 0 && /Face:/.test(prompts[0]));
 }
 
 lines.push(failed === 0 ? "ALL PASSED" : `${failed} FAILED`);

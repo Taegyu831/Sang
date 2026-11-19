@@ -9,6 +9,7 @@ import { composeStory } from "./story.js";
 import { extrasOf } from "./extras.js";
 import { findHairline, hairThirds } from "./hair.js";
 import { avatarSvg, paramsOf } from "./avatar.js";
+import { portraitEndpoint, portraitPrompt, requestPortrait, partnerOf } from "./portrait.js";
 
 const MEDIAPIPE_VERSION = "1.1.1";
 const MEDIAPIPE_MODULE = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VERSION}/vision_bundle.mjs`;
@@ -521,6 +522,10 @@ function stopStream() {
 
 async function startCamera() {
   if (!faceLandmarker || running) return;
+  if (!myGender) {
+    permissionNote.textContent = "먼저 나의 성별을 골라 주세요.";
+    return;
+  }
   flowRun += 1;
   setCameraButton("카메라 켜는 중", "busy", true);
   try {
@@ -562,38 +567,65 @@ function goHome() {
 
 // ---------- reading: the whole-person story ----------
 
-// Who the imagined 인연 looks like: "any" keeps the hair neutral.
-let bondGender = "any";
-const GENDERS = [["any", "상관없음"], ["female", "여자"], ["male", "남자"]];
+// The visitor's own gender is asked on the first screen; the imagined 인연 is
+// the opposite one (fixed for now). null until the visitor picks.
+let myGender = null;
+const genderPick = $("#genderPick");
+
+function setMyGender(id) {
+  myGender = id;
+  genderPick.querySelectorAll(".chip-btn").forEach((b) => b.classList.toggle("is-on", b.dataset.gender === id));
+  if (id) permissionNote.textContent = "";
+}
+genderPick.addEventListener("click", (event) => {
+  const b = event.target.closest(".chip-btn");
+  if (b) setMyGender(b.dataset.gender);
+});
+
+const bondGender = () => partnerOf(myGender);
 
 function drawBond(figure) {
-  figure.replaceChildren(avatarSvg(paramsOf(figure.dataset.to || null), { gender: bondGender, tone: figure.dataset.kind }));
+  figure.replaceChildren(avatarSvg(paramsOf(figure.dataset.to || null), { gender: bondGender(), tone: figure.dataset.kind }));
 }
 
-function bondBlock(bond, withChoice) {
+// A photo from the image relay replaces the line drawing when one is set
+// (?portrait=<relay url>). Each (kind, person, gender) is asked for only once.
+const PORTRAITS = new Map();
+function attachPortrait(figure, bond) {
+  const endpoint = portraitEndpoint();
+  if (!endpoint) return;
+  const spec = { pole: bond.to ?? null, kind: bond.kind, gender: bondGender() };
+  const key = `${spec.kind}|${spec.pole}|${spec.gender}`;
+  if (!PORTRAITS.has(key)) {
+    PORTRAITS.set(key, requestPortrait(endpoint, portraitPrompt(spec)).catch((error) => {
+      console.warn("portrait failed, keeping the drawing", error);
+      PORTRAITS.delete(key);
+      return null;
+    }));
+  }
+  figure.classList.add("is-loading");
+  PORTRAITS.get(key).then((src) => {
+    figure.classList.remove("is-loading");
+    if (!src) return;
+    const img = document.createElement("img");
+    img.className = "avatar-photo";
+    img.alt = "가상의 인연 얼굴";
+    img.src = src;
+    figure.replaceChildren(img);
+    figure.classList.add("has-photo");
+  });
+}
+
+function bondBlock(bond) {
   const block = el("div", `bond is-${bond.kind}`);
   const figure = el("figure", "avatar");
   figure.dataset.to = bond.to ?? "";
   figure.dataset.kind = bond.kind;
   drawBond(figure);
+  attachPortrait(figure, bond);
   const text = el("div", "bond-text");
   text.append(el("p", "kicker", bond.kind === "fit" ? "잘 맞는 인연" : "조심할 인연"), el("h3", "bond-name", bond.name));
   for (const line of bond.lines) text.append(el("p", "bond-line", line));
-  if (withChoice) {
-    const choice = el("div", "bond-choice");
-    choice.append(el("span", "", "그려 볼 모습"));
-    for (const [id, label] of GENDERS) {
-      const b = el("button", `chip-btn${id === bondGender ? " is-on" : ""}`, label);
-      b.type = "button";
-      b.addEventListener("click", () => {
-        bondGender = id;
-        pages.querySelectorAll(".avatar").forEach(drawBond);
-        pages.querySelectorAll(".chip-btn").forEach((n, i) => n.classList.toggle("is-on", GENDERS[i % GENDERS.length][0] === id));
-      });
-      choice.append(b);
-    }
-    text.append(choice);
-  }
   block.append(figure, text);
   return block;
 }
@@ -614,7 +646,7 @@ function marked(tag, className, text) {
 function storyPage(page, { first = false } = {}) {
   const wrap = first ? storyFirst : el("div", "story-page");
   wrap.append(marked("h2", "story-lead", page.lead));
-  if (page.bond) wrap.append(bondBlock(page.bond, page.bond.kind === "fit"));
+  if (page.bond) wrap.append(bondBlock(page.bond));
   for (const line of page.body.filter(Boolean)) wrap.append(marked("p", "story-body", line));
   if (page.basis.length) wrap.append(el("p", "story-basis", `근거 · ${page.basis.join(" · ")}`));
   return wrap;
@@ -829,7 +861,7 @@ cameraButton.addEventListener("click", () => {
 stopButton.addEventListener("click", goHome);
 toResultButton.addEventListener("click", showResult);
 restartButton.addEventListener("click", () => { goHome(); startCamera(); });
-homeButton.addEventListener("click", goHome);
+homeButton.addEventListener("click", () => { setMyGender(null); goHome(); });
 loadingScreen.addEventListener("click", () => { flowRun += 1; showScreen("result"); });
 window.addEventListener("beforeunload", stopStream);
 showScreen("start");

@@ -323,7 +323,14 @@ img { display: block; max-width: 100%; }
 .bond-text { display: flex; flex-direction: column; gap: 0.35em; min-width: 0; }
 .bond-name { font-size: 1.25em; font-weight: 800; letter-spacing: -0.02em; }
 .bond-line { font-size: 0.9em; line-height: 1.7; color: var(--ink-2); }
-.bond-choice { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 0.4em; font-size: 0.78em; color: var(--muted); }
+.avatar.has-photo, .avatar.is-loading { width: clamp(132px, 17vw, 208px); }
+.avatar-photo { display: block; width: 100%; height: auto; aspect-ratio: 1; object-fit: cover; border-radius: 4px; }
+.avatar.is-loading { position: relative; }
+.avatar.is-loading::after { content: "사진 그리는 중"; position: absolute; left: 0; right: 0; bottom: -1.6em; text-align: center; font-size: 0.72em; color: var(--muted); animation: portrait-wait 1.4s ease-in-out infinite; }
+@keyframes portrait-wait { 50% { opacity: 0.35; } }
+.is-clash .avatar-photo { filter: saturate(0.8); }
+.gender-pick { display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--ink-2); font-size: calc(var(--fs) * 1.05); }
+.gender-pick .chip-btn { padding: 0.35em 1.3em; font-size: 1em; }
 .chip-btn { padding: 0.2em 0.9em; border: 1px solid var(--line); border-radius: 3px; color: var(--muted); font-weight: 500; transition: color 0.2s, border-color 0.2s; }
 .chip-btn:hover { color: var(--ink); border-color: var(--muted); }
 .chip-btn.is-on { color: var(--accent); border-color: var(--accent); font-weight: 700; }
