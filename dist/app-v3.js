@@ -1044,3 +1044,12 @@ if (isLocal && SEARCH_PARAMS.get("sim") === "1") {
 } else {
   initialize();
 }
+
+// Offline cache (sw.js). On https only; on localhost it is off unless ?sw=on, so tests see the files as they are.
+if ("serviceWorker" in navigator) {
+  const params = new URLSearchParams(window.location.search);
+  const allowed = window.location.protocol === "https:" || params.get("sw") === "on";
+  if (allowed && !params.has("debug") && !params.has("sim")) {
+    navigator.serviceWorker.register("./sw.js").catch(() => { /* the app works without it */ });
+  }
+}

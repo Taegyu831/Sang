@@ -418,3 +418,7 @@ img { display: block; max-width: 100%; }
 @media (prefers-reduced-motion: reduce) { .closing-quote > p { transition: none; transform: none; } }
 .closing-quote { border-bottom-color: transparent; transition: border-color 1s ease; }
 .closing-quote.is-shown { border-bottom-color: var(--line); }
+
+/* Phone: with the picture gone on the closing page, the text gets the whole height. */
+@media (max-width: 760px) { .reading.is-fortune { grid-template-rows: minmax(0, 1fr); } }
+.closing-note { text-wrap: balance; }

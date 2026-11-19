@@ -31,8 +31,15 @@ app.addEventListener("load", () => setTimeout(() => {
     d.querySelector("#statusMessage").textContent = "이제 고개를 살짝 ◀ 쪽으로 돌려 보세요";
     return;
   }
-  d.querySelector("#loadingScreen").click();
-  // ?slide=2 shows the third page of the reading (0 summary, 1 face shape, 2.. regions).
-  d.querySelectorAll(".slide-dot")[Number(q.get("slide") || 0)]?.click();
+  // the preview needs the face engine to be ready: try again until the reading is built
+  let tries = 0;
+  const open = () => {
+    d.querySelector("#loadingScreen").click();
+    const dots = d.querySelectorAll(".slide-dot");
+    if (!dots.length && tries++ < 60) return setTimeout(open, 500);
+    // ?slide=2 shows the third page of the reading (0 summary, 1 face shape, 2.. regions).
+    dots[Number(q.get("slide") || 0)]?.click();
+  };
+  open();
 }, 1500));
 </script>
