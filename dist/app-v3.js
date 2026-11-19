@@ -522,8 +522,8 @@ function stopStream() {
 
 async function startCamera() {
   if (!faceLandmarker || running) return;
-  if (!myGender) {
-    permissionNote.textContent = "먼저 나의 성별을 골라 주세요.";
+  if (!myGender || !myAge) {
+    permissionNote.textContent = !myGender ? "먼저 나의 성별을 골라 주세요." : "먼저 나의 나이대를 골라 주세요.";
     return;
   }
   flowRun += 1;
@@ -582,6 +582,19 @@ genderPick.addEventListener("click", (event) => {
   if (b) setMyGender(b.dataset.gender);
 });
 
+// The imagined 인연 is in the same age group as the visitor.
+let myAge = null;
+const agePick = $("#agePick");
+function setMyAge(age) {
+  myAge = age;
+  agePick.querySelectorAll(".chip-btn").forEach((b) => b.classList.toggle("is-on", Number(b.dataset.age) === age));
+  if (age) permissionNote.textContent = "";
+}
+agePick.addEventListener("click", (event) => {
+  const b = event.target.closest(".chip-btn");
+  if (b) setMyAge(Number(b.dataset.age));
+});
+
 const bondGender = () => partnerOf(myGender);
 
 function drawBond(figure) {
@@ -594,8 +607,8 @@ const PORTRAITS = new Map();
 function attachPortrait(figure, bond) {
   const endpoint = portraitEndpoint();
   if (!endpoint) return;
-  const spec = { pole: bond.to ?? null, kind: bond.kind, gender: bondGender() };
-  const key = `${spec.kind}|${spec.pole}|${spec.gender}`;
+  const spec = { pole: bond.to ?? null, kind: bond.kind, gender: bondGender(), age: myAge ?? 20 };
+  const key = `${spec.kind}|${spec.pole}|${spec.gender}|${spec.age}`;
   if (!PORTRAITS.has(key)) {
     PORTRAITS.set(key, requestPortrait(endpoint, portraitPrompt(spec)).catch((error) => {
       console.warn("portrait failed, keeping the drawing", error);
@@ -626,6 +639,7 @@ function bondBlock(bond) {
   const text = el("div", "bond-text");
   text.append(el("p", "kicker", bond.kind === "fit" ? "잘 맞는 인연" : "조심할 인연"), el("h3", "bond-name", bond.name));
   for (const line of bond.lines) text.append(el("p", "bond-line", line));
+  text.append(el("p", "bond-note", "그림과 사진은 AI가 만든 가상의 인물이며, 촬영한 얼굴은 어디에도 저장되지 않습니다."));
   block.append(figure, text);
   return block;
 }
@@ -861,9 +875,34 @@ cameraButton.addEventListener("click", () => {
 stopButton.addEventListener("click", goHome);
 toResultButton.addEventListener("click", showResult);
 restartButton.addEventListener("click", () => { goHome(); startCamera(); });
-homeButton.addEventListener("click", () => { setMyGender(null); goHome(); });
+homeButton.addEventListener("click", () => { resetVisitor(); goHome(); });
 loadingScreen.addEventListener("click", () => { flowRun += 1; showScreen("result"); });
 window.addEventListener("beforeunload", stopStream);
+
+// ---------- idle reset (for the exhibition) ----------
+// Nobody touching the screen for a while: back to the start, choices cleared.
+const IDLE_MS = { start: 60000, scan: 150000, loading: 150000, result: 120000 };
+let idleTimer = 0;
+function resetVisitor() {
+  setMyGender(null);
+  setMyAge(null);
+}
+function armIdle() {
+  clearTimeout(idleTimer);
+  const wait = IDLE_MS[document.body.dataset.screen];
+  if (!wait || DEBUG_MODE || SEARCH_PARAMS.get("sim") === "1") return;
+  idleTimer = setTimeout(() => {
+    const screen = document.body.dataset.screen;
+    const untouched = screen === "start" && !myGender && !myAge;
+    if (!untouched) { resetVisitor(); goHome(); }
+    armIdle();
+  }, wait);
+}
+for (const type of ["pointerdown", "pointermove", "keydown", "wheel", "touchstart"]) {
+  window.addEventListener(type, armIdle, { passive: true });
+}
+new MutationObserver(armIdle).observe(document.body, { attributes: true, attributeFilter: ["data-screen"] });
+armIdle();
 showScreen("start");
 
 if (DEBUG_MODE) import("./debug.js").catch((error) => console.error(error));

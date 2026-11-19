@@ -286,6 +286,9 @@ for (const [yaw, pitch, roll] of [[22, 0, 0], [-24, 12, 0], [0, -18, 0], [15, 15
   const merged = mergeItems(["고르지 않은 부모운과 부부운", "고르지 않은 부모운", "재치"]);
   check("an item inside a longer one is dropped", merged.length === 2 && merged[0] === "고르지 않은 부모운과 부부운");
   check("items told on an earlier page are skipped", mergeItems(["재치", "정"], new Set(["재치"])).join() === "정");
+  const ageOf = (age) => portraitPrompt({ pole: "drive+", kind: "fit", gender: "female", age });
+  check("each age group has its own prompt", new Set([20, 30, 40, 50].map(ageOf)).size === 4 && /in their 40s/.test(ageOf(40)) && /in their 50s/.test(ageOf(50)));
+  check("an unknown age falls back to the 20s", /in their 20s/.test(ageOf(77)));
   check("no em dash in prompts", !prompts.some((t) => t.includes("\u2014")));
   check("face features show up as words", featureWords("drive+").length > 0 && /Face:/.test(prompts[0]));
 }

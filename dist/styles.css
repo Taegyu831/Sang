@@ -329,6 +329,7 @@ img { display: block; max-width: 100%; }
 .avatar.is-loading { position: relative; }
 .avatar.is-loading::after { content: "사진 그리는 중"; position: absolute; left: 0; right: 0; bottom: -1.6em; text-align: center; font-size: 0.72em; color: var(--muted); animation: portrait-wait 1.4s ease-in-out infinite; }
 @keyframes portrait-wait { 50% { opacity: 0.35; } }
+.bond-note { font-size: 0.7em; color: var(--muted); margin-top: 0.3em; }
 .is-clash .avatar-photo { filter: saturate(0.8); }
 .gender-pick { display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--ink-2); font-size: calc(var(--fs) * 1.05); }
 .gender-pick .chip-btn { padding: 0.35em 1.3em; font-size: 1em; }

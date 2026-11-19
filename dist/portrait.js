@@ -17,7 +17,15 @@ import { paramsOf } from "./avatar.js";
 
 // Change these to change every picture.
 export const LOOK = "Korean";
-export const AGE = "late 20s";
+
+// The visitor picks an age group (20s to 50s); the partner is drawn in the same one.
+export const AGES = [20, 30, 40, 50];
+const AGE_LOOK = {
+  20: "smooth youthful skin",
+  30: "healthy natural skin",
+  40: "natural skin with subtle fine lines",
+  50: "natural skin with visible fine lines and a few gray hairs",
+};
 
 const STORAGE_KEY = "sang.portrait";
 
@@ -97,18 +105,19 @@ export function featureWords(pole, threshold = 0.5) {
 
 /**
  * The prompt for one picture.
- * @param {{pole: string|null, kind: "fit"|"clash", gender: "female"|"male"|"any"}} spec
+ * @param {{pole: string|null, kind: "fit"|"clash", gender: "female"|"male"|"any", age?: 20|30|40|50}} spec
  */
-export function portraitPrompt({ pole, kind, gender }) {
+export function portraitPrompt({ pole, kind, gender, age = 20 }) {
+  const decade = AGES.includes(age) ? age : 20;
   const person = PERSON[gender] ?? PERSON.any;
   const hair = HAIR[gender] ?? HAIR.any;
   const features = featureWords(pole ?? null);
   const parts = [
-    `A photorealistic head-and-shoulders portrait of an invented ${LOOK} ${person} in their ${AGE}, facing the camera, with ${hair}.`,
+    `A photorealistic head-and-shoulders portrait of an invented ${LOOK} ${person} in their ${decade}s, facing the camera, with ${hair}. ${AGE_LOOK[decade]}.`,
     `Expression and presence: ${MOOD[pole] ?? EVEN_MOOD}.`,
     features.length ? `Face: ${features.join(", ")}.` : "",
     ROLE[kind] ?? ROLE.fit,
-    "Plain soft studio background, natural skin texture, simple plain clothing, no glasses, no text, no watermark.",
+    "Plain soft studio background, simple plain clothing, no glasses, no text, no watermark.",
     "This is a fictional person, not a real individual and not a celebrity.",
   ];
   return parts.filter(Boolean).join(" ");
