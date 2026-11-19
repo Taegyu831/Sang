@@ -132,6 +132,20 @@ export function portraitPrompt({ pole, kind, gender, age = 20 }) {
   return parts.filter(Boolean).join(" ");
 }
 
+// ---------- spare pictures ----------
+
+// If the relay is slow or unreachable, a picture made ahead of time (20s, see
+// tools/make-fallback.py) is shown instead, whatever age the visitor chose.
+export const FALLBACK_AGE = 20;
+export const FALLBACK_WAIT_MS = 30000;
+
+/** Path of the spare picture for a spec, or null when none exists for it. */
+export function fallbackPath({ pole, kind, gender }) {
+  if (!["fit", "clash"].includes(kind) || !["female", "male"].includes(gender)) return null;
+  const file = encodeURIComponent(`${kind}-${pole ?? "even"}-${gender}.jpg`);
+  return new URL(`./fallback/${file}`, import.meta.url).href;
+}
+
 // ---------- request ----------
 
 /**

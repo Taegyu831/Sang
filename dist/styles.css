@@ -83,7 +83,7 @@ img { display: block; max-width: 100%; }
 .bar i { display: block; height: 100%; width: var(--p, 0%); border-radius: inherit; background: var(--accent); transition: width 0.3s ease; }
 
 /* ---------- 1. 시작 ---------- */
-.start { margin: auto; text-align: center; display: flex; flex-direction: column; align-items: center; gap: clamp(14px, 3vh, 36px); }
+.start { margin: auto; max-width: 100%; box-sizing: border-box; padding: 0 16px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: clamp(14px, 3vh, 36px); }
 .permission-note:empty { display: none; }
 
 /* ---------- 2. 측정 ---------- */
@@ -163,6 +163,15 @@ img { display: block; max-width: 100%; }
 .closing { margin: 0 auto; width: min(100%, 780px); display: flex; flex-direction: column; gap: clamp(14px, 3vh, 30px); }
 .closing-line { font-size: calc(var(--fs) * 0.85); color: var(--muted); }
 .closing-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.start-lead { max-width: min(30em, 100%); font-size: calc(var(--fs) * 0.95); line-height: 1.8; color: var(--ink-2); word-break: keep-all; }
+/* 마지막 쪽: 운에 대한 말을 한 줄씩 천천히 */
+.closing-notes { display: flex; flex-direction: column; gap: clamp(8px, 1.8vh, 16px); min-height: 1em; }
+.closing-note { margin: 0; font-size: clamp(16px, min(1.6vw, 2.6vh), 22px); line-height: 1.7; color: var(--ink); word-break: keep-all; opacity: 0; transform: translateY(8px); transition: opacity 1s ease, transform 1s ease; }
+.closing-note.is-shown { opacity: 1; transform: none; }
+.closing-note:last-child.is-shown { font-weight: 700; }
+.closing-after { opacity: 0; pointer-events: none; transition: opacity 1s ease; }
+.closing.is-done .closing-after { opacity: 1; pointer-events: auto; }
+@media (prefers-reduced-motion: reduce) { .closing-note, .closing-after { transition: none; transform: none; } }
 
 /* ---------- 부위 카드 ---------- */
 .part-section { flex-direction: column; width: min(100%, 920px); margin: 0 auto; gap: clamp(14px, 2.6vh, 28px); }
@@ -331,7 +340,7 @@ img { display: block; max-width: 100%; }
 @keyframes portrait-wait { 50% { opacity: 0.35; } }
 .bond-note { font-size: 0.7em; color: var(--muted); margin-top: 0.3em; }
 .is-clash .avatar-photo { filter: saturate(0.8); }
-.gender-pick { display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--ink-2); font-size: calc(var(--fs) * 1.05); }
+.gender-pick { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; color: var(--ink-2); font-size: calc(var(--fs) * 1.05); }
 .gender-pick .chip-btn { padding: 0.35em 1.3em; font-size: 1em; }
 .chip-btn { padding: 0.2em 0.9em; border: 1px solid var(--line); border-radius: 3px; color: var(--muted); font-weight: 500; transition: color 0.2s, border-color 0.2s; }
 .chip-btn:hover { color: var(--ink); border-color: var(--muted); }

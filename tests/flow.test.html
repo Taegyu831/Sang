@@ -81,6 +81,18 @@ await sleep(200);
 const text = (sel) => doc.querySelector(sel)?.textContent ?? "";
 check("the story has seven pages that open with the connectors", doc.querySelectorAll("#pages .slide").length === 7 && /^이 사람은/.test(doc.querySelector("#storyFirst .story-lead")?.textContent ?? "") && [...doc.querySelectorAll("#pages .slide .story-lead")].some((e) => /^그래서 잘 맞는 인연은/.test(e.textContent)));
 check("every page says something and nothing is folded away", [...doc.querySelectorAll("#pages .slide")].every((s) => s.textContent.length > 40) && doc.querySelectorAll("#resultView details").length === 0);
+{
+  // the last page tells its lines about fortune one at a time, then shows the buttons
+  const dots = doc.querySelectorAll("#slideDots button");
+  dots[dots.length - 1].click();
+  await sleep(1500);
+  const shown = () => doc.querySelectorAll("#closingNotes .closing-note.is-shown").length;
+  const early = shown();
+  check("the closing lines come one at a time", early >= 1 && early < 5, `shown ${early}`);
+  check("the buttons wait for the last line", !doc.querySelector(".closing").classList.contains("is-done"));
+  await sleep(16000);
+  check("all five lines are shown, then the buttons", shown() === 5 && doc.querySelector(".closing").classList.contains("is-done"));
+}
 check("the posed shots add their lines to the first page", /힘을 주면 각이|더 뚜렷|웃으면|절제된|달라지지 않습니다/.test(text("#storyFirst")), text("#storyFirst").slice(-160));
 check("closing line is filled", text("#resultClosing").length > 10);
 check("no placeholder text in the story", !/undefined|NaN|\{|보통 범위/.test(text("#pages")));

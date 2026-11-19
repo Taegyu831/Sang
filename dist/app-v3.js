@@ -9,7 +9,7 @@ import { composeStory } from "./story.js";
 import { extrasOf } from "./extras.js";
 import { findHairline, hairThirds } from "./hair.js";
 import { avatarSvg, paramsOf } from "./avatar.js";
-import { portraitEndpoint, requestPortrait, partnerOf } from "./portrait.js";
+import { portraitEndpoint, requestPortrait, partnerOf, fallbackPath, FALLBACK_WAIT_MS } from "./portrait.js";
 
 // The engine and the face model are served from this site (dist/vendor/mediapipe,
 // tasks-vision 1.1.1), so measuring does not depend on a public CDN.
@@ -58,6 +58,7 @@ const pages = $("#pages");
 const storyFirst = $("#storyFirst");
 const closingLead = $("#closingLead");
 const resultClosing = $("#resultClosing");
+const closingNotes = $("#closingNotes");
 const resultFrontFigure = $("#resultFrontFigure");
 const resultFrontImage = $("#resultFrontImage");
 const resultFrontOverlay = $("#resultFrontOverlay");
@@ -612,10 +613,11 @@ function attachPortrait(figure, bond) {
   const spec = { pole: bond.to ?? null, kind: bond.kind, gender: bondGender(), age: myAge ?? 20 };
   const key = `${spec.kind}|${spec.pole}|${spec.gender}|${spec.age}`;
   if (!PORTRAITS.has(key)) {
-    PORTRAITS.set(key, requestPortrait(endpoint, spec).catch((error) => {
-      console.warn("portrait failed, keeping the drawing", error);
+    // Slow or failed: the spare picture made ahead of time takes its place.
+    PORTRAITS.set(key, requestPortrait(endpoint, spec, { timeoutMs: FALLBACK_WAIT_MS }).catch((error) => {
+      console.warn("portrait failed, using the spare picture", error);
       PORTRAITS.delete(key);
-      return null;
+      return fallbackPath(spec);
     }));
   }
   figure.classList.add("is-loading");
@@ -625,6 +627,8 @@ function attachPortrait(figure, bond) {
     const img = document.createElement("img");
     img.className = "avatar-photo";
     img.alt = "가상의 인연 얼굴";
+    // No picture to show after all: back to the line drawing.
+    img.addEventListener("error", () => { figure.classList.remove("has-photo"); drawBond(figure); });
     img.src = src;
     figure.replaceChildren(img);
     figure.classList.add("has-photo");
@@ -645,6 +649,43 @@ function bondBlock(bond) {
   block.append(figure, text);
   return block;
 }
+
+// ---------- last page: a few lines about fortune, one at a time ----------
+const CLOSING_NOTES = [
+  "관상학은 얼굴에서 타고난 기질과 흐름을 읽습니다.",
+  "그 풀이에는 때로 바깥의 변수나 고난도 함께 말해집니다.",
+  "그러나 운이 좋다거나 나쁘다는 것은 정해진 결과가 아닙니다.",
+  "같은 운이 와도 그것을 잡는 것은 그만큼 내가 준비되어 있느냐에 달려 있습니다.",
+  "어떻게 살아갈지는 결국 나의 몫이고, 나의 책임입니다.",
+];
+const CLOSING_STEP_MS = 2800;
+let closingTimers = [];
+
+function stopClosingNotes() {
+  closingTimers.forEach(clearTimeout);
+  closingTimers = [];
+}
+
+function playClosingNotes() {
+  stopClosingNotes();
+  const closing = pages.querySelector(".closing");
+  closing.classList.remove("is-done");
+  closingNotes.replaceChildren(...CLOSING_NOTES.map((t) => el("p", "closing-note", t)));
+  const lines = [...closingNotes.children];
+  const finish = () => { lines.forEach((n) => n.classList.add("is-shown")); closing.classList.add("is-done"); };
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return finish();
+  lines.forEach((n, i) => closingTimers.push(setTimeout(() => n.classList.add("is-shown"), 600 + i * CLOSING_STEP_MS)));
+  closingTimers.push(setTimeout(() => closing.classList.add("is-done"), 600 + lines.length * CLOSING_STEP_MS));
+}
+// A tap or key on the page shows the rest at once.
+pages.addEventListener("click", (event) => {
+  const closing = pages.querySelector(".closing");
+  if (closing && !closing.classList.contains("is-done") && event.target.closest(".closing")) {
+    stopClosingNotes();
+    closingNotes.querySelectorAll(".closing-note").forEach((n) => n.classList.add("is-shown"));
+    closing.classList.add("is-done");
+  }
+});
 
 // ⟦word⟧ -> bold in the accent colour, ⟪word⟫ -> bold in ink.
 function marked(tag, className, text) {
@@ -703,6 +744,7 @@ function showSlide(index, { force = false } = {}) {
   slideIndex = next;
   slides.forEach((slide, i) => {
     slide.classList.toggle("is-active", i === next);
+    if (slide.dataset.page === "last") { if (i === next) playClosingNotes(); else stopClosingNotes(); }
     slide.classList.toggle("is-before", i < next);
     slide.scrollTop = 0;
   });

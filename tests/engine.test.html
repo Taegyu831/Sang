@@ -13,7 +13,7 @@ import { findHairline, hairThirds } from "../dist/hair.js";
 import { readParts } from "../dist/parts.js";
 import { applyPoseResidual, POSE_RESIDUAL } from "../dist/residual.js";
 import { mergeItems } from "../dist/story.js";
-import { portraitPrompt, partnerOf, featureWords } from "../dist/portrait.js";
+import { portraitPrompt, partnerOf, featureWords, fallbackPath } from "../dist/portrait.js";
 
 const lines = [];
 let failed = 0;
@@ -289,6 +289,8 @@ for (const [yaw, pitch, roll] of [[22, 0, 0], [-24, 12, 0], [0, -18, 0], [15, 15
   const ageOf = (age) => portraitPrompt({ pole: "drive+", kind: "fit", gender: "female", age });
   check("each age group has its own prompt", new Set([20, 30, 40, 50].map(ageOf)).size === 4 && /in their 40s/.test(ageOf(40)) && /in their 50s/.test(ageOf(50)));
   check("an unknown age falls back to the 20s", /in their 20s/.test(ageOf(77)));
+  check("spare picture path per kind of person", /fallback\/fit-drive%2B-female\.jpg$/.test(fallbackPath({ pole: "drive+", kind: "fit", gender: "female" })) && /clash-even-male\.jpg$/.test(fallbackPath({ pole: null, kind: "clash", gender: "male" })));
+  check("no spare picture without a gender", fallbackPath({ pole: "drive+", kind: "fit", gender: "any" }) === null);
   check("no em dash in prompts", !prompts.some((t) => t.includes("\u2014")));
   check("face features show up as words", featureWords("drive+").length > 0 && /Face:/.test(prompts[0]));
 }
