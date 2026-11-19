@@ -684,11 +684,11 @@ function playClosingNotes() {
   const lines = [...closingNotes.children];
   const finish = () => { lines.forEach((n) => n.classList.add("is-shown")); closing.classList.add("is-done"); };
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return finish();
-  // The quotation first, and it stays a little longer than the lines that follow.
+  // The quotation first; the first line follows soon after it.
   let at = 600;
   lines.forEach((n, i) => {
     closingTimers.push(setTimeout(() => n.classList.add("is-shown"), at));
-    at += i === 0 ? CLOSING_STEP_MS + 1000 : CLOSING_STEP_MS;
+    at += i === 0 ? 1800 : CLOSING_STEP_MS;
   });
   // The seal and the buttons come in together with the last line.
   closingTimers.push(setTimeout(() => closing.classList.add("is-done"), at - (lines.length > 1 ? CLOSING_STEP_MS : 0)));
