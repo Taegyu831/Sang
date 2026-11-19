@@ -686,7 +686,7 @@ function playClosingNotes() {
   const finish = () => { lines.forEach((n) => n.classList.add("is-shown")); parts.forEach((n) => n.classList.add("is-shown")); closing.classList.add("is-done"); };
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return finish();
   // The quotation comes up piece by piece (hanja, reading, meaning, source), then the lines.
-  const QUOTE_AT = [0, 550, 1100, 1450];
+  const QUOTE_AT = [0, 200, 750, 1100];
   const FIRST_LINE_AFTER = 2500;
   const later = (fn, ms) => closingTimers.push(setTimeout(fn, ms));
   parts.forEach((n, i) => later(() => n.classList.add("is-shown"), 600 + QUOTE_AT[i]));
