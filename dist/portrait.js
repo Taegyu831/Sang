@@ -29,16 +29,25 @@ const AGE_LOOK = {
 
 const STORAGE_KEY = "sang.portrait";
 
-/** Relay address: ?portrait=<url> (remembered), ?portrait=off to forget it. */
+// The Vercel function that makes the pictures (api/portrait.mjs).
+export const DEFAULT_ENDPOINT = "https://project-zek4t.vercel.app/api/portrait";
+
+/**
+ * Relay address. ?portrait=<url> uses another one (and is remembered), for
+ * example the local relay; ?portrait=off turns pictures off (remembered);
+ * ?portrait=default goes back to the Vercel function.
+ */
 export function portraitEndpoint(search = window.location.search) {
   const asked = new URLSearchParams(search).get("portrait");
   try {
-    if (asked === "off") { localStorage.removeItem(STORAGE_KEY); return ""; }
-    if (asked) { localStorage.setItem(STORAGE_KEY, asked); return asked; }
-    return localStorage.getItem(STORAGE_KEY) || "";
+    if (asked === "default") { localStorage.removeItem(STORAGE_KEY); return DEFAULT_ENDPOINT; }
+    if (asked) { localStorage.setItem(STORAGE_KEY, asked); return asked === "off" ? "" : asked; }
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) return saved === "off" ? "" : saved;
   } catch {
-    return asked && asked !== "off" ? asked : "";
+    if (asked) return asked === "off" ? "" : asked === "default" ? DEFAULT_ENDPOINT : asked;
   }
+  return DEFAULT_ENDPOINT;
 }
 
 /** The partner is the opposite gender (fixed for now). */

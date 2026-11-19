@@ -71,7 +71,7 @@ python3 -m http.server 8000 --directory dist --bind 127.0.0.1
 - The browser never holds the API key. It posts `{prompt}` to a relay, which adds the key:
   - local: `export OPENAI_API_KEY=sk-...` then `python3 tools/portrait-proxy.py`, open the app (served from 127.0.0.1:8001) with `?portrait=http://127.0.0.1:8787`
   - public: `tools/portrait-worker.js` as a Cloudflare Worker with secret `OPENAI_API_KEY`, then `?portrait=https://<worker>.workers.dev`
-  - `?portrait=off` forgets the address. With no relay set, the line drawing stays.
+  - Since 2026-11-19 the default is the Vercel function (`DEFAULT_ENDPOINT` in `portrait.js`), so a plain link makes photos. `?portrait=off` turns photos off (remembered), `?portrait=default` goes back to the default.
 - Model (tries gpt-image-2, then 1.5, then 1), size and quality are fixed on the relay side (`IMAGE_MODEL`, comma list, `IMAGE_SIZE`, `IMAGE_QUALITY`), so the page cannot ask for more.
 
 ### Vercel function for the portraits (2026-11-19)
