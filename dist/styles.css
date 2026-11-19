@@ -163,6 +163,7 @@ img { display: block; max-width: 100%; }
 .closing { margin: 0 auto; width: min(100%, 780px); display: flex; flex-direction: column; gap: clamp(14px, 3vh, 30px); }
 .closing-line { font-size: calc(var(--fs) * 0.85); color: var(--muted); }
 .closing-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.start-lead strong { font-weight: 800; color: var(--ink); }
 .start-lead { max-width: min(30em, 100%); font-size: calc(var(--fs) * 0.95); line-height: 1.8; color: var(--ink-2); word-break: keep-all; }
 /* 마지막 쪽: 운에 대한 말을 한 줄씩 천천히 */
 .closing-notes { display: flex; flex-direction: column; gap: clamp(8px, 1.8vh, 16px); min-height: 1em; }

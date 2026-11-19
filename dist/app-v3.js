@@ -883,9 +883,10 @@ async function initialize() {
     FaceLandmarker = module.FaceLandmarker;
     DrawingUtils = module.DrawingUtils;
     const vision = await withTimeout(module.FilesetResolver.forVisionTasks(MEDIAPIPE_WASM), MODEL_LOAD_TIMEOUT, "측정 엔진을 준비하는 시간이 초과되었습니다.");
-    faceLandmarker = await withTimeout(
+    // GPU first; a computer without a usable GPU falls back to the CPU (slower, but it works).
+    const createLandmarker = (delegate) => withTimeout(
       FaceLandmarker.createFromOptions(vision, {
-        baseOptions: { modelAssetPath: FACE_MODEL, delegate: "GPU" },
+        baseOptions: { modelAssetPath: FACE_MODEL, delegate },
         runningMode: "VIDEO",
         numFaces: 1,
         minFaceDetectionConfidence: 0.6,
@@ -897,6 +898,12 @@ async function initialize() {
       MODEL_LOAD_TIMEOUT,
       "얼굴 측정 모델을 준비하는 시간이 초과되었습니다.",
     );
+    try {
+      faceLandmarker = await createLandmarker("GPU");
+    } catch (gpuError) {
+      console.warn("GPU delegate failed, trying the CPU", gpuError);
+      faceLandmarker = await createLandmarker("CPU");
+    }
     drawingUtils = new DrawingUtils(ctx);
     // The hair model is opt-in (?hair=1) until it is confirmed safe in Safari.
     if (SEARCH_PARAMS.get("hair") === "1") loadHairSegmenter(module, vision);
