@@ -11,11 +11,13 @@ import { findHairline, hairThirds } from "./hair.js";
 import { avatarSvg, paramsOf } from "./avatar.js";
 import { portraitEndpoint, requestPortrait, partnerOf } from "./portrait.js";
 
-const MEDIAPIPE_VERSION = "1.1.1";
-const MEDIAPIPE_MODULE = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VERSION}/vision_bundle.mjs`;
-const MEDIAPIPE_WASM = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VERSION}/wasm`;
+// The engine and the face model are served from this site (dist/vendor/mediapipe,
+// tasks-vision 1.1.1), so measuring does not depend on a public CDN.
+const VENDOR = new URL("./vendor/mediapipe/", import.meta.url).href;
+const MEDIAPIPE_MODULE = `${VENDOR}vision_bundle.mjs`;
+const MEDIAPIPE_WASM = `${VENDOR}wasm`;
 const HAIR_MODEL = "https://storage.googleapis.com/mediapipe-models/image_segmenter/hair_segmenter/float32/latest/hair_segmenter.tflite";
-const FACE_MODEL = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
+const FACE_MODEL = `${VENDOR}face_landmarker.task`;
 const PUBLIC_SITE_URL = "https://taegyu831.github.io/Sang/";
 const MODEL_LOAD_TIMEOUT = 40000;
 const CAMERA_LABEL = "시작하기";

@@ -80,3 +80,10 @@ python3 -m http.server 8000 --directory dist --bind 127.0.0.1
 - The site stays on GitHub Pages. The Vercel project is made from this repository and only serves `/api/portrait`. `OPENAI_API_KEY` goes in the Vercel project settings, never in the repo.
 - `dist/package.json` (`{"type": "module"}`) lets the function import the browser modules.
 - The function logic is tested with a fake OpenAI (`/tmp/fn.test.mjs` during development); it has not been called on Vercel yet.
+
+### Engine served from the site (2026-11-19)
+
+- `dist/vendor/mediapipe/` holds MediaPipe tasks-vision 1.1.1 (`vision_bundle.mjs`, `wasm/vision_wasm_internal.{js,wasm}`) and `face_landmarker.task` (about 17.8 MB in total). `app-v3.js` loads them from the site, so measuring no longer needs a public CDN. The files are unchanged copies and should not be changed often: every change adds the full size to the git history.
+- Only the SIMD wasm build is included. Browsers without WebAssembly SIMD (before Chrome 91, Safari 16.4) would need `vision_wasm_nosimd_internal.*` as well.
+- The hair model (`?hair=1`, off by default) is still fetched from Google's storage.
+- `.vercelignore` keeps `dist/vendor` out of the Vercel upload.
