@@ -18,7 +18,6 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 PORT = int(os.environ.get("PORT", "8787"))
 # Tried in order; the first one this account can use is remembered.
 MODELS = [m for m in os.environ.get("IMAGE_MODEL", "gpt-image-2,gpt-image-1.5,gpt-image-1").split(",") if m]
-MODEL = MODELS[0]
 SIZE = os.environ.get("IMAGE_SIZE", "1024x1024")
 QUALITY = os.environ.get("IMAGE_QUALITY", "low")  # low | medium | high
 ALLOWED = set(filter(None, os.environ.get(
@@ -100,5 +99,6 @@ class Handler(BaseHTTPRequestHandler):
 if __name__ == "__main__":
     if not KEY:
         sys.exit("Set OPENAI_API_KEY first:  export OPENAI_API_KEY=sk-...")
-    print(f"portrait relay on http://127.0.0.1:{PORT}  models={",".join(MODELS)} size={SIZE} quality={QUALITY}")
+    LIST = ", ".join(MODELS)
+    print(f"portrait relay on http://127.0.0.1:{PORT}  models={LIST} size={SIZE} quality={QUALITY}")
     ThreadingHTTPServer(("127.0.0.1", PORT), Handler).serve_forever()
