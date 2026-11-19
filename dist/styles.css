@@ -400,3 +400,9 @@ img { display: block; max-width: 100%; }
   font-size: clamp(18px, min(2.1vw, 3.6vh), 32px); font-weight: 700; line-height: 1.4; text-align: center;
   color: rgba(255, 255, 255, 0.88); text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55), 0 0 2px rgba(0, 0, 0, 0.45);
 }
+
+/* The left picture appears or goes away with the closing page, so the page
+   being left must vanish at once; otherwise its text fades while the layout
+   has already changed and flashes across the middle. */
+.reading.is-fortune .slide:not([data-page="fortune"]),
+.reading:not(.is-fortune) .slide[data-page="fortune"]:not(.is-active) { visibility: hidden; transition: none; }
