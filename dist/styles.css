@@ -424,6 +424,6 @@ img { display: block; max-width: 100%; }
 .closing-note { text-wrap: balance; }
 
 /* 통계 동의 (선택, 기본은 꺼짐) */
-.consent { display: flex; align-items: flex-start; gap: 0.6em; max-width: min(30em, 100%); font-size: 0.82em; line-height: 1.55; color: var(--ink-2); cursor: pointer; text-align: left; }
-.consent input { flex: none; width: 1.2em; height: 1.2em; margin-top: 0.2em; accent-color: var(--accent); cursor: pointer; }
+.consent { display: flex; align-items: center; gap: 0.8em; max-width: min(32em, 100%); font-size: 0.9em; line-height: 1.55; color: var(--ink-2); cursor: pointer; text-align: left; }
+.consent input { flex: none; width: 1.9em; height: 1.9em; margin: 0; accent-color: var(--accent); cursor: pointer; }
 .consent strong { font-weight: 800; color: var(--ink); }
