@@ -412,3 +412,9 @@ img { display: block; max-width: 100%; }
 .closing .closing-actions .closing-seal { width: var(--act-h); height: var(--act-h); aspect-ratio: auto; font-size: calc(var(--act-h) * 0.62); margin: 0 6px 0 0; align-self: center; border-radius: 3px; }
 .fortune .closing-actions { --act-h: clamp(34px, 3.3vw, 42px); }
 .fortune .closing-actions .btn { height: var(--act-h); min-height: 0; padding: 0 1.1em; font-size: 0.85em; }
+.closing-quote { opacity: 1; transform: none; }
+.closing-quote > p { opacity: 0; transform: translateY(14px); transition: opacity 0.7s ease, transform 0.7s ease; }
+.closing-quote > p.is-shown { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) { .closing-quote > p { transition: none; transform: none; } }
+.closing-quote { border-bottom-color: transparent; transition: border-color 1s ease; }
+.closing-quote.is-shown { border-bottom-color: var(--line); }

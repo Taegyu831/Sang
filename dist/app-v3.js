@@ -682,16 +682,22 @@ function playClosingNotes() {
   notes[notes.length - 1].classList.add("is-key");
   closingNotes.replaceChildren(quote, ...notes);
   const lines = [...closingNotes.children];
-  const finish = () => { lines.forEach((n) => n.classList.add("is-shown")); closing.classList.add("is-done"); };
+  const parts = [...quote.children];
+  const finish = () => { lines.forEach((n) => n.classList.add("is-shown")); parts.forEach((n) => n.classList.add("is-shown")); closing.classList.add("is-done"); };
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return finish();
-  // The quotation first; the first line follows soon after it.
-  let at = 600;
-  lines.forEach((n, i) => {
-    closingTimers.push(setTimeout(() => n.classList.add("is-shown"), at));
-    at += i === 0 ? 1800 : CLOSING_STEP_MS;
+  // The quotation comes up piece by piece (hanja, reading, meaning, source), then the lines.
+  const QUOTE_AT = [0, 550, 1100, 1450];
+  const FIRST_LINE_AFTER = 2500;
+  const later = (fn, ms) => closingTimers.push(setTimeout(fn, ms));
+  parts.forEach((n, i) => later(() => n.classList.add("is-shown"), 600 + QUOTE_AT[i]));
+  later(() => quote.classList.add("is-shown"), 600);
+  let at = 600 + FIRST_LINE_AFTER;
+  lines.slice(1).forEach((n) => {
+    later(() => n.classList.add("is-shown"), at);
+    at += CLOSING_STEP_MS;
   });
   // The seal and the buttons come in together with the last line.
-  closingTimers.push(setTimeout(() => closing.classList.add("is-done"), at - (lines.length > 1 ? CLOSING_STEP_MS : 0)));
+  later(() => closing.classList.add("is-done"), at - (lines.length > 1 ? CLOSING_STEP_MS : 0));
 }
 // A tap or key on the page shows the rest at once.
 pages.addEventListener("click", (event) => {
