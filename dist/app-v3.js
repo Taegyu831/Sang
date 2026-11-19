@@ -660,6 +660,13 @@ const CLOSING_NOTES = [
   "같은 운이 와도 그것을 잡는 것은 그만큼 ⟦내가 준비되어 있느냐⟧에 달려 있습니다.",
   "어떻게 살아갈지는 결국 ⟦나의 선택이고 몫⟧입니다.",
 ];
+// The last thing on the page: a line from the I Ching (周易), in hanja and hangul.
+const CLOSING_QUOTE = {
+  han: "君子藏器於身 待時而動",
+  ko: "군자장기어신 대시이동",
+  meaning: "군자는 몸에 기량을 갖추고, 때를 기다려 움직인다",
+  source: "『주역』 계사전",
+};
 const CLOSING_STEP_MS = 2800;
 let closingTimers = [];
 
@@ -672,7 +679,11 @@ function playClosingNotes() {
   stopClosingNotes();
   const closing = pages.querySelector(".fortune");
   closing.classList.remove("is-done");
-  closingNotes.replaceChildren(...CLOSING_NOTES.map((t) => marked("p", "closing-note", t)));
+  const quote = el("div", "closing-note closing-quote");
+  quote.append(el("p", "cq-han", CLOSING_QUOTE.han), el("p", "cq-ko", CLOSING_QUOTE.ko), el("p", "cq-mean", CLOSING_QUOTE.meaning), el("p", "cq-src", CLOSING_QUOTE.source));
+  const notes = CLOSING_NOTES.map((t) => marked("p", "closing-note", t));
+  notes[notes.length - 1].classList.add("is-key");
+  closingNotes.replaceChildren(...notes, quote);
   const lines = [...closingNotes.children];
   const finish = () => { lines.forEach((n) => n.classList.add("is-shown")); closing.classList.add("is-done"); };
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return finish();
