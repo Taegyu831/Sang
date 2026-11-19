@@ -18,6 +18,7 @@ for (let i = 0; i < 100 && !frame.contentWindow.__sangReady; i += 1) await sleep
 const win = frame.contentWindow;
 const doc = frame.contentDocument;
 check("simulation hook is ready", !!win.__sangReady);
+check("the statistics box starts unticked", doc.querySelector("#consentBox") && doc.querySelector("#consentBox").checked === false);
 
 // ----- landmark arrays that look like MediaPipe output -----
 const W = 1280;

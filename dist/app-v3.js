@@ -9,6 +9,7 @@ import { composeStory } from "./story.js";
 import { extrasOf } from "./extras.js";
 import { findHairline, hairThirds } from "./hair.js";
 import { avatarSvg, paramsOf } from "./avatar.js";
+import { DEFAULT_COLLECT_ENDPOINT, buildRecord, submitMeasurement, flushQueue } from "./collect.js";
 import { portraitEndpoint, requestPortrait, partnerOf, fallbackPath, FALLBACK_WAIT_MS } from "./portrait.js";
 
 // The engine and the face model are served from this site (dist/vendor/mediapipe,
@@ -485,6 +486,7 @@ function completeClassification(extra = {}) {
   finalMeasurement = { ...snapshot.values, ...extra, confidence, frames: snapshot.frames, stability: snapshot.stability, coverage: snapshot.coverage };
   reading = interpret(finalMeasurement, content);
   classificationComplete = true;
+  shareMeasurement();
   setProgress(journeyProgress, 1);
   turnGuide.hidden = true;
   if (DEBUG_MODE) {
@@ -597,6 +599,27 @@ agePick.addEventListener("click", (event) => {
   if (b) setMyAge(Number(b.dataset.age));
 });
 
+// Statistics: only when the visitor ticks the box; it is unticked for every new visitor.
+const consentBox = $("#consentBox");
+const COLLECT_ENDPOINT = (() => {
+  const asked = SEARCH_PARAMS.get("collect");
+  if (asked === "off") return "";
+  return asked || DEFAULT_COLLECT_ENDPOINT;
+})();
+const collecting = () => Boolean(consentBox?.checked) && Boolean(COLLECT_ENDPOINT) && !DEBUG_MODE && !SEARCH_PARAMS.has("sim") && !SEARCH_PARAMS.has("preview");
+let sharedByThisVisitor = false; // measuring again must not count the same person twice
+function shareMeasurement() {
+  if (!collecting() || sharedByThisVisitor) return;
+  sharedByThisVisitor = true;
+  const record = buildRecord({ gender: myGender, age: myAge, measurement: finalMeasurement });
+  if (record) submitMeasurement(COLLECT_ENDPOINT, record).catch(() => {});
+}
+// numbers left over from an earlier visit (no internet at the time) go out when the page opens
+if (COLLECT_ENDPOINT && !DEBUG_MODE && !SEARCH_PARAMS.has("sim") && !SEARCH_PARAMS.has("preview")) {
+  flushQueue(COLLECT_ENDPOINT).catch(() => {});
+  window.addEventListener("online", () => flushQueue(COLLECT_ENDPOINT).catch(() => {}));
+}
+
 const bondGender = () => partnerOf(myGender);
 
 function drawBond(figure) {
@@ -646,7 +669,7 @@ function bondBlock(bond) {
   for (const line of bond.lines) text.append(el("p", "bond-line", line));
   // The note sits right under the picture.
   const column = el("div", "avatar-col");
-  column.append(figure, el("p", "bond-note", "그림과 사진은 AI가 만든 가상의 인물이며, 촬영한 얼굴은 어디에도 저장되지 않습니다."));
+  column.append(figure, el("p", "bond-note", "그림과 사진은 AI가 만든 가상의 인물이며, 촬영한 얼굴 사진과 영상은 저장되지 않습니다."));
   block.append(column, text);
   return block;
 }
@@ -968,6 +991,8 @@ const homeCount = $("#homeCount");
 function resetVisitor() {
   setMyGender(null);
   setMyAge(null);
+  if (consentBox) consentBox.checked = false;
+  sharedByThisVisitor = false;
 }
 function armIdle() {
   clearTimeout(idleTimer);
