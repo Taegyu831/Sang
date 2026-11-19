@@ -939,14 +939,18 @@ window.addEventListener("beforeunload", stopStream);
 // Nobody touching the screen for a while: back to the start, choices cleared.
 const IDLE_MS = { start: 60000, scan: 150000, loading: 150000, result: 120000 };
 let idleTimer = 0;
+let idleDeadline = 0;
+const homeCount = $("#homeCount");
 function resetVisitor() {
   setMyGender(null);
   setMyAge(null);
 }
 function armIdle() {
   clearTimeout(idleTimer);
+  idleDeadline = 0;
   const wait = IDLE_MS[document.body.dataset.screen];
   if (!wait || DEBUG_MODE || SEARCH_PARAMS.get("sim") === "1") return;
+  idleDeadline = Date.now() + wait;
   idleTimer = setTimeout(() => {
     const screen = document.body.dataset.screen;
     const untouched = screen === "start" && !myGender && !myAge;
@@ -959,6 +963,12 @@ for (const type of ["pointerdown", "pointermove", "keydown", "wheel", "touchstar
 }
 new MutationObserver(armIdle).observe(document.body, { attributes: true, attributeFilter: ["data-screen"] });
 armIdle();
+
+// The seconds left before the page returns to the start show on the 처음으로 button.
+setInterval(() => {
+  const onResult = document.body.dataset.screen === "result" && idleDeadline > 0;
+  homeCount.textContent = onResult ? ` (${Math.max(0, Math.ceil((idleDeadline - Date.now()) / 1000))})` : "";
+}, 500);
 showScreen("start");
 
 if (DEBUG_MODE) import("./debug.js").catch((error) => console.error(error));
