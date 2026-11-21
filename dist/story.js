@@ -247,7 +247,9 @@ export function composeStory(parts, shape, extras = { lines: [], size: null, sto
   const against = entries.filter((e) => opposes(e.key, poles));
   const traits = gather(aligned.length ? aligned : entries, "traits", 7, told);
   const first = { title: "이 사람은", lead: `이 사람은 ${headline}`, body: [], basis: traits.basis };
-  if (shape) first.body.push((shape.text.match(/[^.]+\.\s*/g)?.slice(0, 2).join("").trim() ?? "").replace(shape.name, em(shape.name)));
+  // The form (오행형) is the first step, so when it is known it takes the place of the plain face shape sentence.
+  for (const line of extras.formLines ?? []) first.body.push(line);
+  if (shape && !(extras.formLines ?? []).length) first.body.push((shape.text.match(/[^.]+\.\s*/g)?.slice(0, 2).join("").trim() ?? "").replace(shape.name, em(shape.name)));
   for (const line of extras.frame ?? []) first.body.push(line);
   if (traits.items.length) first.body.push(`성격으로는 ${josa(list(traits.items), "이", "가")} 함께 두드러집니다.`);
   const other = aligned.length ? gather(against, "traits", 3, told) : { items: [], basis: [] };
@@ -289,6 +291,7 @@ export function composeStory(parts, shape, extras = { lines: [], size: null, sto
   const late = gather(entries, "late", 4, told);
   const stages = [["초년", early], ["중년", mid], ["말년", late]].filter(([, g]) => g.items.length);
   const fourth = { title: "시기", lead: `그러다 보면 시기로는 ${main.stage}`, body: [], basis: [...new Set([...early.basis, ...mid.basis, ...late.basis])] };
+  for (const line of extras.ageLines ?? []) fourth.body.push(line);
   for (const [label, g] of stages) fourth.body.push(`${strong(label)}에는 ${list(g.items)}에 관한 풀이가 모입니다.`);
   for (const [label, field] of [["초년", "earlyMinus"], ["중년", "midMinus"], ["말년", "lateMinus"]]) {
     const g = gather(entries, field, 3, told);

@@ -6,6 +6,8 @@
 // for CALIBRATION.
 import { zScore } from "./calibration.js";
 import { judgeSanjeong, sanjeongText } from "./sanjeong.js";
+import { classifyOhaeng, ohaengLines } from "./ohaeng.js";
+import { ageLines } from "./age.js";
 
 export const POSED_CALIBRATION = {
   jawFlex: { label: "힘줄 때 턱 폭 변화", unit: "%p", center: 1.0, scale: 1.0, from: "guess" },
@@ -15,8 +17,8 @@ export const POSED_CALIBRATION = {
 const em = (text) => `⟦${text}⟧`;
 const SIZE_RANGE_MM = [110, 175];
 
-/** { lines: [...], size: "..." | null, stop, frame: [...] } to add to the first page of the story. */
-export function extrasOf(values = {}, parts = []) {
+/** { lines, size, stop, frame, form, formLines, ageLines } to add to the story (first page, and the 시기 page for ageLines). */
+export function extrasOf(values = {}, parts = [], age = null) {
   const lines = [];
   const dirOf = (key) => parts.find((p) => p.key === key)?.dir ?? "middle";
 
@@ -48,5 +50,6 @@ export function extrasOf(values = {}, parts = []) {
     : null;
   // The frame (삼정) is told before the parts, so it is kept apart from the posed-shot lines.
   const stop = judgeSanjeong(values);
-  return { lines, size, stop, frame: stop ? [sanjeongText(stop)] : [] };
+  const form = classifyOhaeng(values);
+  return { lines, size, stop, frame: stop ? [sanjeongText(stop)] : [], form, formLines: ohaengLines(form), ageLines: ageLines(parts, age) };
 }

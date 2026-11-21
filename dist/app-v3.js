@@ -762,7 +762,7 @@ function storyPage(page, { first = false } = {}) {
 function renderStory() {
   parts = readParts(finalMeasurement, partsContent);
   const shape = classifyFaceShape(finalMeasurement);
-  story = composeStory(parts.all, shape, extrasOf(finalMeasurement, parts.all));
+  story = composeStory(parts.all, shape, extrasOf(finalMeasurement, parts.all, myAge));
   // The first page keeps the teacher's greeting; the rest are rebuilt each time.
   storyFirst.querySelectorAll(".story-lead, .story-body, .story-basis").forEach((n) => n.remove());
   storyPage(story.pages[0], { first: true });
@@ -1043,6 +1043,8 @@ async function startPreview() {
   await loadContent();
   const base = Object.fromEntries(Object.entries(CALIBRATION).map(([key, c]) => [key, c.center]));
   const values = { ...base, leftEye: 1, rightEye: 1, outerLeft: 1.27, outerRight: 1.27, eyeGap: 1.43, noseDepth: 64, bridgeDepth: 50, chinDepth: 44, stopMiddle: 33.5, stopLower: 46.9, ...parseOverrides(SEARCH_PARAMS.get("v")) };
+  // The preview tells the reading for one age group (?age=20, 30, 40, 50; 30 by default).
+  setMyAge(Number(SEARCH_PARAMS.get("age")) || 30);
   finalMeasurement = { ...values, confidence: 88, frames: 96, stability: 0.9, coverage: { yaw: [-18, 20], pitch: [-9, 11] } };
   reading = interpret(finalMeasurement, content);
   bestShot = { weight: 1, shot: createPreviewFrame() };

@@ -18,6 +18,8 @@ import { readParts } from "../dist/parts.js";
 import { applyPoseResidual, POSE_RESIDUAL } from "../dist/residual.js";
 import { mergeItems, composeStory } from "../dist/story.js";
 import { extrasOf } from "../dist/extras.js";
+import { classifyOhaeng, ohaengLines, FORMS } from "../dist/ohaeng.js";
+import { ageLines, AGE_STAGES } from "../dist/age.js";
 import { judgeSanjeong, sanjeongText, sanjeongParts, STOP_RULES } from "../dist/sanjeong.js";
 import { buildRecord } from "../dist/collect.js";
 import { portraitPrompt, partnerOf, featureWords, fallbackPath } from "../dist/portrait.js";
@@ -339,6 +341,51 @@ for (const [yaw, pitch, roll] of [[22, 0, 0], [-24, 12, 0], [0, -18, 0], [15, 15
   const longerParts = readParts(longer, partsContent);
   const longStory = composeStory(longerParts.all, null, extrasOf(longer, longerParts.all));
   check("an unequal face says which zone is long", longStory.pages[0].body.some((line) => line.includes("하정이 길면")));
+}
+
+{
+  // 형 (오행형) and 지금의 나이 (ohaeng.js, age.js)
+  const mid = Object.fromEntries(Object.entries(CALIBRATION).map(([k, c]) => [k, c.center]));
+  const face = (o) => ({ ...mid, ...o });
+  const C = CALIBRATION;
+  check("a long face with a wide forehead and narrow jaw is 목형", classifyOhaeng(face({ faceRatio: C.faceRatio.center - 4 * C.faceRatio.scale, foreheadFace: 90, jawCheek: 72 }), C).id === "wood");
+  check("a jaw wider than the forehead is 화형", classifyOhaeng(face({ foreheadFace: 82, jawCheek: 82, faceRatio: C.faceRatio.center }), C).id === "fire");
+  check("wide forehead and wide jaw is 금형", classifyOhaeng(face({ foreheadFace: 91, jawCheek: 90 }), C).id === "metal");
+  check("a wide face with a round chin is 수형", classifyOhaeng(face({ faceRatio: C.faceRatio.center + 4 * C.faceRatio.scale, chinWidth: C.chinWidth.center - 3 * C.chinWidth.scale, foreheadFace: 84, jawCheek: 79 }), C).id === "water");
+  check("an even face is 토형", classifyOhaeng(face({}), C).id === "earth");
+  check("no form without the width values", classifyOhaeng({}, C) === null);
+  let seed = 11;
+  const rnd = () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
+  const gauss = () => Math.sqrt(-2 * Math.log(rnd() + 1e-12)) * Math.cos(2 * Math.PI * rnd());
+  const share = {};
+  for (let i = 0; i < 2000; i++) {
+    const v = {};
+    for (const k of ["faceRatio", "jawCheek", "foreheadFace", "chinWidth"]) v[k] = C[k].center + C[k].scale * gauss();
+    const f = classifyOhaeng(v, C).id;
+    share[f] = (share[f] ?? 0) + 1;
+  }
+  const shares = Object.values(share).map((n) => n / 2000);
+  check("random faces give all five forms, none over 35% or under 8%", Object.keys(share).length === 5 && Math.max(...shares) <= 0.35 && Math.min(...shares) >= 0.08, JSON.stringify(share));
+  const lines = ohaengLines(classifyOhaeng(face({ foreheadFace: 91, jawCheek: 90 }), C));
+  check("the form sentence names the form and has no dash", /금형/.test(lines.join("")) && !/[\u2014\u2013]/.test(lines.join("")));
+  check("every form has a look and a trait", Object.values(FORMS).every((f) => f.look && f.trait));
+
+  const partsContent = await (await fetch("../dist/parts.json")).json();
+  const all = readParts(face({ browLength: C.browLength.center + 3 * C.browLength.scale }), partsContent).all;
+  const lines30 = ageLines(all, 30);
+  check("the 30s are told from the brows and eyes", /눈썹과 눈/.test(lines30[0]) && lines30.length >= 2, lines30[1]);
+  check("every age group has places and part cards", [20, 30, 40, 50].every((a) => AGE_STAGES[a].places && AGE_STAGES[a].ids.every((id) => partsContent.cards.some((c) => c.id === id))));
+  check("the part name takes the right particle", /눈 사이는/.test(ageLines(readParts(face({ eyeGap: C.eyeGap.center + 3 * C.eyeGap.scale }), partsContent).all, 30).join("")) && !/사이은/.test(lines30.join("")));
+  check("no age lines without an age group", ageLines(all, null).length === 0);
+  const flat = ageLines(readParts(face({}), partsContent).all, 40);
+  check("a face with nothing standing out in the 40s is told as steady", flat.length === 2 && /무난하게/.test(flat[1]));
+  const v = face({ foreheadFace: 91, jawCheek: 90 });
+  const ps = readParts(v, partsContent);
+  const story = composeStory(ps.all, { name: "각진형", text: "각진형입니다. 둘째 문장입니다." }, extrasOf(v, ps.all, 20));
+  check("the story opens with the form, not the plain shape sentence", story.pages[0].body[0].includes("금형") && !story.pages[0].body.some((l) => l.includes("각진형")));
+  check("the 시기 page begins with the decade reading", story.pages[3].body[0].includes("20대"));
+  const noForm = composeStory(ps.all, { name: "각진형", text: "각진형입니다. 둘째 문장입니다." }, { lines: [], size: null, stop: null, frame: [] });
+  check("without a form the plain shape sentence is kept", noForm.pages[0].body[0].includes("각진형"));
 }
 
 {
