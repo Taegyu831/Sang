@@ -11,7 +11,8 @@ import { FACETS, AXES, LOOKS, entryKey } from "./facets.js";
 import { josa } from "./parts.js";
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
-const STRONG = 1.2;
+// How far from the average (in steps) an axis must be to count as a kind of person.
+const STRONG = 0.5;
 
 const POLES = {
   "drive+": {
@@ -165,15 +166,37 @@ function gather(entries, field, limit, told = new Set()) {
   return { items, basis: [...new Set(basis)] };
 }
 
-/** Which kinds of person this face leans toward, strongest first. */
-export function leanings(entries) {
+// What a typical face scores on each axis, and how much faces differ. Many more
+// readings push an axis up than down (for example 15 readings add to "steady"
+// but only 4 take from it), so without this a plain face always leans "+" and a
+// few kinds of person come out for almost everybody. Each axis is measured
+// against its own average, in steps, so "+" and "-" are equally easy to reach.
+// Source: 20000 random faces drawn from CALIBRATION (centre and scale of each
+// ratio, normal and independent), 2026-11-21. Move these to measured values when
+// the collected visitor data is in (tools/measurements.sql).
+export const AXIS_BASE = {
+  drive: { mean: 1.284, sd: 3.884 },
+  social: { mean: 3.874, sd: 2.899 },
+  feel: { mean: 3.706, sd: 3.827 },
+  steady: { mean: 4.549, sd: 3.854 },
+};
+
+/** The raw pull of every reading on each axis (before the average is taken off). */
+export function axisScores(entries) {
   const score = Object.fromEntries(AXIS_NAMES.map((a) => [a, 0]));
   for (const { part, key } of entries) {
     const weight = clamp(Math.abs(part.z), 0.6, 2.5);
     for (const [axis, value] of Object.entries(AXES[key] ?? {})) score[axis] += weight * value;
   }
-  return Object.entries(score)
-    .filter(([, v]) => Math.abs(v) >= STRONG)
+  return score;
+}
+
+/** Which kinds of person this face leans toward, strongest first. */
+export function leanings(entries, base = AXIS_BASE, strong = STRONG) {
+  const score = axisScores(entries);
+  return AXIS_NAMES
+    .map((axis) => [axis, (score[axis] - base[axis].mean) / base[axis].sd])
+    .filter(([, v]) => Math.abs(v) >= strong)
     .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
     .map(([axis, v]) => `${axis}${v > 0 ? "+" : "-"}`);
 }

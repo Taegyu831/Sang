@@ -12,7 +12,8 @@ import { interpret, evaluateTheme, buildTone } from "../dist/interpret.js";
 import { findHairline, hairThirds } from "../dist/hair.js";
 import { readParts } from "../dist/parts.js";
 import { applyPoseResidual, POSE_RESIDUAL } from "../dist/residual.js";
-import { mergeItems } from "../dist/story.js";
+import { mergeItems, leanings } from "../dist/story.js";
+import { FACETS, entryKey } from "../dist/facets.js";
 import { buildRecord } from "../dist/collect.js";
 import { portraitPrompt, partnerOf, featureWords, fallbackPath } from "../dist/portrait.js";
 
@@ -273,6 +274,31 @@ for (const [yaw, pitch, roll] of [[22, 0, 0], [-24, 12, 0], [0, -18, 0], [15, 15
   check("never extrapolates beyond the fitted range", featureKeys.every((k) => far[k] === edge[k]));
   check("keeps keys it does not know about", applyPoseResidual({ ...truth, extra: 5 }, { yaw: 10, pitch: 10 }).extra === 5);
   check("every residual key is a calibrated ratio", Object.keys(POSE_RESIDUAL).every((k) => CALIBRATION[k]));
+}
+
+{
+  // The kind of person must not pile up on a few kinds (story.js AXIS_BASE).
+  const partsContent = await (await fetch("../dist/parts.json")).json();
+  let seed = 5;
+  const rnd = () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
+  const gauss = () => Math.sqrt(-2 * Math.log(rnd() + 1e-12)) * Math.cos(2 * Math.PI * rnd());
+  const first = {};
+  const N = 800;
+  for (let i = 0; i < N; i++) {
+    const v = {};
+    for (const [k, c] of Object.entries(CALIBRATION)) v[k] = c.center + c.scale * gauss();
+    const entries = readParts(v, partsContent).all
+      .filter((p) => p.dir !== "middle" && p.id !== "faceShape")
+      .map((part) => ({ part, key: entryKey(part), facets: FACETS[entryKey(part)] }))
+      .filter((e) => e.facets);
+    const lead = leanings(entries)[0] ?? "even";
+    first[lead] = (first[lead] ?? 0) + 1;
+  }
+  const kinds = ["drive+", "drive-", "social+", "social-", "feel+", "feel-", "steady+", "steady-"];
+  const top = Math.max(...kinds.map((k) => (first[k] ?? 0) / N));
+  const low = Math.min(...kinds.map((k) => (first[k] ?? 0) / N));
+  check("no kind of person takes more than 20% of random faces", top <= 0.2, `top ${(top * 100).toFixed(1)}%`);
+  check("every kind of person shows up in at least 5%", low >= 0.05, `lowest ${(low * 100).toFixed(1)}%`);
 }
 
 {
