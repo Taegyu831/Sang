@@ -9,6 +9,7 @@
 // measurements.
 import { FACETS, AXES, LOOKS, entryKey } from "./facets.js";
 import { josa } from "./parts.js";
+import { sanjeongParts } from "./sanjeong.js";
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 // How far from the average (in steps) an axis must be to count as a kind of person.
@@ -172,13 +173,16 @@ function gather(entries, field, limit, told = new Set()) {
 // few kinds of person come out for almost everybody. Each axis is measured
 // against its own average, in steps, so "+" and "-" are equally easy to reach.
 // Source: 20000 random faces drawn from CALIBRATION (centre and scale of each
-// ratio, normal and independent), 2026-11-21. Move these to measured values when
-// the collected visitor data is in (tools/measurements.sql).
+// ratio, normal and independent), first 2026-11-21, redone 2026-11-22 after the
+// zones moved to sanjeong.js. The redo ASSUMES the brow line sits 8.6 points above
+// the glabella (canonical face) with 0.8 spread between people; the real spread
+// is not measured yet (artificial). Move these to measured values when the
+// collected visitor data is in (tools/measurements.sql).
 export const AXIS_BASE = {
-  drive: { mean: 1.284, sd: 3.884 },
-  social: { mean: 3.874, sd: 2.899 },
-  feel: { mean: 3.706, sd: 3.827 },
-  steady: { mean: 4.549, sd: 3.854 },
+  drive: { mean: 1.297, sd: 3.918 },
+  social: { mean: 3.52, sd: 2.828 },
+  feel: { mean: 3.855, sd: 3.825 },
+  steady: { mean: 4.91, sd: 3.557 },
 };
 
 /** The raw pull of every reading on each axis (before the average is taken off). */
@@ -224,8 +228,10 @@ function opposes(key, poles) {
  * @returns       { headline, pages: [{ title, lead, body: [], basis: [] }], closing }
  *                pages[0] is the first page; the closing page is built by the app.
  */
-export function composeStory(parts, shape, extras = { lines: [], size: null }) {
-  const entries = parts
+export function composeStory(parts, shape, extras = { lines: [], size: null, stop: null, frame: [] }) {
+  // The zones (삼정) come from the frame judgement (sanjeong.js), not from the part cards: parts.js skips
+  // the middle and lower zone card, so a long zone is read once, and an equal face is told by a sentence.
+  const entries = [...parts, ...sanjeongParts(extras.stop)]
     .filter((p) => p.dir !== "middle" && p.id !== "faceShape")
     .map((part) => ({ part, key: entryKey(part), facets: FACETS[entryKey(part)] }))
     .filter((e) => e.facets);
@@ -242,6 +248,7 @@ export function composeStory(parts, shape, extras = { lines: [], size: null }) {
   const traits = gather(aligned.length ? aligned : entries, "traits", 7, told);
   const first = { title: "이 사람은", lead: `이 사람은 ${headline}`, body: [], basis: traits.basis };
   if (shape) first.body.push((shape.text.match(/[^.]+\.\s*/g)?.slice(0, 2).join("").trim() ?? "").replace(shape.name, em(shape.name)));
+  for (const line of extras.frame ?? []) first.body.push(line);
   if (traits.items.length) first.body.push(`성격으로는 ${josa(list(traits.items), "이", "가")} 함께 두드러집니다.`);
   const other = aligned.length ? gather(against, "traits", 3, told) : { items: [], basis: [] };
   if (other.items.length) {

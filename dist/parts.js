@@ -96,6 +96,8 @@ export function fillTokens(text, key, values, calibration = CALIBRATION) {
 function pickKey(card, values, calibration) {
   let best = null;
   for (const key of card.keys) {
+    // A card can leave some of its keys to another reading (parts.json "exclude", see sanjeong.js).
+    if (card.exclude?.includes(key)) continue;
     const z = zScore(key, values[key], calibration);
     if (!finite(z)) continue;
     if (!best || Math.abs(z) > Math.abs(best.z)) best = { key, z };

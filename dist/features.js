@@ -106,6 +106,43 @@ function calculateSymmetry(p, faceWidth, faceHeight, leftEyeWidth, rightEyeWidth
   return clamp(100 - penalty * 100, 0, 100);
 }
 
+const BROW_POINTS = ["browLeftOuter", "browLeftInner", "browLeftTop", "browRightOuter", "browRightInner", "browRightTop"];
+
+/**
+ * 삼정 cut the way the old text cuts it: 自髮際至眉 (hairline to brow),
+ * 眉至準頭 (brow to nose), 準頭至地閣 (nose to chin tip). The earlier thirds in
+ * this file (upperThird, middleThird, lowerThird) cut at the glabella instead
+ * and are kept only for the part cards and the recorded history.
+ *
+ * Choices that are ours, not the text's (see docs/READING_ENGINE.md, "삼정"):
+ *  - the brow line is the mean height of the six brow points;
+ *  - 準頭 is taken as the lower edge of the nose (noseBase), where a straight
+ *    line across a photo would be drawn. The nose tip point (noseTip) is also
+ *    kept, as stopMidLowTip, so the two readings can be compared on real data;
+ *  - the top is still the mesh top, not the hairline, so stopUpper is short by
+ *    the hair gap and is not used to judge equality (sanjeong.js).
+ * Units: shares in percent of mesh top to chin; stopMidLow and stopMidLowTip are
+ * multiples (middle zone over lower zone).
+ */
+export function stopFeatures(p) {
+  if (!BROW_POINTS.every((name) => p[name]) || !p.meshTop || !p.noseBase || !p.noseTip || !p.chin) return {};
+  const browY = mean(BROW_POINTS.map((name) => p[name].y));
+  const total = p.chin.y - p.meshTop.y;
+  const upper = browY - p.meshTop.y;
+  const middle = p.noseBase.y - browY;
+  const lower = p.chin.y - p.noseBase.y;
+  const middleTip = p.noseTip.y - browY;
+  const lowerTip = p.chin.y - p.noseTip.y;
+  if (![total, upper, middle, lower, middleTip, lowerTip].every((v) => finite(v) && v > 0)) return {};
+  return {
+    stopUpper: (upper / total) * 100,
+    stopMiddle: (middle / total) * 100,
+    stopLower: (lower / total) * 100,
+    stopMidLow: middle / lower,
+    stopMidLowTip: middleTip / lowerTip,
+  };
+}
+
 /**
  * All ratios used by the readings, from straight-on points.
  * Units: thirds, noseWidth, philtrumLower, jawCheek, foreheadFace, faceRatio,
@@ -138,6 +175,7 @@ export function computeFrontFeatures(p) {
     upperThird: (upperPx / thirdsTotal) * 100,
     middleThird: (middlePx / thirdsTotal) * 100,
     lowerThird: (lowerPx / thirdsTotal) * 100,
+    ...stopFeatures(p),
     outerLeft,
     leftEye: leftEyeWidth / averageEyeWidth,
     eyeGap,

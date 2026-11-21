@@ -2,6 +2,10 @@
 <meta charset="utf-8" />
 <title>engine tests</title>
 <pre id="out">RUNNING</pre>
+<script>
+// A crash must not look like a test that is still running.
+for (const type of ["error", "unhandledrejection"]) window.addEventListener(type, (e) => { document.getElementById("out").textContent = `CRASHED ${e.message ?? e.reason?.stack ?? e.reason}`; });
+</script>
 <script type="module">
 import { estimatePose, frontalizePoints, canonicalPoints } from "../dist/pose.js";
 import { computeFrontFeatures } from "../dist/features.js";
@@ -12,8 +16,9 @@ import { interpret, evaluateTheme, buildTone } from "../dist/interpret.js";
 import { findHairline, hairThirds } from "../dist/hair.js";
 import { readParts } from "../dist/parts.js";
 import { applyPoseResidual, POSE_RESIDUAL } from "../dist/residual.js";
-import { mergeItems, leanings } from "../dist/story.js";
-import { FACETS, entryKey } from "../dist/facets.js";
+import { mergeItems, composeStory } from "../dist/story.js";
+import { extrasOf } from "../dist/extras.js";
+import { judgeSanjeong, sanjeongText, sanjeongParts, STOP_RULES } from "../dist/sanjeong.js";
 import { buildRecord } from "../dist/collect.js";
 import { portraitPrompt, partnerOf, featureWords, fallbackPath } from "../dist/portrait.js";
 
@@ -287,11 +292,11 @@ for (const [yaw, pitch, roll] of [[22, 0, 0], [-24, 12, 0], [0, -18, 0], [15, 15
   for (let i = 0; i < N; i++) {
     const v = {};
     for (const [k, c] of Object.entries(CALIBRATION)) v[k] = c.center + c.scale * gauss();
-    const entries = readParts(v, partsContent).all
-      .filter((p) => p.dir !== "middle" && p.id !== "faceShape")
-      .map((part) => ({ part, key: entryKey(part), facets: FACETS[entryKey(part)] }))
-      .filter((e) => e.facets);
-    const lead = leanings(entries)[0] ?? "even";
+    // the brow line sits about 8.6 points above the glabella (canonical face): see story.js AXIS_BASE
+    v.stopMiddle = v.middleThird + 8.6 + 0.8 * gauss();
+    v.stopLower = v.lowerThird;
+    const parts = readParts(v, partsContent);
+    const lead = composeStory(parts.all, null, extrasOf(v, parts.all)).poles[0] ?? "even";
     first[lead] = (first[lead] ?? 0) + 1;
   }
   const kinds = ["drive+", "drive-", "social+", "social-", "feel+", "feel-", "steady+", "steady-"];
@@ -299,6 +304,38 @@ for (const [yaw, pitch, roll] of [[22, 0, 0], [-24, 12, 0], [0, -18, 0], [15, 15
   const low = Math.min(...kinds.map((k) => (first[k] ?? 0) / N));
   check("no kind of person takes more than 20% of random faces", top <= 0.2, `top ${(top * 100).toFixed(1)}%`);
   check("every kind of person shows up in at least 5%", low >= 0.05, `lowest ${(low * 100).toFixed(1)}%`);
+}
+
+{
+  // 삼정 as the old text cuts it (sanjeong.js, features.js stopFeatures)
+  const canon = computeFrontFeatures(canonicalPoints(14));
+  const sum = canon.stopUpper + canon.stopMiddle + canon.stopLower;
+  check("the three zones (停) add up to 100", near(sum, 100, 0.01), `sum ${sum.toFixed(3)}`);
+  check("middle over lower zone on the canonical face is near equal", canon.stopMidLow > 0.85 && canon.stopMidLow < 1.05, `ratio ${canon.stopMidLow.toFixed(3)}`);
+  check("the nose tip cut gives a different ratio, kept for comparison", Number.isFinite(canon.stopMidLowTip) && canon.stopMidLowTip < canon.stopMidLow);
+  const cut = (middle, lower) => judgeSanjeong({ stopMiddle: middle, stopLower: lower });
+  check("equal zones read as even", cut(39, 41).state === "even" && cut(40, 40).state === "even");
+  check("a clearly longer lower zone is told", cut(34, 46).state === "lowerLong" && cut(34, 46).gap < 0);
+  check("a clearly longer middle zone is told", cut(46, 34).state === "middleLong" && cut(46, 34).gap > 0);
+  const edge = STOP_RULES.evenWithin;
+  check("the band is symmetric around equal", judgeSanjeong({ stopMiddle: 100 * (1 + edge / 2), stopLower: 100 * (1 - edge / 2) }).state === "even");
+  check("no judgement without the zone values", judgeSanjeong({}) === null && judgeSanjeong({ stopMiddle: NaN, stopLower: 40 }) === null);
+  check("an equal face is told by a sentence, not a part", sanjeongParts(cut(40, 40)).length === 0 && /삼정의 균형/.test(sanjeongText(cut(40, 40))));
+  const longPart = sanjeongParts(cut(34, 46))[0];
+  check("a long zone becomes one part the story can fold in", longPart && longPart.id === "thirds" && longPart.key === "lowerThird" && longPart.dir === "high" && longPart.z >= 1);
+  check("no dash in the 삼정 sentences", !/[\u2014\u2013]/.test(["even", "middleLong", "lowerLong"].map((state) => sanjeongText({ state })).join(""))); 
+  const partsContent = await (await fetch("../dist/parts.json")).json();
+  const skew = { ...Object.fromEntries(Object.entries(CALIBRATION).map(([k, c]) => [k, c.center])), lowerThird: CALIBRATION.lowerThird.center + 3 * CALIBRATION.lowerThird.scale, upperThird: CALIBRATION.upperThird.center };
+  const thirdsCard = readParts(skew, partsContent).all.find((c) => c.id === "thirds");
+  check("the thirds card no longer reads the middle and lower zone", !thirdsCard || thirdsCard.key === "upperThird", `key ${thirdsCard?.key}`);
+  const even = { ...Object.fromEntries(Object.entries(CALIBRATION).map(([k, c]) => [k, c.center])), stopMiddle: 40, stopLower: 40 };
+  const evenParts = readParts(even, partsContent);
+  const story = composeStory(evenParts.all, null, extrasOf(even, evenParts.all));
+  check("the first page tells the 삼정 frame before the parts", story.pages[0].body.some((line) => line.includes("삼정의 균형")));
+  const longer = { ...even, stopMiddle: 33, stopLower: 47 };
+  const longerParts = readParts(longer, partsContent);
+  const longStory = composeStory(longerParts.all, null, extrasOf(longer, longerParts.all));
+  check("an unequal face says which zone is long", longStory.pages[0].body.some((line) => line.includes("하정이 길면")));
 }
 
 {

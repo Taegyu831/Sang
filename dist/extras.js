@@ -5,6 +5,7 @@
 // measurement) and move center and scale to the measured values, as was done
 // for CALIBRATION.
 import { zScore } from "./calibration.js";
+import { judgeSanjeong, sanjeongText } from "./sanjeong.js";
 
 export const POSED_CALIBRATION = {
   jawFlex: { label: "힘줄 때 턱 폭 변화", unit: "%p", center: 1.0, scale: 1.0, from: "guess" },
@@ -14,7 +15,7 @@ export const POSED_CALIBRATION = {
 const em = (text) => `⟦${text}⟧`;
 const SIZE_RANGE_MM = [110, 175];
 
-/** { lines: [...], size: "..." | null } to add to the first page of the story. */
+/** { lines: [...], size: "..." | null, stop, frame: [...] } to add to the first page of the story. */
 export function extrasOf(values = {}, parts = []) {
   const lines = [];
   const dirOf = (key) => parts.find((p) => p.key === key)?.dir ?? "middle";
@@ -45,5 +46,7 @@ export function extrasOf(values = {}, parts = []) {
   const size = Number.isFinite(mm) && mm >= SIZE_RANGE_MM[0] && mm <= SIZE_RANGE_MM[1]
     ? `홍채 크기를 잣대로 어림하면 얼굴 너비는 약 ${(mm / 10).toFixed(1)}cm입니다.`
     : null;
-  return { lines, size };
+  // The frame (삼정) is told before the parts, so it is kept apart from the posed-shot lines.
+  const stop = judgeSanjeong(values);
+  return { lines, size, stop, frame: stop ? [sanjeongText(stop)] : [] };
 }
