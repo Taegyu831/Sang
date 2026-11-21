@@ -20,25 +20,33 @@
 //  3. Softening. The text says unequal zones mean 孤夭貧賤 (lonely, short life,
 //     poor). The exhibit does not tell visitors that; an unequal face is told as
 //     "that period stands out" in the plain terms of the popular readings.
-//  4. 準頭 (nose tip) is cut at the lower edge of the nose, see features.js.
+//  4. 準頭 is the nose tip point, as the text says (features.js). The text does not
+//     say how long the middle zone is against the lower one on a balanced face, so
+//     CENTER below is a stand-in until real faces are measured. It is the earlier
+//     reference (equal when cut at the nose bottom) moved to the tip cut: on the
+//     canonical face the tip cut gap is -0.333 against -0.061 at the nose bottom,
+//     so the same verdicts keep the centre at -0.27 (-0.333 would be the plain
+//     "canonical face is balanced" choice; real data should decide).
 
 const finite = Number.isFinite;
 
 export const STOP_RULES = {
   // ARTIFICIAL. See note 1 above.
   evenWithin: 0.12,
+  // ARTIFICIAL. See note 4 above. Gap (middle - lower) / mean taken as "equal".
+  center: -0.27,
 };
 
 /**
  * @param values pooled measurement (features.js stopMiddle, stopLower in percent)
  * @returns {{state: "even"|"middleLong"|"lowerLong", gap: number, middle: number, lower: number}|null}
- *   gap > 0 when the middle zone is longer than the lower zone, as a share of their mean.
+ *   gap > 0 when the middle zone is longer than the balanced reference (rules.center), as a share of their mean.
  */
 export function judgeSanjeong(values = {}, rules = STOP_RULES) {
   const middle = values.stopMiddle;
   const lower = values.stopLower;
   if (!finite(middle) || !finite(lower) || middle <= 0 || lower <= 0) return null;
-  const gap = (middle - lower) / ((middle + lower) / 2);
+  const gap = (middle - lower) / ((middle + lower) / 2) - rules.center;
   const state = Math.abs(gap) <= rules.evenWithin ? "even" : gap > 0 ? "middleLong" : "lowerLong";
   return { state, gap, middle, lower };
 }

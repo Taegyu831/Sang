@@ -116,12 +116,12 @@ const BROW_POINTS = ["browLeftOuter", "browLeftInner", "browLeftTop", "browRight
  *
  * Choices that are ours, not the text's (see docs/READING_ENGINE.md, "삼정"):
  *  - the brow line is the mean height of the six brow points;
- *  - 準頭 is taken as the lower edge of the nose (noseBase), where a straight
- *    line across a photo would be drawn. The nose tip point (noseTip) is also
- *    kept, as stopMidLowTip, so the two readings can be compared on real data;
+ *  - 準頭 is the nose tip point (noseTip), as the text says (2026-11-22: it was
+ *    the lower edge of the nose before). The lower-edge version is still kept,
+ *    as stopMidLowBase, so the two cuts can be compared on real data;
  *  - the top is still the mesh top, not the hairline, so stopUpper is short by
  *    the hair gap and is not used to judge equality (sanjeong.js).
- * Units: shares in percent of mesh top to chin; stopMidLow and stopMidLowTip are
+ * Units: shares in percent of mesh top to chin; stopMidLow and stopMidLowBase are
  * multiples (middle zone over lower zone).
  */
 export function stopFeatures(p) {
@@ -129,17 +129,17 @@ export function stopFeatures(p) {
   const browY = mean(BROW_POINTS.map((name) => p[name].y));
   const total = p.chin.y - p.meshTop.y;
   const upper = browY - p.meshTop.y;
-  const middle = p.noseBase.y - browY;
-  const lower = p.chin.y - p.noseBase.y;
-  const middleTip = p.noseTip.y - browY;
-  const lowerTip = p.chin.y - p.noseTip.y;
-  if (![total, upper, middle, lower, middleTip, lowerTip].every((v) => finite(v) && v > 0)) return {};
+  const middle = p.noseTip.y - browY;
+  const lower = p.chin.y - p.noseTip.y;
+  const middleBase = p.noseBase.y - browY;
+  const lowerBase = p.chin.y - p.noseBase.y;
+  if (![total, upper, middle, lower, middleBase, lowerBase].every((v) => finite(v) && v > 0)) return {};
   return {
     stopUpper: (upper / total) * 100,
     stopMiddle: (middle / total) * 100,
     stopLower: (lower / total) * 100,
     stopMidLow: middle / lower,
-    stopMidLowTip: middleTip / lowerTip,
+    stopMidLowBase: middleBase / lowerBase,
   };
 }
 

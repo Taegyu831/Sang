@@ -1042,7 +1042,7 @@ function parseOverrides(text) {
 async function startPreview() {
   await loadContent();
   const base = Object.fromEntries(Object.entries(CALIBRATION).map(([key, c]) => [key, c.center]));
-  const values = { ...base, leftEye: 1, rightEye: 1, outerLeft: 1.27, outerRight: 1.27, eyeGap: 1.43, noseDepth: 64, bridgeDepth: 50, chinDepth: 44, stopMiddle: 38.95, stopLower: 41.4, ...parseOverrides(SEARCH_PARAMS.get("v")) };
+  const values = { ...base, leftEye: 1, rightEye: 1, outerLeft: 1.27, outerRight: 1.27, eyeGap: 1.43, noseDepth: 64, bridgeDepth: 50, chinDepth: 44, stopMiddle: 33.5, stopLower: 46.9, ...parseOverrides(SEARCH_PARAMS.get("v")) };
   finalMeasurement = { ...values, confidence: 88, frames: 96, stability: 0.9, coverage: { yaw: [-18, 20], pitch: [-9, 11] } };
   reading = interpret(finalMeasurement, content);
   bestShot = { weight: 1, shot: createPreviewFrame() };
