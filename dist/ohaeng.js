@@ -53,6 +53,11 @@ export const FORMS = {
 const finite = Number.isFinite;
 const num = (v) => (finite(v) ? v : 0);
 
+/** How far the forehead is wider than the jaw, against the usual gap, in steps. Also read by pairs.js (福德宮). */
+export function foreheadOverJawZ(values = {}) {
+  return (values.foreheadFace - values.jawCheek - FOREHEAD_OVER_JAW.center) / FOREHEAD_OVER_JAW.scale;
+}
+
 /** The five scores, from z values against the measured people (calibration.js). */
 export function ohaengScores(values = {}, calibration, rules = OHAENG_RULES) {
   const zR = zScore("faceRatio", values.faceRatio, calibration);
@@ -60,7 +65,7 @@ export function ohaengScores(values = {}, calibration, rules = OHAENG_RULES) {
   const zF = zScore("foreheadFace", values.foreheadFace, calibration);
   if (!finite(zR) || !finite(zJ) || !finite(zF)) return null;
   const zC = num(zScore("chinWidth", values.chinWidth, calibration));
-  const zD = (values.foreheadFace - values.jawCheek - FOREHEAD_OVER_JAW.center) / FOREHEAD_OVER_JAW.scale;
+  const zD = foreheadOverJawZ(values);
   return {
     wood: -zR + zD,
     fire: -zD,

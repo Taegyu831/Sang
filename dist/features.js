@@ -90,6 +90,17 @@ function browArch(outer, inner, top) {
   return ((lineY - top.y) / Math.max(1e-6, distance(outer, inner))) * 100;
 }
 
+// How unequal the two cheekbone sides are: the face outline at its widest (the cheekbone
+// level), left and right of the midline drawn through the brow centre and the chin tip,
+// as a percent of their sum. 0 is an even pair.
+function cheekAsymmetry(p) {
+  const midX = mean(p.glabella.x, p.chin.x);
+  const left = midX - p.faceLeft.x;
+  const right = p.faceRight.x - midX;
+  const sum = left + right;
+  return finite(sum) && sum > 0 ? (Math.abs(left - right) / sum) * 100 : NaN;
+}
+
 function calculateSymmetry(p, faceWidth, faceHeight, leftEyeWidth, rightEyeWidth) {
   const faceMidX = mean(p.faceLeft.x, p.faceRight.x);
   const leftEyeCenter = { x: mean(p.eyeLeftOuter.x, p.eyeLeftInner.x), y: mean(p.eyeLeftOuter.y, p.eyeLeftInner.y) };
@@ -196,6 +207,7 @@ export function computeFrontFeatures(p) {
     bridgeDepth: ((cheekPlaneZ - p.noseBridge.z) / faceWidth) * 100,
     chinDepth: ((cheekPlaneZ - p.chin.z) / faceWidth) * 100,
     symmetry: calculateSymmetry(p, faceWidth, faceHeight, leftEyeWidth, rightEyeWidth),
+    cheekAsym: cheekAsymmetry(p),
     ...detailFeatures(p, { faceWidth, faceHeight, jawWidth, averageEyeWidth, leftEyeWidth, rightEyeWidth, mouthWidth, eyeGapPx }),
     faceHeightPx: faceHeight,
     ...sizeFeatures(p, { faceWidth, faceHeight, averageEyeWidth, mouthWidth, noseWidth }),

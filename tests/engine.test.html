@@ -20,6 +20,7 @@ import { mergeItems, composeStory } from "../dist/story.js";
 import { extrasOf } from "../dist/extras.js";
 import { classifyOhaeng, ohaengLines, FORMS } from "../dist/ohaeng.js";
 import { ageLines, AGE_STAGES } from "../dist/age.js";
+import { judgePairs, pairLines, PAIR_RULES } from "../dist/pairs.js";
 import { judgeSanjeong, sanjeongText, sanjeongParts, STOP_RULES } from "../dist/sanjeong.js";
 import { buildRecord } from "../dist/collect.js";
 import { portraitPrompt, partnerOf, featureWords, fallbackPath } from "../dist/portrait.js";
@@ -386,6 +387,32 @@ for (const [yaw, pitch, roll] of [[22, 0, 0], [-24, 12, 0], [0, -18, 0], [15, 15
   check("the 시기 page begins with the decade reading", story.pages[3].body[0].includes("20대"));
   const noForm = composeStory(ps.all, { name: "각진형", text: "각진형입니다. 둘째 문장입니다." }, { lines: [], size: null, stop: null, frame: [] });
   check("without a form the plain shape sentence is kept", noForm.pages[0].body[0].includes("각진형"));
+}
+
+{
+  // 예외 (pairs.js): the most mismatched pair
+  const C = CALIBRATION;
+  const mid = Object.fromEntries(Object.entries(C).map(([k, c]) => [k, c.center]));
+  const face = (o) => ({ ...mid, foreheadFace: 85.71, jawCheek: 80.4, cheekAsym: 3.0, ...o });
+  const canonAsym = computeFrontFeatures(canonicalPoints(14)).cheekAsym;
+  check("the canonical face has even cheekbone sides", canonAsym >= 0 && canonAsym < 1, `cheekAsym ${canonAsym?.toFixed(2)}`);
+  check("an average face has even pairs", judgePairs(face({}), C).kind === "balanced");
+  const wide = judgePairs(face({ foreheadFace: 92, jawCheek: 76 }), C);
+  check("a wide forehead over a narrow jaw is the 福德宮 pair, told as late", wide.kind === "fortune" && wide.dir === "wide" && /말년/.test(pairLines(wide).join("")));
+  const narrow = judgePairs(face({ foreheadFace: 80, jawCheek: 84 }), C);
+  check("a narrow forehead over a wide jaw is told as early", narrow.kind === "fortune" && narrow.dir === "narrow" && /초년/.test(pairLines(narrow).join("")));
+  check("two unlike eyes are told without inventing a result", (() => { const e = judgePairs(face({ eyeAsym: C.eyeAsym.center + 3 * C.eyeAsym.scale }), C); const t = pairLines(e).join(""); return e.kind === "eyes" && /두 눈/.test(t) && !/운이|운을|복이|재물|형제|말년|초년/.test(t); })());
+  check("two unlike cheekbones are told without inventing a result", (() => { const e = judgePairs(face({ cheekAsym: 9 }), C); const t = pairLines(e).join(""); return e.kind === "cheeks" && /광대/.test(t) && !/운이|운을|복이|재물|형제|말년|초년/.test(t); })());
+  check("only the most mismatched pair is told", judgePairs(face({ eyeAsym: C.eyeAsym.center + 5 * C.eyeAsym.scale, foreheadFace: 88, jawCheek: 78 }), C).kind === "eyes");
+  check("no pair judgement without any measure", judgePairs({}, C) === null && pairLines(null).length === 0);
+  check("brows and half stay out of the pairs", !["brow", "brows", "nose"].includes(judgePairs(face({ browLength: 1 }), C).kind));
+  check("the pair sentences have no dash and no half-brother", !/[\u2014\u2013]|이복|異母/.test(["balanced", "eyes", "cheeks"].map((kind) => pairLines({ kind }).join("")).concat(pairLines({ kind: "fortune", dir: "wide" }), pairLines({ kind: "fortune", dir: "narrow" })).join("")));
+  const partsContent = await (await fetch("../dist/parts.json")).json();
+  const v = face({ foreheadFace: 92, jawCheek: 76 });
+  const ps = readParts(v, partsContent);
+  const story = composeStory(ps.all, null, extrasOf(v, ps.all, 30));
+  check("the first page tells the pair after the frame", story.pages[0].body.some((l) => l.includes("마주 보는 짝")));
+  void PAIR_RULES;
 }
 
 {

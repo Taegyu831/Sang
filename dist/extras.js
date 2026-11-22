@@ -8,6 +8,7 @@ import { zScore } from "./calibration.js";
 import { judgeSanjeong, sanjeongText } from "./sanjeong.js";
 import { classifyOhaeng, ohaengLines } from "./ohaeng.js";
 import { ageLines } from "./age.js";
+import { judgePairs, pairLines } from "./pairs.js";
 
 export const POSED_CALIBRATION = {
   jawFlex: { label: "힘줄 때 턱 폭 변화", unit: "%p", center: 1.0, scale: 1.0, from: "guess" },
@@ -51,5 +52,6 @@ export function extrasOf(values = {}, parts = [], age = null) {
   // The frame (삼정) is told before the parts, so it is kept apart from the posed-shot lines.
   const stop = judgeSanjeong(values);
   const form = classifyOhaeng(values);
-  return { lines, size, stop, frame: stop ? [sanjeongText(stop)] : [], form, formLines: ohaengLines(form), ageLines: ageLines(parts, age) };
+  const pair = judgePairs(values);
+  return { lines, size, stop, frame: stop ? [sanjeongText(stop)] : [], form, formLines: ohaengLines(form), pair, pairLines: pairLines(pair), ageLines: ageLines(parts, age) };
 }

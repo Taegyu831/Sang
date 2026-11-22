@@ -251,6 +251,7 @@ export function composeStory(parts, shape, extras = { lines: [], size: null, sto
   for (const line of extras.formLines ?? []) first.body.push(line);
   if (shape && !(extras.formLines ?? []).length) first.body.push((shape.text.match(/[^.]+\.\s*/g)?.slice(0, 2).join("").trim() ?? "").replace(shape.name, em(shape.name)));
   for (const line of extras.frame ?? []) first.body.push(line);
+  for (const line of extras.pairLines ?? []) first.body.push(line);
   if (traits.items.length) first.body.push(`성격으로는 ${josa(list(traits.items), "이", "가")} 함께 두드러집니다.`);
   const other = aligned.length ? gather(against, "traits", 3, told) : { items: [], basis: [] };
   if (other.items.length) {
