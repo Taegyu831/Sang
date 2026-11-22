@@ -38,6 +38,16 @@ export const PAIRS = [
   { id: "chinEyes", label: "턱끝이 눈보다 나온 정도", from: "eyeLeftOuter+eyeRightOuter", to: "chin" },
 ];
 
+/**
+ * Horizontal gap between two points with the head tilt (roll) taken out. A tilted head
+ * turns the vertical gap between the points into a sideways gap; without this a nose
+ * or chin far below the eyes picks up a false depth whenever the head tilts while it turns.
+ */
+function gapX(frame, a, b, deroll) {
+  const r = deroll ? (frame.roll ?? 0) * RAD : 0;
+  return (b.x - a.x) * Math.cos(r) + (b.y - a.y) * Math.sin(r);
+}
+
 const SCALE_PAIR = { from: "eyeLeftOuter", to: "eyeRightOuter" };
 
 /**
@@ -76,11 +86,11 @@ export function usable(frames, { yawLimit = 35, pitchLimit = 12 } = {}) {
  * the model's own z for comparison.
  * @param frames [{ yaw, pitch, pts }] with pts in pixels (x, y, z as features.js getPoints gives)
  */
-export function measureDepths(frames, { pairs = PAIRS, yawKey = "yaw" } = {}) {
+export function measureDepths(frames, { pairs = PAIRS, yawKey = "yaw", deroll = true } = {}) {
   const good = usable(frames.map((f) => ({ ...f, yaw: f[yawKey] })));
   const scaleFit = fitParallax(good.flatMap((f) => {
     const a = pointOf(f.pts, SCALE_PAIR.from), b = pointOf(f.pts, SCALE_PAIR.to);
-    return a && b ? [{ yaw: f.yaw, dx: b.x - a.x }] : [];
+    return a && b ? [{ yaw: f.yaw, dx: gapX(f, a, b, deroll) }] : [];
   }));
   const out = { frames: good.length, scale: scaleFit?.a ?? null, yawMin: scaleFit?.yawMin ?? null, yawMax: scaleFit?.yawMax ?? null, pairs: {} };
   if (!scaleFit || !(scaleFit.a > 0)) return out;
@@ -91,7 +101,7 @@ export function measureDepths(frames, { pairs = PAIRS, yawKey = "yaw" } = {}) {
     for (const f of good) {
       const a = pointOf(f.pts, pair.from), b = pointOf(f.pts, pair.to);
       if (!a || !b) continue;
-      samples.push({ yaw: f.yaw, dx: b.x - a.x });
+      samples.push({ yaw: f.yaw, dx: gapX(f, a, b, deroll) });
       // The model's z, from nearly straight-on frames only (smaller z is nearer the camera).
       if (Math.abs(f.yaw) <= 8) zs.push(a.z - b.z);
     }

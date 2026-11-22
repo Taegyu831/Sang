@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>깊이 시험지</title>
+<style>
+  :root {
+    --bg: #fbf6ee; --card: #fffdf8; --ink: #231c16; --dim: #7a6f63; --line: #e6dccb;
+    --accent: #a3281d; --accent-soft: #f3dcd6; --ok: #2f8f5b; --ok-soft: #dcefe3; --warn: #b9770e;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
+  main { max-width: 720px; margin: 0 auto; padding: 20px 16px 80px; }
+  h1 { font-size: 20px; margin: 0 0 2px; text-align: center; }
+  .sub { color: var(--dim); text-align: center; margin: 0 0 18px; font-size: 14px; }
+  /* progress */
+  .stepper { display: flex; justify-content: center; gap: 6px; margin: 0 0 18px; }
+  .stepper li { list-style: none; display: flex; align-items: center; gap: 6px; color: var(--dim); font-size: 13px; }
+  .stepper ol { display: contents; }
+  .stepper b { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--line); color: var(--dim); font-size: 13px; transition: all .3s; }
+  .stepper li.on { color: var(--ink); font-weight: 600; } .stepper li.on b { background: var(--accent); color: #fff; transform: scale(1.12); }
+  .stepper li.done b { background: var(--ok); color: #fff; }
+  .stepper li + li::before { content: ""; width: 22px; height: 2px; background: var(--line); margin-right: 6px; }
+  /* steps */
+  .step { display: none; animation: rise .4s ease both; }
+  .step.on { display: block; }
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px; margin: 0 0 14px; }
+  .card h2 { font-size: 18px; margin: 0 0 6px; }
+  .big { font-size: 22px; font-weight: 700; margin: 0 0 8px; }
+  .hint { color: var(--dim); font-size: 14px; margin: 6px 0 0; }
+  input[type=text] { width: 100%; font: inherit; font-size: 20px; padding: 12px 14px; border: 2px solid var(--line); border-radius: 12px; background: #fff; color: var(--ink); }
+  input[type=text]:focus { outline: none; border-color: var(--accent); }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 0; }
+  .chip { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 6px 14px; font: inherit; font-size: 14px; cursor: pointer; color: var(--ink); }
+  .chip:hover { border-color: var(--accent); }
+  .btn { display: block; width: 100%; font: inherit; font-size: 18px; font-weight: 700; padding: 16px; border-radius: 14px; border: 0; background: var(--accent); color: #fff; cursor: pointer; transition: transform .15s, opacity .2s; }
+  .btn:hover:not(:disabled) { transform: translateY(-1px); } .btn:active:not(:disabled) { transform: scale(.98); }
+  .btn:disabled { opacity: .35; cursor: default; }
+  .btn.ghost { background: transparent; color: var(--ink); border: 2px solid var(--line); font-weight: 600; font-size: 16px; }
+  .btn.pulse:not(:disabled) { animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(163,40,29,.35); } 50% { box-shadow: 0 0 0 10px rgba(163,40,29,0); } }
+  .row { display: flex; gap: 10px; } .row > * { flex: 1; }
+  ul.tips { margin: 8px 0 0; padding-left: 20px; } ul.tips li { margin: 2px 0; }
+  /* stage */
+  #stage { position: relative; width: 100%; max-width: 640px; margin: 0 auto 12px; aspect-ratio: 16 / 9; border-radius: 16px; overflow: hidden; background: #1c1713; display: none; }
+  #stage.on { display: block; animation: rise .4s ease both; }
+  #stage video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+  #oval { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  #oval ellipse { fill: none; stroke: rgba(255,255,255,.35); stroke-width: 1; stroke-dasharray: 6 6; vector-effect: non-scaling-stroke; transition: stroke .3s; }
+  #stage.ready #oval ellipse { stroke: rgba(107,227,155,.8); stroke-dasharray: none; }
+  #stage[data-step="3"] #oval { display: none; }
+  #cue { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 16px; background: linear-gradient(transparent, rgba(0,0,0,.72)); color: #fff; text-align: center; font-size: 22px; font-weight: 700; display: none; }
+  #stage.rec #cue { display: block; }
+  #cue .w-left { color: #ffd23f; text-shadow: 0 0 10px rgba(255,210,63,.55); }
+  #cue .w-right { color: #4fd8ff; text-shadow: 0 0 10px rgba(79,216,255,.55); }
+  #cue .arrow.left { color: #ffd23f; } #cue .arrow.right { color: #4fd8ff; }
+  #cue small { display: block; font-size: 14px; font-weight: 400; opacity: .85; }
+  .arrow { display: inline-block; font-size: 30px; vertical-align: -3px; }
+  .arrow.left { animation: nudgeL 1s ease-in-out infinite; } .arrow.right { animation: nudgeR 1s ease-in-out infinite; }
+  @keyframes nudgeL { 50% { transform: translateX(-10px); } } @keyframes nudgeR { 50% { transform: translateX(10px); } }
+  #count { position: absolute; inset: 0; display: none; place-items: center; background: rgba(0,0,0,.45); color: #fff; font-size: 120px; font-weight: 800; }
+  #count.on { display: grid; } #count span { animation: pop .9s ease both; }
+  @keyframes pop { 0% { transform: scale(.4); opacity: 0; } 30% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); opacity: .9; } }
+  #checks { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 0 0 10px; }
+  .check { padding: 6px 12px; border-radius: 999px; background: var(--line); color: var(--dim); font-size: 14px; transition: all .3s; }
+  .check.ok { background: var(--ok-soft); color: var(--ok); font-weight: 600; }
+  /* gauge */
+  #gauge { position: relative; height: 18px; border-radius: 9px; background: var(--line); margin: 6px 0 4px; display: none; }
+  #gauge.on { display: block; }
+  #gauge .zone { position: absolute; top: 0; bottom: 0; background: var(--accent-soft); border-radius: 9px; transition: background .3s; }
+  #gauge .zone.hit { background: #9fdcb8; }
+  #gauge .mid { position: absolute; left: 50%; top: -3px; bottom: -3px; width: 2px; background: var(--dim); }
+  #gauge .dot { position: absolute; left: 50%; top: -4px; width: 26px; height: 26px; margin-left: -13px; border-radius: 50%; background: var(--accent); border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.3); transition: left .08s linear; }
+  #gaugeLabels { display: none; justify-content: space-between; font-size: 12px; color: var(--dim); margin: 0 4px 8px; }
+  #gaugeLabels.on { display: flex; }
+  #progress { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; display: none; margin: 8px 0; }
+  #progress.on { display: block; } #progress i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s linear; }
+  #moves { display: none; justify-content: space-between; gap: 4px; margin: 4px 0 0; font-size: 13px; color: var(--dim); }
+  #moves.on { display: flex; } #moves span { flex: 1; text-align: center; padding: 4px 0; border-radius: 8px; background: var(--line); transition: all .3s; }
+  #moves span.now { background: var(--accent); color: #fff; font-weight: 700; } #moves span.past { background: var(--ok-soft); color: var(--ok); }
+  /* rating */
+  .opts { display: flex; gap: 8px; margin: 8px 0 14px; }
+  .opts label { flex: 1; text-align: center; border: 2px solid var(--line); border-radius: 12px; padding: 10px 4px; cursor: pointer; background: #fff; transition: all .2s; font-size: 15px; }
+  .opts input { display: none; } .opts label:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); font-weight: 700; }
+  .done-mark { width: 64px; height: 64px; border-radius: 50%; background: var(--ok); color: #fff; display: grid; place-items: center; font-size: 36px; margin: 0 auto 8px; animation: pop .7s ease both; }
+  .warn { color: var(--warn); font-weight: 600; }
+  details { margin: 14px 0; } summary { cursor: pointer; color: var(--dim); }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; margin: 8px 0; } th, td { padding: 4px 6px; text-align: right; border-bottom: 1px solid var(--line); }
+  th:first-child, td:first-child { text-align: left; } th { color: var(--dim); font-weight: 500; }
+  .good { color: var(--ok); } .bad { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <h1>깊이 시험지</h1>
+  <p class="sub">고개를 좌우로 천천히 돌려 코와 광대가 얼마나 나왔는지 재는 시험입니다. 약 3분 걸립니다.</p>
+
+  <ol class="stepper" id="stepper">
+    <li data-s="1"><b>1</b>시작</li><li data-s="2"><b>2</b>카메라</li><li data-s="3"><b>3</b>촬영</li><li data-s="4"><b>4</b>저장</li>
+  </ol>
+
+  <!-- one camera view shared by steps 2 and 3 -->
+  <div id="stage">
+    <video id="video" playsinline muted></video>
+    <svg id="oval" viewBox="0 0 160 90" preserveAspectRatio="none"><ellipse cx="80" cy="46" rx="22" ry="32"></ellipse></svg>
+    <div id="cue"></div>
+    <div id="count"><span id="countNum">3</span></div>
+  </div>
+
+  <section class="step" data-step="1">
+    <div class="card">
+      <p class="big">시작하기 전에</p>
+      <p>이 시험은 카메라 앞에서 고개를 좌우로 천천히 돌리는 것이 전부입니다. 아래 순서로 진행됩니다.</p>
+      <ul class="tips">
+        <li>카메라 앞에 앉아 얼굴 위치를 맞춥니다.</li>
+        <li>3, 2, 1을 센 뒤 25초 동안 화면 안내에 맞춰 고개를 돌립니다.</li>
+        <li>옆에서 본 사람이 코와 광대 느낌을 고르고 기록을 저장합니다.</li>
+      </ul>
+      <p class="hint">기록에는 이름 대신 <b>참가자 번호</b>가 자동으로 붙습니다.</p>
+    </div>
+    <div class="card">
+      <label style="display:flex; gap:10px; align-items:flex-start; cursor:pointer">
+        <input type="checkbox" id="consent" style="width:22px; height:22px; margin-top:3px; flex:none" />
+        <span><b>연구용 저장에 동의합니다.</b><br><span class="hint">카메라 영상과 사진은 저장하지 않고 내 컴퓨터를 떠나지 않습니다. 서버로 올라가는 것은 얼굴의 점 여섯 개의 좌표와 고개 각도, 그리고 아래에서 고른 코와 광대 평가뿐이고, 이름이나 연락처는 묻지 않습니다. 연구가 끝나면 지웁니다.</span></span>
+      </label>
+    </div>
+    <div class="card" id="returning" style="display:none">
+      <p class="big" id="returningTitle"></p>
+      <p class="hint" style="margin:0 0 10px">이 컴퓨터에서 이미 기록을 저장했습니다. 같은 분이라면 [네]를, 다른 분이면 아래 [아니요, 처음입니다]를 눌러 주세요.</p>
+      <button class="btn" id="yesMe" type="button" disabled></button>
+    </div>
+    <button class="btn pulse" id="to2"></button>
+  </section>
+
+  <section class="step" data-step="2">
+    <div class="card">
+      <p class="big">2. 카메라 앞에 앉아 주세요</p>
+      <p class="hint" style="margin:-2px 0 8px">기록 이름: <b id="whoAmI"></b></p>
+      <div id="checks">
+        <span class="check" id="chkFace">얼굴 찾기</span>
+        <span class="check" id="chkCenter">가운데</span>
+        <span class="check" id="chkSize">거리</span>
+      </div>
+      <p id="hintLive" class="hint" style="text-align:center">아래 [카메라 켜기]를 누르고, 브라우저가 물으면 [허용]을 눌러 주세요.</p>
+      <ul class="tips">
+        <li>앞머리는 올리거나 넘겨 이마가 보이게 해 주세요.</li>
+        <li>안경은 벗고, 얼굴 앞쪽에서 고르게 밝게 비추도록 해 주세요.</li>
+        <li>화면 가운데에 얼굴을 맞추면 위의 세 칸이 초록색으로 바뀝니다.</li>
+      </ul>
+      <p class="hint">화면은 거울처럼 보입니다. 내 왼쪽으로 돌리면 화면에서도 왼쪽으로 돕니다.</p>
+      <div id="camPick" style="display:none; margin-top:8px"><span class="hint">다른 카메라를 쓰려면: </span><select id="camera"></select></div>
+    </div>
+    <div class="row">
+      <button class="btn ghost" id="back1">처음으로</button>
+      <button class="btn" id="startCam">카메라 켜기</button>
+    </div>
+    <button class="btn pulse" id="to3" style="margin-top:10px" disabled>다음: 촬영하러 가기</button>
+  </section>
+
+  <section class="step" data-step="3">
+    <div class="card">
+      <p class="big" id="recTitle">3. 고개를 천천히 돌립니다</p>
+      <div id="gaugeLabels"><span>← 내 왼쪽으로 돌리기</span><span>가운데</span><span>내 오른쪽으로 돌리기 →</span></div>
+      <div id="gauge"><div class="zone" id="zoneL"></div><div class="zone" id="zoneR"></div><div class="mid"></div><div class="dot" id="dot"></div></div>
+      <div id="progress"><i id="bar"></i></div>
+      <div id="moves"><span>정면</span><span>왼쪽</span><span>오른쪽</span><span>왼쪽</span><span>오른쪽</span><span>정면</span></div>
+      <div id="before">
+        <ul class="tips">
+          <li>[촬영 시작]을 누르면 3, 2, 1 센 뒤 25초 동안 화면 아래에 안내가 나옵니다.</li>
+          <li>안내를 따라 고개만 천천히 돌립니다. 몸과 어깨는 가만히 두세요.</li>
+          <li>왼쪽, 오른쪽을 두 번씩 돌립니다. 끄덕이지 말고 옆으로만 돌려요.</li>
+          <li>아래 막대의 동그라미가 연한 붉은 칸에 닿으면 초록색이 됩니다.</li>
+        </ul>
+      </div>
+    </div>
+    <button class="btn pulse" id="rec">촬영 시작</button>
+  </section>
+
+  <section class="step" data-step="4">
+    <div class="card" style="text-align:center">
+      <div class="done-mark">✓</div>
+      <p class="big" id="doneTitle">촬영이 끝났습니다</p>
+      <p id="doneNote" class="hint"></p>
+      <p class="hint">기록 이름: <b id="whoDone"></b></p>
+    </div>
+    <div class="card">
+      <p class="big">4. 옆에서 본 느낌을 골라 주세요</p>
+      <p class="hint">찍힌 사람이 아니라 <b>옆에서 본 다른 사람</b>이 직접 보고 고릅니다. 혼자라면 건너뛰어도 됩니다.</p>
+      <p style="margin:12px 0 0"><b>코</b>는 옆에서 보면</p>
+      <div class="opts" id="rateNose">
+        <label><input type="radio" name="nose" value="낮고 평평하다" />낮고 평평하다</label>
+        <label><input type="radio" name="nose" value="보통" />보통</label>
+        <label><input type="radio" name="nose" value="높고 나왔다" />높고 나왔다</label>
+      </div>
+      <p style="margin:0"><b>광대</b>는 옆에서 보면</p>
+      <div class="opts" id="rateCheek">
+        <label><input type="radio" name="cheek" value="평평하다" />평평하다</label>
+        <label><input type="radio" name="cheek" value="보통" />보통</label>
+        <label><input type="radio" name="cheek" value="나와 있다" />나와 있다</label>
+      </div>
+    </div>
+    <button class="btn pulse" id="save">기록 저장하기</button>
+    <p class="hint" id="saveNote" style="text-align:center"></p>
+    <div class="row" style="margin-top:10px">
+      <button class="btn ghost" id="again">같은 사람 다시 찍기</button>
+      <button class="btn ghost" id="next">다른 사람 찍기</button>
+    </div>
+    <details>
+      <summary>연구용 결과 보기</summary>
+      <div id="result"></div>
+    </details>
+  </section>
+
+  <details>
+    <summary>저장한 기록 비교 (연구용)</summary>
+    <p class="hint">저장한 JSON 파일을 여러 개 한꺼번에 고르면, 같은 사람이 반복해도 일정한지와 사람 사이 차이를 표로 봅니다.</p>
+    <input id="files" type="file" accept=".json" multiple />
+    <div id="compare"></div>
+  </details>
+</main>
+
+<script type="module">
+import { getPoints } from "../features.js";
+import { estimatePose, poseFromMatrix } from "../pose.js";
+import { PAIRS, measureDepths, splitHalves } from "./depth-analysis.js";
+
+const $ = (id) => document.getElementById(id);
+const VENDOR = new URL("../vendor/mediapipe/", import.meta.url).href;
+const EXTRA = { cheekBumpLeft: 50, cheekBumpRight: 280 };
+const REC_SECONDS = 25;
+// The camera image is shown like a mirror. Turning toward your own left makes the face point
+// toward the right of the unmirrored frame, which the pose code reports as a positive yaw.
+const STEPS = [
+  [0, "정면을 봅니다", 0, ""], [3, "내 왼쪽으로 천천히", 1, "left"], [8, "내 오른쪽으로 천천히", -1, "right"],
+  [13, "다시 왼쪽으로", 1, "left"], [18, "다시 오른쪽으로", -1, "right"], [23, "정면으로 돌아옵니다", 0, ""],
+];
+const TARGET = 20, NEED = 14;
+
+let landmarker = null, stream = null, running = false, recording = false, counting = false;
+let frames = [], startedAt = 0, lastVideoTime = -1, current = null, cameraInfo = {};
+let hitLeft = false, hitRight = false, readyHold = 0, step = 1;
+
+const safe = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
+
+// ---------- steps ----------
+function go(n) {
+  step = n;
+  document.querySelectorAll(".step").forEach((s) => s.classList.toggle("on", Number(s.dataset.step) === n));
+  document.querySelectorAll("#stepper li").forEach((li) => {
+    const s = Number(li.dataset.s);
+    li.classList.toggle("on", s === n); li.classList.toggle("done", s < n);
+  });
+  $("stage").classList.toggle("on", n === 2 || n === 3);
+  $("stage").dataset.step = n;
+  const gaugeOn = n === 3;
+  $("gauge").classList.toggle("on", gaugeOn); $("gaugeLabels").classList.toggle("on", gaugeOn);
+  if (n === 3) { $("zoneL").style.cssText = zoneCss(1); $("zoneR").style.cssText = zoneCss(-1); }
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+// gauge position (percent) of a yaw: mirrored, so a positive yaw is on the left
+const gx = (yaw) => 50 - Math.max(-40, Math.min(40, yaw)) / 40 * 50;
+function zoneCss(sign) { const a = gx(sign * NEED), b = gx(sign * 32); const l = Math.min(a, b), w = Math.abs(a - b); return `left:${l}%;width:${w}%`; }
+
+// Participant numbers come from the server when a recording is saved (참가자2, 참가자3 ...).
+// This browser remembers its own number, so a second visit can be asked "are you 참가자K?".
+// ?me=1 marks the owner (participant 1, recorded from local files). ?test keeps everything local.
+const QS = new URLSearchParams(location.search);
+const ENDPOINT = "https://project-zek4t.vercel.app/api/depth";
+const TEST = QS.has("test");
+let me = Number(safe.get("depthMe")) || 0;
+if (Number(QS.get("me")) >= 1) me = Number(QS.get("me"));
+let takes = Number(safe.get("depthTakes")) || 0;
+
+function setLabel() {
+  const text = me ? `참가자${me}` : "저장할 때 번호가 정해집니다";
+  $("whoAmI").textContent = text; $("whoDone").textContent = text;
+}
+function renderStart() {
+  const returning = me > 0;
+  $("returning").style.display = returning ? "block" : "none";
+  $("returningTitle").textContent = `혹시 참가자${me}이신가요?`;
+  $("yesMe").textContent = `네, 참가자${me}입니다 (${takes}번 저장함)`;
+  $("to2").textContent = returning ? "아니요, 처음입니다" : "시작하기";
+  $("to2").classList.toggle("ghost", returning); $("to2").classList.toggle("pulse", !returning);
+  $("yesMe").onclick = () => { setLabel(); go(2); };
+  $("to2").onclick = () => { me = 0; takes = 0; setLabel(); go(2); };
+  setLabel(); syncConsent();
+}
+function syncConsent() { const ok = $("consent").checked; $("to2").disabled = !ok; $("yesMe").disabled = !ok; }
+$("consent").onchange = syncConsent;
+renderStart();
+
+$("back1").onclick = () => { renderStart(); go(1); };
+$("to3").onclick = () => go(3);
+
+// ---------- camera ----------
+async function loadModel() {
+  const module = await import(`${VENDOR}vision_bundle.mjs`);
+  const vision = await module.FilesetResolver.forVisionTasks(`${VENDOR}wasm`);
+  const make = (delegate) => module.FaceLandmarker.createFromOptions(vision, {
+    baseOptions: { modelAssetPath: `${VENDOR}face_landmarker.task`, delegate },
+    runningMode: "VIDEO", numFaces: 1, outputFacialTransformationMatrixes: true,
+  });
+  try { landmarker = await make("GPU"); } catch { landmarker = await make("CPU"); }
+}
+
+async function openCamera(deviceId) {
+  stream?.getTracks().forEach((t) => t.stop());
+  stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { ...(deviceId ? { deviceId: { exact: deviceId } } : {}), width: { ideal: 1280 }, height: { ideal: 720 } } });
+  $("video").srcObject = stream; await $("video").play();
+  const track = stream.getVideoTracks()[0];
+  cameraInfo = { label: track.label, width: $("video").videoWidth, height: $("video").videoHeight, fps: track.getSettings().frameRate ?? null };
+}
+
+$("startCam").onclick = async () => {
+  $("startCam").disabled = true; $("hintLive").textContent = "카메라와 얼굴 인식을 준비하는 중입니다. 잠시만 기다려 주세요.";
+  try {
+    if (!landmarker) await loadModel();
+    await openCamera();
+    const devices = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === "videoinput");
+    if (devices.length > 1) {
+      $("camera").innerHTML = devices.map((d) => `<option value="${d.deviceId}"${d.label === cameraInfo.label ? " selected" : ""}>${d.label || "카메라"}</option>`).join("");
+      $("camPick").style.display = "block";
+    }
+    running = true; lastVideoTime = -1; $("startCam").textContent = "카메라 다시 켜기"; loop();
+  } catch (error) {
+    $("hintLive").innerHTML = `<span class="bad">카메라를 켜지 못했습니다. 주소창 옆 카메라 아이콘에서 허용했는지 확인하고 다시 눌러 주세요. (${error?.name ?? error})</span>`;
+  }
+  $("startCam").disabled = false;
+};
+$("camera").onchange = async () => { await openCamera($("camera").value); lastVideoTime = -1; };
+
+function loop() {
+  if (!running) return;
+  const video = $("video");
+  if (video.readyState >= 2 && video.currentTime !== lastVideoTime) {
+    lastVideoTime = video.currentTime;
+    const result = landmarker.detectForVideo(video, performance.now());
+    const lm = result.faceLandmarks?.[0];
+    if (lm) onFace(lm, result.facialTransformationMatrixes?.[0]?.data, video.videoWidth, video.videoHeight);
+    else onNoFace();
+  }
+  requestAnimationFrame(loop);
+}
+
+function setCheck(id, ok) { $(id).classList.toggle("ok", ok); }
+function onNoFace() {
+  current = null;
+  if (step === 2) { setCheck("chkFace", false); setCheck("chkCenter", false); setCheck("chkSize", false); $("hintLive").textContent = "얼굴이 보이지 않습니다. 카메라를 바라봐 주세요."; $("stage").classList.remove("ready"); $("to3").disabled = true; }
+}
+
+function onFace(lm, matrix, w, h) {
+  const pts = getPoints(lm, w, h);
+  for (const [name, index] of Object.entries(EXTRA)) pts[name] = { x: lm[index].x * w, y: lm[index].y * h, z: lm[index].z * w };
+  const pose = estimatePose(pts);
+  const m = poseFromMatrix(matrix);
+  current = { yaw: pose.yaw, pitch: pose.pitch };
+  if (step === 2) checkPlacement(pts, pose, w, h);
+  if (step === 3) { moveDot(pose.yaw); }
+  if (recording) {
+    const t = (performance.now() - startedAt) / 1000;
+    frames.push({ t, yaw: pose.yaw, pitch: pose.pitch, roll: pose.roll, matrixYaw: m?.yaw ?? null, pts });
+    if (pose.yaw >= NEED) hitLeft = true; if (pose.yaw <= -NEED) hitRight = true;
+    $("zoneL").classList.toggle("hit", hitLeft); $("zoneR").classList.toggle("hit", hitRight);
+    updateCue(t, pose);
+    $("bar").style.width = `${Math.min(100, (t / REC_SECONDS) * 100)}%`;
+    if (t >= REC_SECONDS) finish();
+  }
+}
+
+function checkPlacement(pts, pose, w, h) {
+  const cx = (pts.faceLeft.x + pts.faceRight.x) / 2 / w;
+  const cy = (pts.meshTop.y + pts.chin.y) / 2 / h;
+  const width = Math.abs(pts.faceRight.x - pts.faceLeft.x) / w;
+  const centered = Math.abs(cx - 0.5) < 0.12 && Math.abs(cy - 0.5) < 0.18;
+  const sized = width > 0.18 && width < 0.42;
+  setCheck("chkFace", true); setCheck("chkCenter", centered); setCheck("chkSize", sized);
+  const ready = centered && sized && Math.abs(pose.yaw) < 12;
+  $("stage").classList.toggle("ready", ready);
+  readyHold = ready ? Math.min(readyHold + 1, 30) : 0;
+  $("to3").disabled = readyHold < 20;
+  $("hintLive").textContent = ready ? "좋습니다! 이 자세를 유지하고 [다음]을 눌러 주세요."
+    : !centered ? (cx < 0.38 ? "얼굴이 화면 왼쪽에 있습니다. 가운데로 와 주세요." : cx > 0.62 ? "얼굴이 화면 오른쪽에 있습니다. 가운데로 와 주세요." : "얼굴을 화면 가운데에 맞춰 주세요.")
+    : !sized ? (width <= 0.18 ? "조금 더 가까이 와 주세요." : "조금 뒤로 물러나 주세요.")
+    : "정면을 똑바로 봐 주세요.";
+}
+
+function moveDot(yaw) { $("dot").style.left = `${gx(yaw)}%`; }
+
+// ---------- recording ----------
+function updateCue(t, pose) {
+  const idx = STEPS.reduce((acc, s, i) => (t >= s[0] ? i : acc), 0);
+  const [, text, sign, dir] = STEPS[idx];
+  const arrow = dir === "left" ? `<span class="arrow left">←</span> ` : dir === "right" ? ` <span class="arrow right">→</span>` : "";
+  const reached = sign === 0 ? Math.abs(pose.yaw) < 8 : pose.yaw * sign >= NEED;
+  const more = sign !== 0 && !reached ? "조금 더 돌려요" : sign !== 0 ? "좋아요, 그대로 잠깐" : "";
+  // 왼쪽 and 오른쪽 get their own colours so they read at a glance from a distance.
+  const colored = text.replace("왼쪽", '<span class="w-left">왼쪽</span>').replace("오른쪽", '<span class="w-right">오른쪽</span>');
+  $("cue").innerHTML = `${dir === "left" ? arrow : ""}${colored}${dir === "right" ? arrow : ""}<small>${more}${more ? " · " : ""}${Math.max(0, Math.ceil(REC_SECONDS - t))}초 남음</small>`;
+  document.querySelectorAll("#moves span").forEach((s, i) => { s.classList.toggle("now", i === idx); s.classList.toggle("past", i < idx); });
+}
+
+$("rec").onclick = async () => {
+  if (!running || counting) return;
+  counting = true; $("rec").disabled = true; $("before").style.display = "none";
+  frames = []; hitLeft = false; hitRight = false;
+  $("zoneL").classList.remove("hit"); $("zoneR").classList.remove("hit");
+  $("count").classList.add("on");
+  for (const n of [3, 2, 1]) {
+    $("countNum").textContent = n; $("countNum").style.animation = "none"; void $("countNum").offsetWidth; $("countNum").style.animation = "";
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  $("count").classList.remove("on");
+  $("progress").classList.add("on"); $("moves").classList.add("on"); $("stage").classList.add("rec");
+  $("recTitle").textContent = "안내에 맞춰 고개를 돌려 주세요";
+  startedAt = performance.now(); counting = false; recording = true;
+};
+
+function finish() {
+  if (!recording) return;
+  recording = false; $("stage").classList.remove("rec"); $("progress").classList.remove("on"); $("moves").classList.remove("on");
+  $("bar").style.width = "0"; $("before").style.display = ""; $("rec").disabled = false; $("recTitle").textContent = "3. 고개를 천천히 돌립니다";
+  const all = measureDepths(frames);
+  const [h1, h2] = splitHalves(frames);
+  $("result").innerHTML = table(all, h1, h2) + `<p class="hint">프레임 ${frames.length}장 중 쓸 수 있는 것 ${all.frames}장, 각도 범위 ${fmt(all.yawMin, 0)} ~ ${fmt(all.yawMax, 0)}도, 카메라 ${cameraInfo.label} ${cameraInfo.width}x${cameraInfo.height}.</p>`;
+  const good = hitLeft && hitRight && frames.length > 100;
+  $("doneTitle").textContent = good ? "촬영이 끝났습니다. 잘 하셨어요!" : "촬영은 끝났지만 조금 모자랍니다";
+  $("doneNote").innerHTML = good ? "고개가 양쪽으로 충분히 돌아갔습니다. 아래 내용을 고르고 저장해 주세요."
+    : `<span class="warn">${!hitLeft ? "왼쪽으로 " : ""}${!hitRight ? "오른쪽으로 " : ""}고개가 충분히 돌아가지 않았습니다.</span> [같은 사람 다시 찍기]를 눌러 한 번 더 찍는 것을 권합니다.`;
+  $("saveNote").textContent = ""; $("save").disabled = false;
+  document.querySelectorAll("#step4 input, .step[data-step='4'] input").forEach((i) => { i.checked = false; });
+  go(4);
+}
+
+function fmt(v, digits = 1) { return v === null || v === undefined ? "-" : v.toFixed(digits); }
+function table(all, h1, h2) {
+  if (!all.scale) return `<div class="bad">고개를 돌린 범위가 모자랍니다. 다시 촬영해 주세요.</div>`;
+  const rows = PAIRS.map((p) => {
+    const a = all.pairs[p.id], x = h1.pairs[p.id]?.parallax ?? null, y = h2.pairs[p.id]?.parallax ?? null;
+    const diff = x !== null && y !== null ? Math.abs(x - y) : null;
+    const cls = diff === null ? "" : diff < 3 ? "good" : "bad";
+    return `<tr><td>${p.label}</td><td>${fmt(a.parallax)}</td><td>${fmt(x)}</td><td>${fmt(y)}</td><td class="${cls}">${fmt(diff)}</td><td>${fmt(a.modelZ)}</td></tr>`;
+  }).join("");
+  return `<table><tr><th>부위 (눈 바깥 폭의 %)</th><th>시차</th><th>앞</th><th>뒤</th><th>차이</th><th>앱 z</th></tr>${rows}</table>`;
+}
+
+// ---------- save ----------
+const round = (v) => Math.round(v * 100) / 100;
+const browserName = () => (/Edg\//.test(navigator.userAgent) ? "Edge" : /Chrome\//.test(navigator.userAgent) ? "Chrome" : /Safari\//.test(navigator.userAgent) ? "Safari" : /Firefox\//.test(navigator.userAgent) ? "Firefox" : "other");
+const SEND_POINTS = ["eyeLeftOuter", "eyeRightOuter", "noseTip", "cheekBumpLeft", "cheekBumpRight", "chin"];
+function downloadFile(out, name) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(out)], { type: "application/json" }));
+  a.download = `depth-${name}-${Date.now()}.json`;
+  a.click();
+}
+$("save").onclick = async () => {
+  const rate = (name) => document.querySelector(`input[name=${name}]:checked`)?.value ?? "";
+  const record = {
+    camera: cameraInfo, browser: browserName(), rating: { nose: rate("nose"), cheek: rate("cheek") },
+    frames: frames.map((f) => ({ t: round(f.t), yaw: round(f.yaw), pitch: round(f.pitch), roll: round(f.roll), pts: Object.fromEntries(SEND_POINTS.map((k) => [k, [round(f.pts[k].x), round(f.pts[k].y), round(f.pts[k].z)]])) })),
+  };
+  $("save").disabled = true; $("saveNote").textContent = "저장하는 중입니다...";
+  if (!TEST) {
+    try {
+      const reply = await fetch(ENDPOINT, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ participantNo: me || undefined, record }) });
+      if (!reply.ok) throw new Error(String(reply.status));
+      const { participantNo, take } = await reply.json();
+      me = participantNo; takes = take; safe.set("depthMe", String(me)); safe.set("depthTakes", String(takes));
+      setLabel();
+      $("saveNote").innerHTML = `<b class="good">저장했습니다. 당신은 참가자${me}입니다.</b> 이 번호로 ${take}번째 기록입니다. 다음 촬영을 고르거나 창을 닫으셔도 됩니다.`;
+      return;
+    } catch (error) {
+      $("saveNote").innerHTML = `<span class="bad">서버에 올리지 못했습니다(${error?.message ?? error}). 대신 파일로 저장했으니 이 파일을 보내 주세요.</span>`;
+    }
+  } else $("saveNote").innerHTML = `<b class="good">시험 모드: 서버에 올리지 않고 파일로만 저장했습니다.</b>`;
+  downloadFile({ version: 3, label: me ? `참가자${me}` : "참가자", savedAt: new Date().toISOString(), ...record }, me ? `참가자${me}` : "참가자");
+};
+$("again").onclick = () => { go(3); $("before").style.display = ""; };
+$("next").onclick = () => { renderStart(); go(1); };
+
+// ---------- compare saved files (research) ----------
+$("files").onchange = async () => {
+  const rows = [];
+  for (const file of $("files").files) {
+    const data = JSON.parse(await file.text());
+    const fr = data.frames.map((f) => ({ ...f, pts: Object.fromEntries(Object.entries(f.pts).map(([k, v]) => [k, { x: v[0], y: v[1], z: v[2] }])) }));
+    const all = measureDepths(fr), [h1, h2] = splitHalves(fr);
+    rows.push({ label: data.label, camera: data.camera?.label ?? "", rating: data.rating ?? {}, all, h1, h2 });
+  }
+  const head = PAIRS.map((p) => `<th>${p.label.replace(/가 .*|이 .*/, "")}</th>`).join("");
+  const body = rows.map((r) => `<tr><td>${r.label || "(이름표 없음)"}<br><span class="hint">${r.camera}</span></td><td>${r.rating.nose ?? ""}<br>${r.rating.cheek ?? ""}</td>${PAIRS.map((p) => {
+    const v = r.all.pairs[p.id]?.parallax ?? null, a = r.h1.pairs[p.id]?.parallax ?? null, b = r.h2.pairs[p.id]?.parallax ?? null;
+    return `<td>${fmt(v)}<br><span class="hint">${fmt(a)} / ${fmt(b)}</span></td>`;
+  }).join("")}</tr>`).join("");
+  $("compare").innerHTML = `<table><tr><th>기록</th><th>눈 평가 (코/광대)</th>${head}</tr>${body}</table>`;
+};
+
+// ?step=2 opens a step directly (for checking the layout without a camera).
+go(Number(new URLSearchParams(location.search).get("step")) || 1);
+</script>
+</body>
+</html>

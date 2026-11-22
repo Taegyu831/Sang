@@ -5,6 +5,9 @@
     },
     "api/measure.mjs": {
       "maxDuration": 10
+    },
+    "api/depth.mjs": {
+      "maxDuration": 10
     }
   }
 }
