@@ -676,10 +676,12 @@ function bondBlock(bond) {
 
 // ---------- last page: a few lines about fortune, one at a time ----------
 const CLOSING_NOTES = [
-  "동양철학에서 운이 좋다는 것은, 단순히 재수가 좋다는 뜻이 아닙니다.",
-  "좋은 기운이 들어왔을 때 그것을 제 것으로 만들 만큼, ⟦준비되어 있다⟧는 뜻입니다.",
-  "관상 풀이는 ⟦날씨⟧처럼 참고하고,\n각자의 몫은 ⟦밭을 어떻게 일구어 나갈지⟧에 있습니다.",
+  "동양철학에서 운이 좋다는 것은, 단순히 재수가 좋다는 뜻이 아닌, 좋은 기운이 들어왔을 때 그것을 제 것으로 만들 만큼, ⟦준비되어 있다⟧는 뜻으로 봅니다.",
+  "관상 풀이는 ⟦날씨⟧처럼 참고하고,",
+  "각자의 몫은 ⟦밭을 어떻게 일구어 나갈지⟧에 있습니다.",
 ];
+// Seconds-long pause before each note, except the last one: it follows the one before almost at once.
+const CLOSING_GAPS_MS = [0, 2800, 200];
 // The quotation that opens the last page: a line from the I Ching (周易), in hanja and hangul.
 const CLOSING_QUOTE = {
   han: "君子藏器於身 待時而動",
@@ -687,7 +689,6 @@ const CLOSING_QUOTE = {
   meaning: "군자는 몸에 기량을 갖추고, 때를 기다려 움직인다",
   source: "『주역』 계사전",
 };
-const CLOSING_STEP_MS = 2800;
 let closingTimers = [];
 
 function stopClosingNotes() {
@@ -702,7 +703,8 @@ function playClosingNotes() {
   const quote = el("div", "closing-note closing-quote");
   quote.append(el("p", "cq-han", CLOSING_QUOTE.han), el("p", "cq-ko", CLOSING_QUOTE.ko), el("p", "cq-mean", CLOSING_QUOTE.meaning), el("p", "cq-src", CLOSING_QUOTE.source));
   const notes = CLOSING_NOTES.map((t) => marked("p", "closing-note", t));
-  notes[notes.length - 1].classList.add("is-key");
+  // The last two notes are one sentence in two pieces, so they share the larger, bolder look.
+  notes.slice(-2).forEach((n) => n.classList.add("is-key"));
   closingNotes.replaceChildren(quote, ...notes);
   const lines = [...closingNotes.children];
   const parts = [...quote.children];
@@ -715,12 +717,14 @@ function playClosingNotes() {
   parts.forEach((n, i) => later(() => n.classList.add("is-shown"), 600 + QUOTE_AT[i]));
   later(() => quote.classList.add("is-shown"), 600);
   let at = 600 + FIRST_LINE_AFTER;
-  lines.slice(1).forEach((n) => {
+  let lastAt = at;
+  lines.slice(1).forEach((n, i) => {
+    if (i) at += CLOSING_GAPS_MS[i];
+    lastAt = at;
     later(() => n.classList.add("is-shown"), at);
-    at += CLOSING_STEP_MS;
   });
   // The seal and the buttons come in together with the last line.
-  later(() => closing.classList.add("is-done"), at - (lines.length > 1 ? CLOSING_STEP_MS : 0));
+  later(() => closing.classList.add("is-done"), lastAt);
 }
 // A tap or key on the page shows the rest at once.
 pages.addEventListener("click", (event) => {
