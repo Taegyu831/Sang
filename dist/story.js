@@ -236,6 +236,14 @@ export function composeStory(parts, shape, extras = { lines: [], size: null, sto
     .map((part) => ({ part, key: entryKey(part), facets: FACETS[entryKey(part)] }))
     .filter((e) => e.facets);
 
+  // A line of a page, with the heading it is shown under (body keeps the plain lines, rows the grouped ones).
+  const add = (page, label, sub, line) => {
+    if (!line) return;
+    page.body.push(line);
+    const last = page.rows[page.rows.length - 1];
+    if (last && last.label === label) last.lines.push(line); else page.rows.push({ label, sub, lines: [line] });
+  };
+
   const told = new Set();
   const poles = leanings(entries).slice(0, 2);
   const [a, b] = poles.map((p) => POLES[p]);
@@ -246,60 +254,60 @@ export function composeStory(parts, shape, extras = { lines: [], size: null, sto
   const aligned = entries.filter((e) => !opposes(e.key, poles));
   const against = entries.filter((e) => opposes(e.key, poles));
   const traits = gather(aligned.length ? aligned : entries, "traits", 7, told);
-  const first = { title: "이 사람은", lead: `이 사람은 ${headline}`, body: [], basis: traits.basis };
+  const first = { title: "이 사람은", lead: `이 사람은 ${headline}`, body: [], rows: [], basis: traits.basis };
   // The form (오행형) is the first step, so when it is known it takes the place of the plain face shape sentence.
-  for (const line of extras.formLines ?? []) first.body.push(line);
-  if (shape && !(extras.formLines ?? []).length) first.body.push((shape.text.match(/[^.]+\.\s*/g)?.slice(0, 2).join("").trim() ?? "").replace(shape.name, em(shape.name)));
-  for (const line of extras.frame ?? []) first.body.push(line);
-  for (const line of extras.pairLines ?? []) first.body.push(line);
-  if (traits.items.length) first.body.push(`성격으로는 ${josa(list(traits.items), "이", "가")} 함께 두드러집니다.`);
+  for (const line of extras.formLines ?? []) add(first, "얼굴의 형", "윤곽", line);
+  if (shape && !(extras.formLines ?? []).length) add(first, "얼굴의 형", "윤곽", (shape.text.match(/[^.]+\.\s*/g)?.slice(0, 2).join("").trim() ?? "").replace(shape.name, em(shape.name)));
+  for (const line of extras.frame ?? []) add(first, "삼정", "얼굴의 세 구간", line);
+  for (const line of extras.pairLines ?? []) add(first, "짝 부위", "눈여겨볼 곳", line);
+  if (traits.items.length) add(first, "성격", "기질", `성격으로는 ${josa(list(traits.items), "이", "가")} 함께 두드러집니다.`);
   const other = aligned.length ? gather(against, "traits", 3, told) : { items: [], basis: [] };
   if (other.items.length) {
-    first.body.push(`한편 ${list(other.items)} 같은 면도 함께 읽혀, 한 가지로만 단정하기 어려운 사람입니다.`);
+    add(first, "성격", "기질", `한편 ${list(other.items)} 같은 면도 함께 읽혀, 한 가지로만 단정하기 어려운 사람입니다.`);
     first.basis = [...new Set([...first.basis, ...other.basis])];
   }
 
-  for (const line of extras.lines ?? []) first.body.push(line);
+  for (const line of extras.lines ?? []) add(first, "그 밖", "표정과 인상", line);
 
   // 2. work and money
   const work = gather(entries, "work", 5, told);
-  const second = { title: "일과 재물", lead: `그리고 일과 재물에서는 ${main.work}`, body: [], basis: work.basis };
+  const second = { title: "일과 재물", lead: `그리고 일과 재물에서는 ${main.work}`, body: [], rows: [], basis: work.basis };
   const leak = gather(entries, "workMinus", 3, told);
-  if (work.items.length) second.body.push(`${josa(list(work.items), "을", "를")} 꼽는 풀이가 이 얼굴에 모입니다.`);
+  if (work.items.length) add(second, "재물의 흐름", "모이는 풀이", `${josa(list(work.items), "을", "를")} 꼽는 풀이가 이 얼굴에 모입니다.`);
   if (leak.items.length) {
-    second.body.push(work.items.length
+    add(second, "지킬 점", "새는 곳", work.items.length
       ? `다만 ${josa(list(leak.items), "이라는", "라는")} 풀이도 함께 있어, 들어온 것을 지키는 관리가 관건입니다.`
       : `${josa(list(leak.items), "이라는", "라는")} 풀이가 있어, 들어온 것을 지키는 관리가 관건입니다.`);
     second.basis = [...new Set([...second.basis, ...leak.basis])];
   }
-  if (b) second.body.push(`여기에 ${b.work}`);
+  if (b) add(second, "함께 읽히는 면", "겹치는 성향", `여기에 ${b.work}`);
 
   // 3. people and love
   const people = gather(entries, "people", 5, told);
-  const third = { title: "사람과 사랑", lead: `이어서 사람과 사랑에서는 ${main.love}`, body: [], basis: people.basis };
+  const third = { title: "사람과 사랑", lead: `이어서 사람과 사랑에서는 ${main.love}`, body: [], rows: [], basis: people.basis };
   const peopleMinus = gather(entries, "peopleMinus", 3, told);
-  if (people.items.length) third.body.push(`${josa(list(people.items), "이", "가")} 거론되는 얼굴입니다.`);
+  if (people.items.length) add(third, "관계의 모습", "사람과 사랑", `${josa(list(people.items), "이", "가")} 거론되는 얼굴입니다.`);
   if (peopleMinus.items.length) {
-    third.body.push(`${people.items.length ? "한편으로는 " : ""}${josa(list(peopleMinus.items), "이라는", "라는")} 풀이도 있습니다.`);
+    add(third, "유의할 점", "관계에서", `${people.items.length ? "한편으로는 " : ""}${josa(list(peopleMinus.items), "이라는", "라는")} 풀이도 있습니다.`);
     third.basis = [...new Set([...third.basis, ...peopleMinus.basis])];
   }
-  if (b) third.body.push(`이와 함께 ${b.love}`);
+  if (b) add(third, "함께 읽히는 면", "겹치는 성향", `이와 함께 ${b.love}`);
 
   // 4. the life stages, together
   const early = gather(entries, "early", 4, told);
   const mid = gather(entries, "mid", 4, told);
   const late = gather(entries, "late", 4, told);
   const stages = [["초년", early], ["중년", mid], ["말년", late]].filter(([, g]) => g.items.length);
-  const fourth = { title: "시기", lead: `그러다 보면 시기로는 ${main.stage}`, body: [], basis: [...new Set([...early.basis, ...mid.basis, ...late.basis])] };
-  for (const line of extras.ageLines ?? []) fourth.body.push(line);
-  for (const [label, g] of stages) fourth.body.push(`${strong(label)}에는 ${list(g.items)}에 관한 풀이가 모입니다.`);
+  const fourth = { title: "시기", lead: `그러다 보면 시기로는 ${main.stage}`, body: [], rows: [], basis: [...new Set([...early.basis, ...mid.basis, ...late.basis])] };
+  for (const line of extras.ageLines ?? []) add(fourth, "지금의 나이", "선택한 나이대", line);
+  for (const [label, g] of stages) add(fourth, label, "흐름", `${strong(label)}에는 ${list(g.items)}에 관한 풀이가 모입니다.`);
   for (const [label, field] of [["초년", "earlyMinus"], ["중년", "midMinus"], ["말년", "lateMinus"]]) {
     const g = gather(entries, field, 3, told);
     if (!g.items.length) continue;
-    fourth.body.push(`하지만 ${strong(label)}에는 ${josa(list(g.items), "이라는", "라는")} 풀이도 있습니다.`);
+    add(fourth, label, "흐름", `하지만 ${strong(label)}에는 ${josa(list(g.items), "이라는", "라는")} 풀이도 있습니다.`);
     fourth.basis = [...new Set([...fourth.basis, ...g.basis])];
   }
-  if (b) fourth.body.push(`아울러 ${b.stage}`);
+  if (b) add(fourth, "함께 읽히는 면", "겹치는 성향", `아울러 ${b.stage}`);
 
   // 5. who fits
   const fits = (poles.length ? poles.map((p) => FIT[p]) : [EVEN_FIT]);

@@ -316,6 +316,12 @@ img { display: block; max-width: 100%; }
 .story-lead, .story-body { word-break: keep-all; overflow-wrap: break-word; }
 .story-lead { font-size: clamp(22px, min(2.5vw, 4vh), 34px); font-weight: 800; line-height: 1.45; letter-spacing: -0.02em; color: var(--ink); }
 .story-body { font-size: 0.95em; line-height: 1.85; color: var(--ink-2); max-width: 38em; }
+.story-row { display: grid; grid-template-columns: clamp(76px, 9vw, 112px) minmax(0, 1fr); gap: clamp(10px, 1.4vw, 18px); align-items: start; }
+.story-label { display: flex; flex-direction: column; gap: 2px; word-break: keep-all; }
+.story-label strong { font-size: clamp(15px, 1.35vw, 18px); font-weight: 800; color: var(--accent); line-height: 1.5; letter-spacing: -0.01em; }
+.story-label small { font-size: 0.72em; font-weight: 500; color: var(--muted); }
+.story-text { display: flex; flex-direction: column; gap: 0.5em; min-width: 0; }
+.story-text .story-body { margin: 0; }
 .story-basis { font-family: var(--mono); font-size: 0.74em; color: var(--muted); }
 .closing .story-lead { font-size: clamp(18px, min(1.9vw, 3vh), 26px); }
 

@@ -16,9 +16,13 @@
 //  4. Left and right: the text says 男左女右 but not which age takes which side. Both
 //     sides are pooled in the measurement, so the side is not used.
 
+// "places" tells where the old map puts the age. "ids" are the measured parts that are read.
+// The eyebrows (and the 인당 between the brow heads) are never read: bangs, tattoos and drawn
+// brows make them unreliable (parts.js leaves those cards out), so 20s read the forehead only
+// and 30s read the eyes only, though the map still names the brows as the place.
 export const AGE_STAGES = {
-  20: { places: "이마와 미간(인당)", ids: ["forehead", "browInnerGap"] },
-  30: { places: "눈썹과 눈", ids: ["browLength", "browTilt", "browArch", "browEyeGap", "eyeGap", "eyeSize", "eyeOpen", "eyeAsym"] },
+  20: { places: "이마와 미간(인당)", ids: ["forehead"] },
+  30: { places: "눈썹과 눈", ids: ["eyeGap", "eyeSize", "eyeOpen", "eyeAsym"] },
   40: { places: "눈꼬리, 산근에서 코끝까지의 코, 광대", ids: ["eyeTilt", "noseWidth", "noseLength", "cheek"] },
   50: { places: "인중과 입 둘레", ids: ["philtrum", "mouthFace", "lipFull", "lipRatio", "mouthLift"] },
 };

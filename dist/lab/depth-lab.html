@@ -470,7 +470,7 @@ $("save").onclick = async () => {
       const { participantNo, take } = await reply.json();
       me = participantNo; takes = take; safe.set("depthMe", String(me)); safe.set("depthTakes", String(takes));
       setLabel();
-      $("saveNote").innerHTML = `<b class="good">저장했습니다. 당신은 참가자${me}입니다.</b> 이 번호로 ${take}번째 기록입니다. 다음 촬영을 고르거나 창을 닫으셔도 됩니다.`;
+      $("saveNote").innerHTML = `<b class="good">저장했습니다. 당신은 참가자${me}입니다.</b> 이 번호로 ${take}번째 기록입니다. <b>파일은 따로 받지 않아도 됩니다.</b> 다음 촬영을 고르거나 창을 닫으셔도 됩니다.`;
       return;
     } catch (error) {
       $("saveNote").innerHTML = `<span class="bad">서버에 올리지 못했습니다(${error?.message ?? error}). 대신 파일로 저장했으니 이 파일을 보내 주세요.</span>`;

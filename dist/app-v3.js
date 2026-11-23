@@ -758,7 +758,18 @@ function storyPage(page, { first = false } = {}) {
   const wrap = first ? storyFirst : el("div", "story-page");
   wrap.append(marked("h2", "story-lead", page.lead));
   if (page.bond) wrap.append(bondBlock(page.bond));
-  for (const line of page.body.filter(Boolean)) wrap.append(marked("p", "story-body", line));
+  if (page.rows?.length) {
+    // Grouped under a bold heading on the left, the text on the right.
+    for (const row of page.rows) {
+      const box = el("div", "story-row");
+      const head = el("div", "story-label");
+      head.append(el("strong", "", row.label), el("small", "", row.sub));
+      const text = el("div", "story-text");
+      for (const line of row.lines) text.append(marked("p", "story-body", line));
+      box.append(head, text);
+      wrap.append(box);
+    }
+  } else for (const line of page.body.filter(Boolean)) wrap.append(marked("p", "story-body", line));
   if (page.basis.length) wrap.append(el("p", "story-basis", `근거 · ${page.basis.join(" · ")}`));
   return wrap;
 }
@@ -768,7 +779,7 @@ function renderStory() {
   const shape = classifyFaceShape(finalMeasurement);
   story = composeStory(parts.all, shape, extrasOf(finalMeasurement, parts.all, myAge));
   // The first page keeps the teacher's greeting; the rest are rebuilt each time.
-  storyFirst.querySelectorAll(".story-lead, .story-body, .story-basis").forEach((n) => n.remove());
+  storyFirst.querySelectorAll(".story-lead, .story-row, .story-body, .story-basis").forEach((n) => n.remove());
   storyPage(story.pages[0], { first: true });
   pages.querySelectorAll(".slide.is-story").forEach((n) => n.remove());
   const closingPage = pages.querySelector('[data-page="last"]');

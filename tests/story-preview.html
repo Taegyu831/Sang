@@ -1,0 +1,27 @@
+<!doctype html><meta charset="utf-8">
+<link rel="stylesheet" href="../dist/styles.css">
+<!-- Local helper: the first four reading pages as the app builds them (no camera). ?v=key:val,... overrides measurements, ?age=20..50. -->
+<style>body{background:#fbf7ee;margin:0;padding:20px;font-family:var(--sans);font-size:15px} .g{display:grid;grid-template-columns:1fr 1fr;gap:30px;width:1240px} .story-page{border-top:1px solid #e7dfcf;padding-right:0}</style>
+<div class="g" id="g"></div>
+<script type="module">
+import { CALIBRATION } from "../dist/calibration.js";
+import { readParts } from "../dist/parts.js";
+import { composeStory } from "../dist/story.js";
+import { extrasOf } from "../dist/extras.js";
+const q = new URLSearchParams(location.search);
+const content = await (await fetch("../dist/parts.json")).json();
+const base = Object.fromEntries(Object.entries(CALIBRATION).map(([k, c]) => [k, c.center]));
+const v = { ...base, leftEye: 1, rightEye: 1, outerLeft: 1.27, outerRight: 1.27, eyeGap: 1.43, noseDepth: 64, bridgeDepth: 50, chinDepth: 44, stopMiddle: 33.5, stopLower: 46.9, confidence: 88, frames: 96, stability: .9 };
+for (const kv of (q.get("v")||"").split(",").filter(Boolean)) { const [k,x]=kv.split(":"); v[k]=Number(x); }
+const parts = readParts(v, content);
+const story = composeStory(parts.all, null, extrasOf(v, parts.all, Number(q.get("age")||30)));
+function marked(tag, cls, text){const n=document.createElement(tag);n.className=cls;let last=0;const plain=(c)=>c.split("\n").forEach((p,i)=>{if(i)n.append(document.createElement("br"));if(p)n.append(document.createTextNode(p))});for(const m of text.matchAll(/⟦(.+?)⟧|⟪(.+?)⟫/g)){plain(text.slice(last,m.index));const s=document.createElement("strong");s.className=m[1]?"em":"ink";s.textContent=m[1]??m[2];n.append(s);last=m.index+m[0].length}plain(text.slice(last));return n}
+const el=(t,c,x)=>{const n=document.createElement(t);if(c)n.className=c;if(x!==undefined)n.textContent=x;return n};
+for (const page of story.pages.slice(0,4)) {
+  const wrap = el("div","story-page"); wrap.append(marked("h2","story-lead",page.lead));
+  for (const row of page.rows) { const box=el("div","story-row"); const head=el("div","story-label"); head.append(el("strong","",row.label),el("small","",row.sub)); const text=el("div","story-text"); for(const l of row.lines) text.append(marked("p","story-body",l)); box.append(head,text); wrap.append(box); }
+  if (page.basis.length) wrap.append(el("p","story-basis",`근거 · ${page.basis.join(" · ")}`));
+  document.getElementById("g").append(wrap);
+}
+document.title="ready";
+</script>

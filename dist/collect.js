@@ -11,7 +11,7 @@
 export const DEFAULT_COLLECT_ENDPOINT = "https://project-zek4t.vercel.app/api/measure";
 const QUEUE_KEY = "sang.pending";
 const QUEUE_MAX = 200;
-export const APP_VERSION = "2026-11-19";
+export const APP_VERSION = "2026-11-23";
 
 /** The record for one finished measurement, numbers only. Returns null if it is not usable. */
 export function buildRecord({ gender, age, measurement }) {
