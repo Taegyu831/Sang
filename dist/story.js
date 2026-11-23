@@ -260,7 +260,6 @@ export function composeStory(parts, shape, extras = { lines: [], size: null, sto
   }
 
   for (const line of extras.lines ?? []) first.body.push(line);
-  if (extras.size) first.body.push(extras.size);
 
   // 2. work and money
   const work = gather(entries, "work", 5, told);

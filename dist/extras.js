@@ -16,9 +16,8 @@ export const POSED_CALIBRATION = {
 };
 
 const em = (text) => `⟦${text}⟧`;
-const SIZE_RANGE_MM = [110, 175];
 
-/** { lines, size, stop, frame, form, formLines, ageLines } to add to the story (first page, and the 시기 page for ageLines). */
+/** { lines, stop, frame, form, formLines, ageLines } to add to the story (first page, and the 시기 page for ageLines). */
 export function extrasOf(values = {}, parts = [], age = null) {
   const lines = [];
   const dirOf = (key) => parts.find((p) => p.key === key)?.dir ?? "middle";
@@ -45,13 +44,9 @@ export function extrasOf(values = {}, parts = [], age = null) {
     }
   }
 
-  const mm = values.faceWidthMm;
-  const size = Number.isFinite(mm) && mm >= SIZE_RANGE_MM[0] && mm <= SIZE_RANGE_MM[1]
-    ? `홍채 크기를 잣대로 어림하면 얼굴 너비는 약 ${(mm / 10).toFixed(1)}cm입니다.`
-    : null;
   // The frame (삼정) is told before the parts, so it is kept apart from the posed-shot lines.
   const stop = judgeSanjeong(values);
   const form = classifyOhaeng(values);
   const pair = judgePairs(values);
-  return { lines, size, stop, frame: stop ? [sanjeongText(stop)] : [], form, formLines: ohaengLines(form), pair, pairLines: pairLines(pair), ageLines: ageLines(parts, age) };
+  return { lines, stop, frame: stop ? [sanjeongText(stop)] : [], form, formLines: ohaengLines(form), pair, pairLines: pairLines(pair), ageLines: ageLines(parts, age) };
 }
