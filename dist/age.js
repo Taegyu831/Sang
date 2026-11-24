@@ -34,11 +34,10 @@ const topic = (word) => {
   return code >= 0 && code <= 11171 && code % 28 !== 0 ? `${word}은` : `${word}는`;
 };
 
-/** Sentences for the "시기" page. `parts` are the read cards (parts.all). */
-export function ageLines(parts = [], age) {
+/** The (at most two) read parts told for this decade, most marked first. */
+export function agePicked(parts = [], age) {
   const stage = AGE_STAGES[age];
   if (!stage) return [];
-  const lines = [`관상의 유년운기에서 ${age}대는 ${stage.places}를 차례로 지나는 시기입니다.`];
   const standing = parts
     .filter((p) => stage.ids.includes(p.id) && p.dir !== "middle")
     .sort((a, b) => b.score - a.score);
@@ -50,6 +49,15 @@ export function ageLines(parts = [], age) {
     picked.push(p);
     if (picked.length === 2) break;
   }
+  return picked;
+}
+
+/** Sentences for the "시기" page. `parts` are the read cards (parts.all). */
+export function ageLines(parts = [], age) {
+  const stage = AGE_STAGES[age];
+  if (!stage) return [];
+  const lines = [`관상의 유년운기에서 ${age}대는 ${stage.places}를 차례로 지나는 시기입니다.`];
+  const picked = agePicked(parts, age);
   if (!picked.length) {
     lines.push(`이 얼굴은 그 자리들이 크게 한쪽으로 치우치지 않아, ${age}대는 무난하게 흘러가는 시기로 봅니다.`);
     return lines;

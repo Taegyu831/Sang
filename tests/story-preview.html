@@ -19,8 +19,7 @@ function marked(tag, cls, text){const n=document.createElement(tag);n.className=
 const el=(t,c,x)=>{const n=document.createElement(t);if(c)n.className=c;if(x!==undefined)n.textContent=x;return n};
 for (const page of story.pages.slice(0,4)) {
   const wrap = el("div","story-page"); wrap.append(marked("h2","story-lead",page.lead));
-  for (const row of page.rows) { const box=el("div","story-row"); const head=el("div","story-label"); head.append(el("strong","",row.label),el("small","",row.sub)); const text=el("div","story-text"); for(const l of row.lines) text.append(marked("p","story-body",l)); box.append(head,text); wrap.append(box); }
-  if (page.basis.length) wrap.append(el("p","story-basis",`근거 · ${page.basis.join(" · ")}`));
+  for (const row of page.rows) { const box=el("div","story-row"); const head=el("div","story-label"); head.append(el("strong","",row.label),el("small","",row.sub)); const text=el("div","story-text"); for(const l of row.lines) text.append(marked("p","story-body",l)); if(row.basis?.length) text.append(el("p","story-basis",`근거 · ${row.basis.join(" · ")}`)); box.append(head,text); wrap.append(box); }
   document.getElementById("g").append(wrap);
 }
 document.title="ready";

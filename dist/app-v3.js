@@ -77,13 +77,14 @@ let content = null;
 let partsContent = null;
 let parts = null;
 let story = null;
-// ?strict=1 takes only calmer, better placed frames (up/down angle within 12 degrees, a narrower
-// distance window, a more neutral face). ?fillmin=0.4&fillmax=0.55 sets the distance window yourself:
-// the numbers are the face height as a share of the picture height, which depends on the camera.
+// Strict capture is the default: only calmer, better placed frames count (up/down angle within 12
+// degrees, a narrower distance window, a more neutral face). ?strict=0 gives the old loose limits back.
+// ?fillmin=0.4&fillmax=0.55 sets the distance window yourself: the numbers are the face height as a
+// share of the picture height, which depends on the camera.
 function captureOptions() {
-  const strict = SEARCH_PARAMS.get("strict") === "1";
+  const strict = SEARCH_PARAMS.get("strict") !== "0";
   const options = strict
-    ? { maxPitch: 12, maxRoll: 15, maxCenterOffset: 0.12, minFaceFill: 0.4, maxFaceFill: 0.6, limits: { smile: 0.2, jawOpen: 0.08, blink: 0.4, frown: 0.25 } }
+    ? { maxPitch: 12, maxRoll: 15, maxCenterOffset: 0.12, minFaceFill: 0.36, maxFaceFill: 0.55, limits: { smile: 0.2, jawOpen: 0.08, blink: 0.4, frown: 0.25 } }
     : {};
   const lo = Number(SEARCH_PARAMS.get("fillmin"));
   const hi = Number(SEARCH_PARAMS.get("fillmax"));
@@ -780,11 +781,14 @@ function storyPage(page, { first = false } = {}) {
       head.append(el("strong", "", row.label), el("small", "", row.sub));
       const text = el("div", "story-text");
       for (const line of row.lines) text.append(marked("p", "story-body", line));
+      // The parts of the face this row was read from.
+      if (row.basis?.length) text.append(el("p", "story-basis", `근거 · ${row.basis.join(" · ")}`));
       box.append(head, text);
       wrap.append(box);
     }
   } else for (const line of page.body.filter(Boolean)) wrap.append(marked("p", "story-body", line));
-  if (page.basis.length) wrap.append(el("p", "story-basis", `근거 · ${page.basis.join(" · ")}`));
+  // Pages with grouped rows show the basis under each row; the others keep one line at the end.
+  if (!page.rows?.length && page.basis.length) wrap.append(el("p", "story-basis", `근거 · ${page.basis.join(" · ")}`));
   return wrap;
 }
 
