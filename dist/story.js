@@ -169,9 +169,19 @@ function gather(entries, field, limit, told = new Set()) {
   const items = mergeItems(all, told).slice(0, limit);
   for (const item of items) told.add(item);
   // The basis is only the parts behind the wordings that are actually told (a kept wording also
-  // stands for the shorter ones it swallowed in mergeItems).
-  const basis = items.flatMap((kept) => [...source].filter(([text]) => kept.includes(text)).flatMap(([, names]) => [...names]));
-  return { items, basis: [...new Set(basis)] };
+  // stands for the shorter ones it swallowed in mergeItems), each with what it says in this field.
+  const links = new Map();
+  for (const kept of items) {
+    for (const { part, facets } of entries) {
+      for (const item of facets[field] ?? []) {
+        if (!kept.includes(item)) continue;
+        if (!links.has(part.part)) links.set(part.part, { part: part.part, name: part.name, items: [] });
+        const link = links.get(part.part);
+        if (!link.items.includes(item)) link.items.push(item);
+      }
+    }
+  }
+  return { items, basis: [...links.keys()], links: [...links.values()] };
 }
 
 // What a typical face scores on each axis, and how much faces differ. Many more
@@ -245,14 +255,26 @@ export function composeStory(parts, shape, extras = { lines: [], size: null, sto
 
   // A line of a page, with the heading it is shown under (body keeps the plain lines, rows the grouped ones).
   // basis: the parts of the face this line was read from, shown under the line.
+  // basis entries are a part name (string) or { part, name, items }: the part, how it reads on this
+  // face, and the wordings of the line that come from it. Same part twice is merged.
+  const merge = (list, more) => {
+    const out = list.map((e) => ({ ...e, items: [...(e.items ?? [])] }));
+    for (const raw of more) {
+      const e = typeof raw === "string" ? { part: raw } : raw;
+      const found = out.find((x) => x.part === e.part);
+      if (!found) out.push({ ...e, items: [...(e.items ?? [])] });
+      else for (const item of e.items ?? []) if (!found.items.includes(item)) found.items.push(item);
+    }
+    return out;
+  };
   const add = (page, label, sub, line, basis = []) => {
     if (!line) return;
     page.body.push(line);
     const last = page.rows[page.rows.length - 1];
     if (last && last.label === label) {
       last.lines.push(line);
-      last.basis = [...new Set([...last.basis, ...basis])];
-    } else page.rows.push({ label, sub, lines: [line], basis: [...new Set(basis)] });
+      last.basis = merge(last.basis, basis);
+    } else page.rows.push({ label, sub, lines: [line], basis: merge([], basis) });
   };
 
   const told = new Set();
@@ -271,10 +293,10 @@ export function composeStory(parts, shape, extras = { lines: [], size: null, sto
   if (shape && !(extras.formLines ?? []).length) add(first, "얼굴의 형", "윤곽", (shape.text.match(/[^.]+\.\s*/g)?.slice(0, 2).join("").trim() ?? "").replace(shape.name, em(shape.name)), ["얼굴 길이와 폭"]);
   for (const line of extras.frame ?? []) add(first, "삼정", "얼굴의 세 구간", line, extras.frameBasis);
   for (const line of extras.pairLines ?? []) add(first, "짝 부위", "눈여겨볼 곳", line, extras.pairBasis);
-  if (traits.items.length) add(first, "성격", "기질", `성격으로는 ${josa(list(traits.items), "이", "가")} 함께 두드러집니다.`, traits.basis);
+  if (traits.items.length) add(first, "성격", "기질", `성격으로는 ${josa(list(traits.items), "이", "가")} 함께 두드러집니다.`, traits.links);
   const other = aligned.length ? gather(against, "traits", 3, told) : { items: [], basis: [] };
   if (other.items.length) {
-    add(first, "성격", "기질", `한편 ${list(other.items)} 같은 면도 함께 읽혀, 한 가지로만 단정하기 어려운 사람입니다.`, other.basis);
+    add(first, "성격", "기질", `한편 ${list(other.items)} 같은 면도 함께 읽혀, 한 가지로만 단정하기 어려운 사람입니다.`, other.links);
     first.basis = [...new Set([...first.basis, ...other.basis])];
   }
 
@@ -284,11 +306,11 @@ export function composeStory(parts, shape, extras = { lines: [], size: null, sto
   const work = gather(entries, "work", 5, told);
   const second = { title: "일과 재물", lead: `그리고 일과 재물에서는 ${main.work}`, body: [], rows: [], basis: work.basis };
   const leak = gather(entries, "workMinus", 3, told);
-  if (work.items.length) add(second, "재물의 흐름", "모이는 풀이", `${josa(list(work.items), "을", "를")} 꼽는 풀이가 이 얼굴에 모입니다.`, work.basis);
+  if (work.items.length) add(second, "재물의 흐름", "모이는 풀이", `${josa(list(work.items), "을", "를")} 꼽는 풀이가 이 얼굴에 모입니다.`, work.links);
   if (leak.items.length) {
     add(second, "지킬 점", "새는 곳", work.items.length
       ? `다만 ${josa(list(leak.items), "이라는", "라는")} 풀이도 함께 있어, 들어온 것을 지키는 관리가 관건입니다.`
-      : `${josa(list(leak.items), "이라는", "라는")} 풀이가 있어, 들어온 것을 지키는 관리가 관건입니다.`, leak.basis);
+      : `${josa(list(leak.items), "이라는", "라는")} 풀이가 있어, 들어온 것을 지키는 관리가 관건입니다.`, leak.links);
     second.basis = [...new Set([...second.basis, ...leak.basis])];
   }
   if (b) add(second, "함께 읽히는 면", "겹치는 성향", `여기에 ${b.work}`, OVERALL_BASIS);
@@ -297,9 +319,9 @@ export function composeStory(parts, shape, extras = { lines: [], size: null, sto
   const people = gather(entries, "people", 5, told);
   const third = { title: "사람과 사랑", lead: `이어서 사람과 사랑에서는 ${main.love}`, body: [], rows: [], basis: people.basis };
   const peopleMinus = gather(entries, "peopleMinus", 3, told);
-  if (people.items.length) add(third, "관계의 모습", "사람과 사랑", `${josa(list(people.items), "이", "가")} 거론되는 얼굴입니다.`, people.basis);
+  if (people.items.length) add(third, "관계의 모습", "사람과 사랑", `${josa(list(people.items), "이", "가")} 거론되는 얼굴입니다.`, people.links);
   if (peopleMinus.items.length) {
-    add(third, "유의할 점", "관계에서", `${people.items.length ? "한편으로는 " : ""}${josa(list(peopleMinus.items), "이라는", "라는")} 풀이도 있습니다.`, peopleMinus.basis);
+    add(third, "유의할 점", "관계에서", `${people.items.length ? "한편으로는 " : ""}${josa(list(peopleMinus.items), "이라는", "라는")} 풀이도 있습니다.`, peopleMinus.links);
     third.basis = [...new Set([...third.basis, ...peopleMinus.basis])];
   }
   if (b) add(third, "함께 읽히는 면", "겹치는 성향", `이와 함께 ${b.love}`, OVERALL_BASIS);
@@ -311,11 +333,11 @@ export function composeStory(parts, shape, extras = { lines: [], size: null, sto
   const stages = [["초년", early], ["중년", mid], ["말년", late]].filter(([, g]) => g.items.length);
   const fourth = { title: "시기", lead: `그러다 보면 시기로는 ${main.stage}`, body: [], rows: [], basis: [...new Set([...early.basis, ...mid.basis, ...late.basis])] };
   for (const line of extras.ageLines ?? []) add(fourth, "지금의 나이", "선택한 나이대", line, extras.ageBasis);
-  for (const [label, g] of stages) add(fourth, label, "흐름", `${strong(label)}에는 ${list(g.items)}에 관한 풀이가 모입니다.`, g.basis);
+  for (const [label, g] of stages) add(fourth, label, "흐름", `${strong(label)}에는 ${list(g.items)}에 관한 풀이가 모입니다.`, g.links);
   for (const [label, field] of [["초년", "earlyMinus"], ["중년", "midMinus"], ["말년", "lateMinus"]]) {
     const g = gather(entries, field, 3, told);
     if (!g.items.length) continue;
-    add(fourth, label, "흐름", `하지만 ${strong(label)}에는 ${josa(list(g.items), "이라는", "라는")} 풀이도 있습니다.`, g.basis);
+    add(fourth, label, "흐름", `하지만 ${strong(label)}에는 ${josa(list(g.items), "이라는", "라는")} 풀이도 있습니다.`, g.links);
     fourth.basis = [...new Set([...fourth.basis, ...g.basis])];
   }
   if (b) add(fourth, "함께 읽히는 면", "겹치는 성향", `아울러 ${b.stage}`, OVERALL_BASIS);

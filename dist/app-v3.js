@@ -10,7 +10,7 @@ import { extrasOf } from "./extras.js";
 import { findHairline, hairThirds } from "./hair.js";
 import { avatarSvg, paramsOf } from "./avatar.js";
 import { DEFAULT_COLLECT_ENDPOINT, buildRecord, submitMeasurement, flushQueue } from "./collect.js";
-import { portraitEndpoint, requestPortrait, partnerOf, fallbackPath, FALLBACK_WAIT_MS } from "./portrait.js";
+import { portraitEndpoint, requestPortrait, partnerOf, fallbackPath, FALLBACK_AGE, FALLBACK_WAIT_MS } from "./portrait.js";
 
 // The engine and the face model are served from this site (dist/vendor/mediapipe,
 // tasks-vision 1.1.1), so measuring does not depend on a public CDN.
@@ -649,6 +649,10 @@ function attachPortrait(figure, bond) {
   if (!endpoint) return;
   const spec = { pole: bond.to ?? null, kind: bond.kind, gender: bondGender(), age: myAge ?? 20 };
   const key = `${spec.kind}|${spec.pole}|${spec.gender}|${spec.age}`;
+  // 20s: the pictures made ahead of time (dist/fallback) are the answer, so no image API call is made.
+  // They cover every kind of 인연 the story can name (36 files minus the 4 it never asks for).
+  const ready = spec.age === FALLBACK_AGE ? fallbackPath(spec) : null;
+  if (ready && !PORTRAITS.has(key)) PORTRAITS.set(key, Promise.resolve(ready));
   if (!PORTRAITS.has(key)) {
     // Slow or failed: the spare picture made ahead of time takes its place.
     PORTRAITS.set(key, requestPortrait(endpoint, spec, { timeoutMs: FALLBACK_WAIT_MS }).catch((error) => {
@@ -769,6 +773,20 @@ function marked(tag, className, text) {
   return node;
 }
 
+/** "근거" under a reading row: each part, how it reads on this face, and the wording it gives. */
+function basisBlock(basis) {
+  const box = el("div", "story-basis-list");
+  box.append(el("p", "story-basis-title", "근거"));
+  for (const entry of basis) {
+    const line = el("p", "story-basis");
+    line.append(el("b", "", entry.part));
+    if (entry.name) line.append(document.createTextNode(` (${entry.name})`));
+    if (entry.items?.length) line.append(document.createTextNode(` → ${entry.items.join(", ")}`));
+    box.append(line);
+  }
+  return box;
+}
+
 function storyPage(page, { first = false } = {}) {
   const wrap = first ? storyFirst : el("div", "story-page");
   wrap.append(marked("h2", "story-lead", page.lead));
@@ -781,8 +799,8 @@ function storyPage(page, { first = false } = {}) {
       head.append(el("strong", "", row.label), el("small", "", row.sub));
       const text = el("div", "story-text");
       for (const line of row.lines) text.append(marked("p", "story-body", line));
-      // The parts of the face this row was read from.
-      if (row.basis?.length) text.append(el("p", "story-basis", `근거 · ${row.basis.join(" · ")}`));
+      // The parts of the face this row was read from, and what each one says here.
+      if (row.basis?.length) text.append(basisBlock(row.basis));
       box.append(head, text);
       wrap.append(box);
     }

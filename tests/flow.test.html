@@ -18,6 +18,13 @@ for (let i = 0; i < 100 && !frame.contentWindow.__sangReady; i += 1) await sleep
 const win = frame.contentWindow;
 const doc = frame.contentDocument;
 check("simulation hook is ready", !!win.__sangReady);
+// A visitor who picked a gender and the 20s (the app asks for both before measuring).
+doc.querySelector('#genderPick .chip-btn[data-gender="male"]')?.click();
+doc.querySelector('#agePick .chip-btn[data-age="20"]')?.click();
+// Count the calls to the picture service: for the 20s there must be none.
+const portraitCalls = [];
+const realFetch = win.fetch.bind(win);
+win.fetch = (url, ...rest) => { if (String(url).includes("/api/portrait")) portraitCalls.push(String(url)); return realFetch(url, ...rest); };
 check("the statistics box starts unticked", doc.querySelector("#consentBox") && doc.querySelector("#consentBox").checked === false);
 
 // ----- landmark arrays that look like MediaPipe output -----
@@ -81,6 +88,9 @@ win.__sang.show();
 await sleep(200);
 const text = (sel) => doc.querySelector(sel)?.textContent ?? "";
 check("the story has eight pages that open with the connectors", doc.querySelectorAll("#pages .slide").length === 8 && /^이 사람은/.test(doc.querySelector("#storyFirst .story-lead")?.textContent ?? "") && [...doc.querySelectorAll("#pages .slide .story-lead")].some((e) => /^그래서 잘 맞는 인연은/.test(e.textContent)));
+await sleep(400);
+const bondImages = [...doc.querySelectorAll(".bond .avatar-photo")];
+check("20s: the 인연 pictures are the ready-made ones and no picture service call is made", portraitCalls.length === 0 && bondImages.length > 0 && bondImages.every((i) => /\/fallback\/.+\.jpg/.test(i.src)), `calls ${portraitCalls.length}, images ${bondImages.map((i) => i.src.slice(-30)).join(",")}`);
 check("every page says something and nothing is folded away", [...doc.querySelectorAll("#pages .slide")].every((s) => s.textContent.length > 40) && doc.querySelectorAll("#resultView details").length === 0);
 {
   // the last page tells its lines about fortune one at a time, then shows the buttons
