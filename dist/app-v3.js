@@ -789,6 +789,8 @@ function basisBlock(basis) {
 
 function storyPage(page, { first = false } = {}) {
   const wrap = first ? storyFirst : el("div", "story-page");
+  // The name of the page as a small pill above its first line.
+  if (page.title && !page.lead.startsWith(page.title)) wrap.append(el("span", "story-tag", page.title));
   wrap.append(marked("h2", "story-lead", page.lead));
   if (page.bond) wrap.append(bondBlock(page.bond));
   if (page.rows?.length) {
@@ -815,7 +817,7 @@ function renderStory() {
   const shape = classifyFaceShape(finalMeasurement);
   story = composeStory(parts.all, shape, extrasOf(finalMeasurement, parts.all, myAge));
   // The first page keeps the teacher's greeting; the rest are rebuilt each time.
-  storyFirst.querySelectorAll(".story-lead, .story-row, .story-body, .story-basis").forEach((n) => n.remove());
+  storyFirst.querySelectorAll(".story-tag, .story-lead, .story-row, .story-body, .story-basis").forEach((n) => n.remove());
   storyPage(story.pages[0], { first: true });
   pages.querySelectorAll(".slide.is-story").forEach((n) => n.remove());
   const closingPage = pages.querySelector('[data-page="last"]');

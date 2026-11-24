@@ -11,9 +11,18 @@
 const q = new URLSearchParams(location.search);
 const app = document.getElementById("app");
 if (q.get("w")) { app.style.width = q.get("w") + "px"; app.style.height = (q.get("h") || 844) + "px"; }
-app.src = q.get("scan") ? "../dist/index.html?sim=1" : "../dist/index.html?preview=1&" + (q.get("v") ? "v=" + q.get("v") : "");
+app.src = (q.get("scan") || q.get("start")) ? "../dist/index.html?sim=1" : "../dist/index.html?preview=1&" + (q.get("v") ? "v=" + q.get("v") : "");
 app.addEventListener("load", () => setTimeout(() => {
   const d = app.contentDocument;
+  if (q.get("start")) {
+    // The start screen as a visitor sees it once the camera is ready: gender and age picked
+    // (the same "is-on" class the app sets), and the button enabled.
+    d.querySelector('#genderPick [data-gender="female"]').classList.add("is-on");
+    d.querySelector('#agePick [data-age="30"]').classList.add("is-on");
+    const b = d.querySelector("#cameraButton");
+    b.disabled = false; b.querySelector("span").textContent = "카메라 켜고 시작";
+    return;
+  }
   if (q.get("scan")) {
     d.querySelector("#emptyState").hidden = true;
     d.querySelector("#scanScreen").hidden = false;
@@ -31,12 +40,16 @@ app.addEventListener("load", () => setTimeout(() => {
     d.querySelector("#statusMessage").textContent = "이제 고개를 살짝 ◀ 쪽으로 돌려 보세요";
     return;
   }
-  // the preview needs the face engine to be ready: try again until the reading is built
+  // The preview sometimes does not open the first time (the content loads late): wait for the
+  // reading, and load the page again if it is not there after a while.
   let tries = 0;
   const open = () => {
-    d.querySelector("#loadingScreen").click();
     const dots = d.querySelectorAll(".slide-dot");
-    if (!dots.length && tries++ < 60) return setTimeout(open, 500);
+    const shown = !d.querySelector("#resultView").hidden && dots.length;
+    if (!shown) {
+      if (++tries % 25 === 0) { app.contentWindow.location.reload(); return; }
+      return setTimeout(open, 200);
+    }
     // ?slide=2 shows the third page of the reading (0 summary, 1 face shape, 2.. regions).
     dots[Number(q.get("slide") || 0)]?.click();
   };

@@ -1,5 +1,5 @@
 /* 상(相) 관상측정
-   계측 도면 스타일: 가는 선, 선명한 글꼴, 색은 발표 자료와 같은 살구색 바탕과 고동색 강조. 붉은 도장(相)은 브랜드 마크.
+   계측 도면 스타일: 가는 선, 선명한 글꼴, 색은 Cream 바탕, Brown 강조, 정말 핵심인 말에만 Baby Blue 형광펜. 붉은 도장(相)은 브랜드 마크.
    글꼴: IBM Plex Sans KR, IBM Plex Mono · SIL Open Font License 1.1 · fonts/LICENSE-IBMPlex-OFL.txt
          도장 글자 相: Noto Serif KR 일부 · SIL Open Font License 1.1 · fonts/LICENSE-NotoSerifKR-OFL.txt */
 
@@ -11,18 +11,19 @@
 @font-face { font-family: "Seal Serif"; src: url("./fonts/NotoSerifKR-Seal.woff2") format("woff2"); font-weight: 700; font-display: swap; }
 
 :root {
-  --paper: #fbf7ee;       /* 발표 자료 바탕: 살구색 */
-  --card: #ffffff;
+  --paper: #f2e8da;       /* 바탕: Cream */
+  --card: #f2e8da;
   --ink: #1d1a16;
   --ink-2: #3d3730;
   --muted: #7a7064;
-  --line: #e7dfcf;
-  --accent: #a3271f;      /* 강조 고동색: 값, 결론, 눈금 (발표 자료와 같은 값) */
-  --accent-soft: #fbeee6;
-  --seal: #a3271f;        /* 도장: 발표 자료의 相와 같은 값 */
+  --line: #d8cab3;
+  --accent: #3b2418;      /* 강조: Brown. 값, 결론, 눈금, 핵심 단어 */
+  --accent-soft: #e8dbc6;
+  --sky: #8ec5ff;         /* Baby Blue: 맨 위 띠의 점, 쪽 이름표, 쪽 이동 점 세 곳에만 */
+  --seal: #3b2418;        /* 도장 相 */
   --gold: #8a6416;        /* 숫자와 핵심 단어: 발표 자료의 갈색 굵은 글씨 */
-  --navy: #a3271f;
-  --pos: #a3271f; --neg: #3d3730;
+  --navy: #3b2418;
+  --pos: #3b2418; --neg: #3d3730;
   /* 풀이 분야: 작은 점 색 */
   --d-money: #a86a00; --d-money-bg: #f1ece3;
   --d-work: #1c4dff;  --d-work-bg: #f1ece3;
@@ -70,11 +71,11 @@ img { display: block; max-width: 100%; }
 .hint { font-weight: 500; font-size: calc(var(--fs) * 0.8); color: var(--muted); }
 
 .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 2.6em; padding: 0.45em 1.5em; border-radius: var(--radius); border: 1px solid var(--ink); background: var(--card); color: var(--ink); font-weight: 500; font-size: calc(var(--fs) * 0.9); transition: transform 0.1s, background 0.15s; }
-.btn:hover:not(:disabled) { background: #f3ede1; }
+.btn:hover:not(:disabled) { background: var(--accent-soft); }
 .btn:active:not(:disabled) { transform: translateY(1px); }
 .btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
-.btn.primary:hover:not(:disabled) { background: #86201a; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--paper); font-weight: 700; }
+.btn.primary:hover:not(:disabled) { background: #54372a; border-color: #54372a; }
 .btn.big-btn { font-size: calc(var(--fs) * 1.1); padding: 0.6em 2.2em; }
 .btn.small { font-size: calc(var(--fs) * 0.75); min-height: 2.2em; border-width: 1px; }
 .btn:disabled { opacity: 0.45; cursor: default; }
@@ -133,7 +134,7 @@ img { display: block; max-width: 100%; }
 
 .overview { margin: auto; width: min(100%, 1100px); display: grid; grid-template-columns: minmax(180px, 34%) minmax(0, 1fr); gap: clamp(18px, 4vw, 56px); align-items: center; }
 .plate { position: relative; margin: 0; }
-.face-plate { position: relative; aspect-ratio: 4 / 5; background: #111; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line); }
+.face-plate { position: relative; aspect-ratio: 4 / 5; background: #111; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line); box-shadow: 0 2px 4px rgba(59, 36, 24, 0.12), 0 12px 28px rgba(59, 36, 24, 0.22); }
 .face-plate img { width: 100%; height: 100%; object-fit: cover; }
 .face-plate svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .annotation-line { vector-effect: non-scaling-stroke; stroke-width: 1.5px; }
@@ -323,7 +324,8 @@ img { display: block; max-width: 100%; }
 .story-text { display: flex; flex-direction: column; gap: 0.5em; min-width: 0; }
 .story-text .story-body { margin: 0; }
 .story-basis { font-family: var(--mono); font-size: 0.74em; color: var(--muted); margin: 0; }
-.story-basis b { font-weight: 700; color: var(--ink, inherit); }
+.story-basis b { font-weight: 700; color: var(--accent); }
+.story-tag { align-self: flex-start; padding: 0.15em 0.95em; border-radius: 999px; background: var(--sky); color: var(--accent); font-size: calc(var(--fs) * 0.7); font-weight: 700; letter-spacing: 0.02em; }
 .story-basis-list { display: flex; flex-direction: column; gap: 3px; margin-top: 0.5em; }
 .story-basis-title { margin: 0; font-family: var(--mono); font-size: 0.7em; letter-spacing: 0.08em; color: var(--muted); }
 .closing .story-lead { font-size: clamp(18px, min(1.9vw, 3vh), 26px); }
@@ -342,7 +344,7 @@ img { display: block; max-width: 100%; }
 .slide-dot { width: 22px; height: 22px; display: grid; place-items: center; }
 .slide-dot::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--line); transition: background 0.3s, transform 0.3s; }
 .slide-dot:hover::before { background: var(--muted); }
-.slide-dot.is-on::before { background: var(--accent); transform: scale(1.35); }
+.slide-dot.is-on::before { background: var(--sky); box-shadow: 0 0 0 2px var(--accent); transform: scale(1.35); }
 @media (prefers-reduced-motion: reduce) {
   .slide, .slide .story-page > * { transition: none; }
   .slide:not(.is-active) .story-page > * { opacity: 1; transform: none; }
@@ -438,3 +440,12 @@ img { display: block; max-width: 100%; }
 .consent { display: flex; align-items: center; gap: 0.8em; max-width: min(32em, 100%); font-size: 0.9em; line-height: 1.55; color: var(--ink-2); cursor: pointer; text-align: left; }
 .consent input { flex: none; width: 1.9em; height: 1.9em; margin: 0; accent-color: var(--accent); cursor: pointer; }
 .consent strong { font-weight: 800; color: var(--ink); }
+
+/* 마무리 문장을 카드로: 얇은 선과 옅은 그림자 */
+.closing-notes { position: relative; padding: clamp(14px, 2.6vh, 28px) clamp(18px, 2.4vw, 32px); border-radius: 12px; border: 1px solid var(--line); background: #f6eee1; box-shadow: 0 6px 22px rgba(59, 36, 24, 0.08); }
+.closing-notes:not(:has(.is-shown)) { background: transparent; border-color: transparent; box-shadow: none; }
+
+/* 맨 위 띠: 개인정보 안내를 화면마다 흩어 두지 않고 한곳에 */
+.top-strip { position: fixed; top: 0; left: 0; right: 0; height: 30px; display: flex; align-items: center; justify-content: center; background: var(--accent); color: var(--paper); font-size: 13px; letter-spacing: 0.02em; z-index: 30; }
+.top-strip::before { content: ""; width: 7px; height: 7px; margin-right: 8px; border-radius: 50%; background: var(--sky); }
+.app { top: 30px; }
