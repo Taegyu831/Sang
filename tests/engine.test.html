@@ -260,6 +260,14 @@ for (const [yaw, pitch, roll] of [[22, 0, 0], [-24, 12, 0], [0, -18, 0], [15, 15
     `${ra.frames.signature} A:${ra.themes.map((x) => x.state + (x.near ? "*" : "")).join(" ")} B:${rb.themes.map((x) => x.state + (x.near ? "*" : "")).join(" ")}`);
   check("themes far from a boundary are identical", ra.themes.filter((x, i) => !x.near && !rb.themes[i].near).length >= 4);
   check("snapshot reports the angles covered", sa.coverage.yaw[1] - sa.coverage.yaw[0] > 20 && sb.coverage.pitch[1] - sb.coverage.pitch[0] > 15);
+
+  {
+    const c = new StableCapture();
+    for (let i = 0; i < 30; i += 1) c.add({ x: 1 }, 1, { yaw: 0, pitch: 4 + (i % 3), roll: -2 }, i * 30, 0.45);
+    const ctx = c.captureContext();
+    check("capture context gives the mean up/down angle, tilt and face height", Math.abs(ctx.capturePitchMean - 5) < 0.2 && Math.abs(ctx.captureRollAbs - 2) < 1e-9 && Math.abs(ctx.captureFill - 0.45) < 1e-9 && ctx.capturePitchSd > 0, JSON.stringify(ctx));
+    check("capture context is empty before any frame", Object.keys(new StableCapture().captureContext()).length === 0);
+  }
 }
 
 {

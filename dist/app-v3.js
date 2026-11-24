@@ -77,7 +77,21 @@ let content = null;
 let partsContent = null;
 let parts = null;
 let story = null;
-let capture = new StableCapture();
+// ?strict=1 takes only calmer, better placed frames (up/down angle within 12 degrees, a narrower
+// distance window, a more neutral face). ?fillmin=0.4&fillmax=0.55 sets the distance window yourself:
+// the numbers are the face height as a share of the picture height, which depends on the camera.
+function captureOptions() {
+  const strict = SEARCH_PARAMS.get("strict") === "1";
+  const options = strict
+    ? { maxPitch: 12, maxRoll: 15, maxCenterOffset: 0.12, minFaceFill: 0.4, maxFaceFill: 0.6, limits: { smile: 0.2, jawOpen: 0.08, blink: 0.4, frown: 0.25 } }
+    : {};
+  const lo = Number(SEARCH_PARAMS.get("fillmin"));
+  const hi = Number(SEARCH_PARAMS.get("fillmax"));
+  if (lo > 0 && lo < 1) options.minFaceFill = lo;
+  if (hi > 0 && hi <= 1.2) options.maxFaceFill = hi;
+  return options;
+}
+let capture = new StableCapture(captureOptions());
 let latestLandmarks = null;
 let bestShot = null;
 let lastShotAt = 0;
@@ -139,7 +153,7 @@ function setProgress(bar, progress) {
 }
 
 function resetClassification() {
-  capture = new StableCapture();
+  capture = new StableCapture(captureOptions());
   bestShot = null;
   lastShotAt = 0;
   finalMeasurement = null;
@@ -386,7 +400,7 @@ function handleFace(landmarks, blend, matrixData) {
 
   const verdict = capture.assess({ pose, blend, faceFill, centerOffset });
   if (verdict.ok) {
-    capture.add(values, verdict.weight, pose, performance.now());
+    capture.add(values, verdict.weight, pose, performance.now(), faceFill);
     if (verdict.weight > (bestShot?.weight ?? 0) + 0.03 && performance.now() - lastShotAt > 400) {
       bestShot = { weight: verdict.weight, shot: capturePortraitFrame() };
       lastShotAt = performance.now();
@@ -483,7 +497,7 @@ function completeClassification(extra = {}) {
   if (classificationComplete || !content) return;
   const snapshot = capture.snapshot(CALIBRATION);
   const confidence = Math.round(60 * snapshot.stability + 40 * clamp(snapshot.totalWeight / capture.options.targetWeight));
-  finalMeasurement = { ...snapshot.values, ...extra, confidence, frames: snapshot.frames, stability: snapshot.stability, coverage: snapshot.coverage };
+  finalMeasurement = { ...snapshot.values, ...extra, ...snapshot.context, confidence, frames: snapshot.frames, stability: snapshot.stability, coverage: snapshot.coverage };
   reading = interpret(finalMeasurement, content);
   classificationComplete = true;
   shareMeasurement();

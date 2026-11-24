@@ -135,8 +135,8 @@ export class StableCapture {
   }
 
   /** t: timestamp in ms (optional; tests feed frames without real time). */
-  add(values, weight, pose, t = null) {
-    this.frames.push({ values, weight, yaw: pose.yaw, pitch: pose.pitch });
+  add(values, weight, pose, t = null, fill = null) {
+    this.frames.push({ values, weight, yaw: pose.yaw, pitch: pose.pitch, roll: pose.roll ?? 0, fill });
     this.added += 1;
     const zone = this.zoneOf(pose.yaw);
     if (zone) this.zoneCount[zone] += 1;
@@ -226,10 +226,33 @@ export class StableCapture {
     return this.stability(calibration) >= 0.5 ? "stable" : "cap";
   }
 
+  /**
+   * How the frames were taken, as plain numbers for the collected record: the weighted mean and
+   * spread of the up/down angle, the mean tilt, and the mean face height in the picture (a stand-in
+   * for the distance). With these the visitors' values can later be compared with camera height
+   * and distance without a separate test.
+   */
+  captureContext() {
+    const frames = this.frames;
+    const total = frames.reduce((sum, f) => sum + f.weight, 0);
+    if (!frames.length || total <= 0) return {};
+    const wmean = (pick) => frames.reduce((sum, f) => sum + pick(f) * f.weight, 0) / total;
+    const pitchMean = wmean((f) => f.pitch);
+    const out = {
+      capturePitchMean: pitchMean,
+      capturePitchSd: Math.sqrt(wmean((f) => (f.pitch - pitchMean) ** 2)),
+      captureRollAbs: wmean((f) => Math.abs(f.roll)),
+    };
+    const filled = frames.filter((f) => Number.isFinite(f.fill));
+    if (filled.length) out.captureFill = filled.reduce((sum, f) => sum + f.fill, 0) / filled.length;
+    return out;
+  }
+
   snapshot(calibration) {
     const yaws = this.frames.map((f) => f.yaw);
     const pitches = this.frames.map((f) => f.pitch);
     return {
+      context: this.captureContext(),
       values: this.estimate(),
       frames: this.frames.length,
       totalWeight: this.totalWeight,
