@@ -374,8 +374,10 @@ img { display: block; max-width: 100%; }
 @keyframes portrait-wait { 50% { opacity: 0.35; } }
 .bond-note { margin: 0; font-size: 0.6em; line-height: 1.5; color: var(--muted); word-break: keep-all; }
 .is-clash .avatar-photo { filter: saturate(0.8); }
-.gender-pick { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; color: var(--ink-2); font-size: calc(var(--fs) * 1.05); }
-.gender-pick .chip-btn { padding: 0.35em 1.3em; font-size: 1em; }
+.gender-pick { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 7px; color: var(--ink-2); font-size: calc(var(--fs) * 0.88); }
+.gender-pick .chip-btn { padding: 0.28em 1.1em; font-size: 1em; }
+/* 성별 줄은 위의 소개와 간격을 더 둔다 */
+#genderPick { margin-top: clamp(10px, 3vh, 32px); }
 .chip-btn { padding: 0.2em 0.9em; border: 1px solid var(--line); border-radius: 3px; color: var(--muted); font-weight: 500; transition: color 0.2s, border-color 0.2s; }
 .chip-btn:hover { color: var(--ink); border-color: var(--muted); }
 .chip-btn.is-on { color: var(--accent); border-color: var(--accent); font-weight: 700; }
@@ -440,6 +442,7 @@ img { display: block; max-width: 100%; }
 .consent { display: flex; align-items: center; gap: 0.8em; max-width: min(32em, 100%); font-size: 0.9em; line-height: 1.55; color: var(--ink-2); cursor: pointer; text-align: left; }
 .consent input { flex: none; width: 1.9em; height: 1.9em; margin: 0; accent-color: var(--accent); cursor: pointer; }
 .consent strong { font-weight: 800; color: var(--ink); }
+.consent span { word-break: keep-all; }
 
 /* 마무리 문장을 카드로: 얇은 선과 옅은 그림자 */
 .closing-notes { position: relative; padding: clamp(14px, 2.6vh, 28px) clamp(18px, 2.4vw, 32px); border-radius: 12px; border: 1px solid var(--line); background: #f6eee1; box-shadow: 0 6px 22px rgba(59, 36, 24, 0.08); }

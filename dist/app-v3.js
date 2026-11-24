@@ -17,7 +17,7 @@ import { portraitEndpoint, requestPortrait, partnerOf, fallbackPath, FALLBACK_AG
 const VENDOR = new URL("./vendor/mediapipe/", import.meta.url).href;
 const MEDIAPIPE_MODULE = `${VENDOR}vision_bundle.mjs`;
 const MEDIAPIPE_WASM = `${VENDOR}wasm`;
-const HAIR_MODEL = "https://storage.googleapis.com/mediapipe-models/image_segmenter/hair_segmenter/float32/latest/hair_segmenter.tflite";
+const HAIR_MODEL = `${VENDOR}hair_segmenter.tflite`;
 const FACE_MODEL = `${VENDOR}face_landmarker.task`;
 const PUBLIC_SITE_URL = "https://taegyu831.github.io/Sang/";
 const MODEL_LOAD_TIMEOUT = 40000;
