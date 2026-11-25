@@ -245,6 +245,101 @@ function opposes(key, poles) {
  * @returns       { headline, pages: [{ title, lead, body: [], basis: [] }], closing }
  *                pages[0] is the first page; the closing page is built by the app.
  */
+// ---------- telling a field part by part ----------
+// A page is told the way a teacher would: look at one part of the face, say what it reads as, move on to
+// the next part, and say where a part reads the other way. The wordings still come from facets.js; what
+// changes is that they stay attached to the part they were read from instead of being pooled by topic.
+
+// ARTIFICIAL: how many parts one page tells (5 to 6 asked for 2026-11-25), how many wordings one part
+// gets, and how many of the parts may be "reads the other way" ones.
+const PAGE_PARTS = 6;
+const PART_WORDINGS = 3;
+const OTHER_WAY_PARTS = 2;
+
+const wordsOf = (items) => items.map((x, i) => (i === 0 ? em(x) : x)).join(", ");
+
+/**
+ * The parts of the face that have something to say in this field, strongest first. Wordings that are
+ * already told on an earlier page (told) or contained in a longer one are left out. Does not change told.
+ */
+function pickParts(entries, field, told, limit, taken = new Set()) {
+  const all = entries.flatMap((e) => e.facets[field] ?? []);
+  const kept = new Set(mergeItems(all, told));
+  const used = new Set(taken);
+  const picks = [];
+  for (const e of [...entries].sort((x, y) => (y.part.score ?? 0) - (x.part.score ?? 0))) {
+    const items = [];
+    for (const item of e.facets[field] ?? []) {
+      if (!kept.has(item) || used.has(item)) continue;
+      used.add(item);
+      items.push(item);
+      if (items.length >= PART_WORDINGS) break;
+    }
+    if (items.length) picks.push({ part: e.part.part, name: e.part.name, items });
+    if (picks.length >= limit) break;
+  }
+  return picks;
+}
+
+/** The usual wording and the "other way" wording of one field, kept to PAGE_PARTS parts together. */
+function pickBoth(plusEntries, plusField, minusEntries, minusField, told, otherMax = OTHER_WAY_PARTS) {
+  let plus = pickParts(plusEntries, plusField, told, PAGE_PARTS);
+  const taken = new Set(plus.flatMap((x) => x.items));
+  const minus = pickParts(minusEntries, minusField, told, otherMax, taken);
+  plus = plus.slice(0, PAGE_PARTS - minus.length);
+  for (const x of [...plus, ...minus]) for (const item of x.items) told.add(item);
+  return { plus, minus };
+}
+
+const ADD_WORDS = [
+  (n, w) => `먼저 ${strong(n)}에서는 ${josa(w, "이", "가")} 읽힙니다.`,
+  (n, w) => `여기에 ${strong(n)}에서는 ${josa(w, "이", "가")} 더해집니다.`,
+  (n, w) => `${strong(n)}에서도 ${josa(w, "이", "가")} 읽힙니다.`,
+  (n, w) => `또 ${strong(n)}에서는 ${josa(w, "이", "가")} 보입니다.`,
+  (n, w) => `${strong(n)}에서는 ${josa(w, "이", "가")} 나옵니다.`,
+];
+
+/**
+ * One passage over the picked parts. A part already told on an earlier page (seen) is taken up again
+ * ("앞에서 본 ..."), parts that read the other way come after "다만", and kind picks how those are worded:
+ * "reading" (풀이 ... 나옵니다) or "side" (다른 면도 함께 보입니다, for the person's other side).
+ */
+function tellParts({ plus, minus }, { seen = new Set(), kind = "reading", open = null } = {}) {
+  const sentences = [];
+  let again = 0;
+  plus.forEach((x, i) => {
+    const w = wordsOf(x.items);
+    const known = seen.has(x.part);
+    if (i === 0 && open) {
+      sentences.push(open(x.name, w, known));
+      if (known) again += 1;
+    }
+    else if (known) {
+      sentences.push(again === 0
+        ? `앞에서 본 ${josa(strong(x.name), "은", "는")} 여기서도 ${josa(w, "이", "가")} 읽힙니다.`
+        : `${josa(strong(x.name), "은", "는")} 이쪽에서도 마찬가지로 ${josa(w, "이", "가")} 읽힙니다.`);
+      again += 1;
+    } else if (i >= 3 && i === plus.length - 1) sentences.push(`끝으로 ${strong(x.name)}에서는 ${josa(w, "이", "가")} 읽힙니다.`);
+    else sentences.push(ADD_WORDS[i % ADD_WORDS.length](x.name, w));
+  });
+  minus.forEach((x, i) => {
+    const w = wordsOf(x.items);
+    if (kind === "side") {
+      sentences.push(i === 0
+        ? `그런데 ${strong(x.name)}에서는 ${josa(w, "이", "가")} 읽혀, 다른 면도 함께 보입니다.`
+        : `또 ${strong(x.name)}에서는 ${josa(w, "이", "가")} 읽혀 이 면을 더합니다.`);
+    } else {
+      sentences.push(i === 0
+        ? `${plus.length ? "다만 " : ""}${strong(x.name)}에서는 ${josa(w, "이라는", "라는")} 풀이도 함께 나옵니다.`
+        : `${strong(x.name)}에서도 ${josa(w, "이라는", "라는")} 풀이가 보입니다.`);
+    }
+  });
+  return sentences.join(" ");
+}
+
+const linksOf = ({ plus, minus }) => [...plus, ...minus].map((x) => ({ part: x.part, name: x.name, items: [...x.items] }));
+const partsOf = ({ plus, minus }) => [...plus, ...minus].map((x) => x.part);
+
 export function composeStory(parts, shape, extras = { lines: [], size: null, stop: null, frame: [] }) {
   // The zones (삼정) come from the frame judgement (sanjeong.js), not from the part cards: parts.js skips
   // the middle and lower zone card, so a long zone is read once, and an equal face is told by a sentence.
@@ -286,61 +381,62 @@ export function composeStory(parts, shape, extras = { lines: [], size: null, sto
   // 1. who this is
   const aligned = entries.filter((e) => !opposes(e.key, poles));
   const against = entries.filter((e) => opposes(e.key, poles));
-  const traits = gather(aligned.length ? aligned : entries, "traits", 7, told);
+  const seen = new Set(); // parts already told on an earlier page
+  const traits = pickBoth(aligned.length ? aligned : entries, "traits", aligned.length ? against : [], "traits", told);
+  traits.basis = [...new Set(partsOf(traits))];
   const first = { title: "이 사람은", lead: `이 사람은 ${headline}`, body: [], rows: [], basis: traits.basis };
   // The form (오행형) is the first step, so when it is known it takes the place of the plain face shape sentence.
   for (const line of extras.formLines ?? []) add(first, "얼굴의 형", "윤곽", line, extras.formBasis);
   if (shape && !(extras.formLines ?? []).length) add(first, "얼굴의 형", "윤곽", (shape.text.match(/[^.]+\.\s*/g)?.slice(0, 2).join("").trim() ?? "").replace(shape.name, em(shape.name)), ["얼굴 길이와 폭"]);
   for (const line of extras.frame ?? []) add(first, "삼정", "얼굴의 세 구간", line, extras.frameBasis);
   for (const line of extras.pairLines ?? []) add(first, "짝 부위", "눈여겨볼 곳", line, extras.pairBasis);
-  if (traits.items.length) add(first, "성격", "기질", `성격으로는 ${josa(list(traits.items), "이", "가")} 함께 두드러집니다.`, traits.links);
-  const other = aligned.length ? gather(against, "traits", 3, told) : { items: [], basis: [] };
-  if (other.items.length) {
-    add(first, "성격", "기질", `한편 ${list(other.items)} 같은 면도 함께 읽혀, 한 가지로만 단정하기 어려운 사람입니다.`, other.links);
-    first.basis = [...new Set([...first.basis, ...other.basis])];
+  if (traits.plus.length || traits.minus.length) {
+    const text = tellParts(traits, { kind: "side" }) + (traits.minus.length && traits.plus.length ? " 그래서 한 가지로만 단정하기 어려운 사람입니다." : "");
+    add(first, "성격", "기질", text, linksOf(traits));
   }
+  partsOf(traits).forEach((x) => seen.add(x));
 
   (extras.lines ?? []).forEach((line, i) => add(first, "그 밖", "표정과 인상", line, extras.lineBasis?.[i]));
 
   // 2. work and money
-  const work = gather(entries, "work", 5, told);
-  const second = { title: "일과 재물", lead: `일과 재물에서는 ${main.work}`, body: [], rows: [], basis: work.basis };
-  const leak = gather(entries, "workMinus", 3, told);
-  if (work.items.length) add(second, "재물의 흐름", "모이는 풀이", `${josa(list(work.items), "을", "를")} 꼽는 풀이가 이 얼굴에 모입니다.`, work.links);
-  if (leak.items.length) {
-    add(second, "지킬 점", "새는 곳", work.items.length
-      ? `다만 ${josa(list(leak.items), "이라는", "라는")} 풀이도 함께 있어, 들어온 것을 지키는 관리가 관건입니다.`
-      : `${josa(list(leak.items), "이라는", "라는")} 풀이가 있어, 들어온 것을 지키는 관리가 관건입니다.`, leak.links);
-    second.basis = [...new Set([...second.basis, ...leak.basis])];
+  const work = pickBoth(entries, "work", entries, "workMinus", told);
+  const second = { title: "일과 재물", lead: `일과 재물에서는 ${main.work}`, body: [], rows: [], basis: [...new Set(partsOf(work))] };
+  if (work.plus.length || work.minus.length) {
+    const text = tellParts(work, { seen }) + (work.minus.length ? " 들어온 것을 지키는 관리가 관건입니다." : "");
+    add(second, "재물의 흐름", "부위를 따라", text, linksOf(work));
   }
-  if (b) add(second, "함께 읽히는 면", "겹치는 성향", `여기에 ${b.work}`, OVERALL_BASIS);
+  if (b) add(second, "재물의 흐름", "부위를 따라", `여기에 ${b.work}`, OVERALL_BASIS);
+  partsOf(work).forEach((x) => seen.add(x));
 
   // 3. people and love
-  const people = gather(entries, "people", 5, told);
-  const third = { title: "사람과 사랑", lead: `이어서 사람과 사랑에서는 ${main.love}`, body: [], rows: [], basis: people.basis };
-  const peopleMinus = gather(entries, "peopleMinus", 3, told);
-  if (people.items.length) add(third, "관계의 모습", "사람과 사랑", `${josa(list(people.items), "이", "가")} 거론되는 얼굴입니다.`, people.links);
-  if (peopleMinus.items.length) {
-    add(third, "유의할 점", "관계에서", `${people.items.length ? "한편으로는 " : ""}${josa(list(peopleMinus.items), "이라는", "라는")} 풀이도 있습니다.`, peopleMinus.links);
-    third.basis = [...new Set([...third.basis, ...peopleMinus.basis])];
-  }
-  if (b) add(third, "함께 읽히는 면", "겹치는 성향", `이와 함께 ${b.love}`, OVERALL_BASIS);
+  const people = pickBoth(entries, "people", entries, "peopleMinus", told);
+  const third = { title: "사람과 사랑", lead: `이어서 사람과 사랑에서는 ${main.love}`, body: [], rows: [], basis: [...new Set(partsOf(people))] };
+  if (people.plus.length || people.minus.length) add(third, "관계의 모습", "부위를 따라", tellParts(people, { seen }), linksOf(people));
+  if (b) add(third, "관계의 모습", "부위를 따라", `이와 함께 ${b.love}`, OVERALL_BASIS);
+  partsOf(people).forEach((x) => seen.add(x));
 
-  // 4. the life stages, together
-  const early = gather(entries, "early", 4, told);
-  const mid = gather(entries, "mid", 4, told);
-  const late = gather(entries, "late", 4, told);
-  const stages = [["초년", early], ["중년", mid], ["말년", late]].filter(([, g]) => g.items.length);
-  const fourth = { title: "시기", lead: `그러다 보면 시기로는 ${main.stage}`, body: [], rows: [], basis: [...new Set([...early.basis, ...mid.basis, ...late.basis])] };
+  // 4. the life stages, one passage for each
+  const fourth = { title: "시기", lead: `그러다 보면 시기로는 ${main.stage}`, body: [], rows: [], basis: [] };
   for (const line of extras.ageLines ?? []) add(fourth, "지금의 나이", "선택한 나이대", line, extras.ageBasis);
-  for (const [label, g] of stages) add(fourth, label, "흐름", `${strong(label)}에는 ${list(g.items)}에 관한 풀이가 모입니다.`, g.links);
-  for (const [label, field] of [["초년", "earlyMinus"], ["중년", "midMinus"], ["말년", "lateMinus"]]) {
-    const g = gather(entries, field, 3, told);
-    if (!g.items.length) continue;
-    add(fourth, label, "흐름", `하지만 ${strong(label)}에는 ${josa(list(g.items), "이라는", "라는")} 풀이도 있습니다.`, g.links);
-    fourth.basis = [...new Set([...fourth.basis, ...g.basis])];
+  let budget = PAGE_PARTS;
+  for (const [label, field] of [["초년", "early"], ["중년", "mid"], ["말년", "late"]]) {
+    if (budget <= 0) break;
+    const stage = pickBoth(entries, field, entries, `${field}Minus`, told, 1);
+    stage.plus = stage.plus.slice(0, Math.max(0, Math.min(2, budget - stage.minus.length)));
+    stage.minus = stage.minus.slice(0, Math.max(0, budget - stage.plus.length));
+    if (!stage.plus.length && !stage.minus.length) continue;
+    budget -= stage.plus.length + stage.minus.length;
+    const open = (n, w, known) => (known
+      ? `${strong(label)}에는 앞에서 본 ${josa(strong(n), "은", "는")} 여기서도 ${josa(w, "이", "가")} 읽힙니다.`
+      : `${strong(label)}에는 ${strong(n)}에서 ${josa(w, "이", "가")} 읽힙니다.`);
+    add(fourth, label, "흐름", tellParts(stage, { seen, open }), linksOf(stage));
+    fourth.basis.push(...partsOf(stage));
   }
-  if (b) add(fourth, "함께 읽히는 면", "겹치는 성향", `아울러 ${b.stage}`, OVERALL_BASIS);
+  fourth.basis = [...new Set(fourth.basis)];
+  if (b) {
+    const last = fourth.rows[fourth.rows.length - 1];
+    add(fourth, last?.label ?? "시기", last?.sub ?? "흐름", `아울러 ${b.stage}`, OVERALL_BASIS);
+  }
 
   // 5. who fits
   const fits = (poles.length ? poles.map((p) => FIT[p]) : [EVEN_FIT]);
