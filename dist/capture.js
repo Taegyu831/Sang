@@ -135,8 +135,8 @@ export class StableCapture {
   }
 
   /** t: timestamp in ms (optional; tests feed frames without real time). */
-  add(values, weight, pose, t = null, fill = null) {
-    this.frames.push({ values, weight, yaw: pose.yaw, pitch: pose.pitch, roll: pose.roll ?? 0, fill });
+  add(values, weight, pose, t = null, fill = null, fix = null) {
+    this.frames.push({ values, weight, yaw: pose.yaw, pitch: pose.pitch, roll: pose.roll ?? 0, fill, fix });
     this.added += 1;
     const zone = this.zoneOf(pose.yaw);
     if (zone) this.zoneCount[zone] += 1;
@@ -245,6 +245,11 @@ export class StableCapture {
     };
     const filled = frames.filter((f) => Number.isFinite(f.fill));
     if (filled.length) out.captureFill = filled.reduce((sum, f) => sum + f.fill, 0) / filled.length;
+    // How much the head-angle correction (dist/residual.js) took off each ratio, weighted mean over
+    // the frames. Stored value + residFix_<ratio> is the value before that correction, so the
+    // correction table can be changed later and the collected rows recomputed.
+    const fixKeys = new Set(frames.flatMap((f) => (f.fix ? Object.keys(f.fix) : [])));
+    for (const key of fixKeys) out[`residFix_${key}`] = wmean((f) => f.fix?.[key] ?? 0);
     return out;
   }
 

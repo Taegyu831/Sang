@@ -267,6 +267,9 @@ for (const [yaw, pitch, roll] of [[22, 0, 0], [-24, 12, 0], [0, -18, 0], [15, 15
     const ctx = c.captureContext();
     check("capture context gives the mean up/down angle, tilt and face height", Math.abs(ctx.capturePitchMean - 5) < 0.2 && Math.abs(ctx.captureRollAbs - 2) < 1e-9 && Math.abs(ctx.captureFill - 0.45) < 1e-9 && ctx.capturePitchSd > 0, JSON.stringify(ctx));
     check("capture context is empty before any frame", Object.keys(new StableCapture().captureContext()).length === 0);
+    const f = new StableCapture();
+    for (let i = 0; i < 10; i += 1) f.add({ x: 1 }, 1, { yaw: 0, pitch: 0 }, i * 30, 0.45, { foreheadFace: 0.5 + (i % 2) });
+    check("capture context keeps the mean the head-angle correction took off", Math.abs(f.captureContext().residFix_foreheadFace - 1) < 1e-9, JSON.stringify(f.captureContext()));
   }
 }
 

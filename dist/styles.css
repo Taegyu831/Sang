@@ -377,7 +377,10 @@ img { display: block; max-width: 100%; }
 .gender-pick { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 7px; color: var(--ink-2); font-size: calc(var(--fs) * 0.88); }
 .gender-pick .chip-btn { padding: 0.28em 1.1em; font-size: 1em; }
 /* 성별 줄은 위의 소개와 간격을 더 둔다 */
-#genderPick { margin-top: clamp(10px, 3vh, 32px); }
+/* 성별 줄: 나이 줄보다 조금 크게, 더 아래로. 나이 줄은 제자리에 두려고 같은 만큼 위로 당긴다 */
+#genderPick { --drop: clamp(7px, 1.4vh, 13px); margin-top: calc(clamp(10px, 3vh, 32px) + var(--drop)); font-size: calc(var(--fs) * 1.06); }
+#genderPick .chip-btn { padding: 0.3em 1.3em; }
+#agePick { margin-top: calc(-1 * clamp(7px, 1.4vh, 13px)); }
 .chip-btn { padding: 0.2em 0.9em; border: 1px solid var(--line); border-radius: 3px; color: var(--muted); font-weight: 500; transition: color 0.2s, border-color 0.2s; }
 .chip-btn:hover { color: var(--ink); border-color: var(--muted); }
 .chip-btn.is-on { color: var(--accent); border-color: var(--accent); font-weight: 700; }

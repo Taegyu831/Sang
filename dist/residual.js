@@ -29,6 +29,9 @@ export const POSE_RESIDUAL = {
   mouthLift: { yaw: -0.058, pitch: 0.075 },
 };
 
+// Which table is in use, stored with every collected row. Raise it when the table changes.
+export const RESIDUAL_VERSION = 1;
+
 // Angles beyond these are treated as these, so the straight line is never extrapolated.
 export const RESIDUAL_LIMIT = { yaw: 30, pitch: 25 };
 

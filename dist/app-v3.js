@@ -3,7 +3,7 @@ import { LANDMARK, getPoints, computeFrontFeatures, vertical, horizontal, mean }
 import { CALIBRATION } from "./calibration.js";
 import { StableCapture, GUIDANCE, TURN_GUIDANCE, COMPARE_STEPS, PoseCompare, compareDeltas } from "./capture.js";
 import { interpret } from "./interpret.js";
-import { applyPoseResidual } from "./residual.js";
+import { applyPoseResidual, POSE_RESIDUAL, RESIDUAL_VERSION } from "./residual.js";
 import { readParts, classifyFaceShape } from "./parts.js";
 import { composeStory } from "./story.js";
 import { extrasOf } from "./extras.js";
@@ -77,14 +77,24 @@ let content = null;
 let partsContent = null;
 let parts = null;
 let story = null;
-// Strict capture is the default: only calmer, better placed frames count (up/down angle within 12
-// degrees, a narrower distance window, a more neutral face). ?strict=0 gives the old loose limits back.
+/** What the head-angle correction took off each ratio in this frame (null when it is off). */
+function residualFix(before, after) {
+  if (!POSE_RESIDUAL_ON) return null;
+  const fix = {};
+  for (const key of Object.keys(POSE_RESIDUAL)) {
+    if (Number.isFinite(before[key]) && Number.isFinite(after[key])) fix[key] = before[key] - after[key];
+  }
+  return fix;
+}
+
+// Strict capture is the default: only calmer, better placed frames count (up/down angle within 8
+// degrees (ARTIFICIAL: was 12, lowered 2026-11-24 after the exhibition webcam, set above eye level, gave -5 to -8 degrees), a narrower distance window, a more neutral face). ?strict=0 gives the old loose limits back.
 // ?fillmin=0.4&fillmax=0.55 sets the distance window yourself: the numbers are the face height as a
 // share of the picture height, which depends on the camera.
 function captureOptions() {
   const strict = SEARCH_PARAMS.get("strict") !== "0";
   const options = strict
-    ? { maxPitch: 12, maxRoll: 15, maxCenterOffset: 0.12, minFaceFill: 0.36, maxFaceFill: 0.55, limits: { smile: 0.2, jawOpen: 0.08, blink: 0.4, frown: 0.25 } }
+    ? { maxPitch: 8, maxRoll: 15, maxCenterOffset: 0.12, minFaceFill: 0.36, maxFaceFill: 0.55, limits: { smile: 0.2, jawOpen: 0.08, blink: 0.4, frown: 0.25 } }
     : {};
   const lo = Number(SEARCH_PARAMS.get("fillmin"));
   const hi = Number(SEARCH_PARAMS.get("fillmax"));
@@ -401,7 +411,7 @@ function handleFace(landmarks, blend, matrixData) {
 
   const verdict = capture.assess({ pose, blend, faceFill, centerOffset });
   if (verdict.ok) {
-    capture.add(values, verdict.weight, pose, performance.now(), faceFill);
+    capture.add(values, verdict.weight, pose, performance.now(), faceFill, residualFix(frontalValues, correctedValues));
     if (verdict.weight > (bestShot?.weight ?? 0) + 0.03 && performance.now() - lastShotAt > 400) {
       bestShot = { weight: verdict.weight, shot: capturePortraitFrame() };
       lastShotAt = performance.now();
@@ -498,7 +508,7 @@ function completeClassification(extra = {}) {
   if (classificationComplete || !content) return;
   const snapshot = capture.snapshot(CALIBRATION);
   const confidence = Math.round(60 * snapshot.stability + 40 * clamp(snapshot.totalWeight / capture.options.targetWeight));
-  finalMeasurement = { ...snapshot.values, ...extra, ...snapshot.context, confidence, frames: snapshot.frames, stability: snapshot.stability, coverage: snapshot.coverage };
+  finalMeasurement = { ...snapshot.values, ...extra, ...snapshot.context, residOn: POSE_RESIDUAL_ON ? 1 : 0, residVersion: RESIDUAL_VERSION, confidence, frames: snapshot.frames, stability: snapshot.stability, coverage: snapshot.coverage };
   reading = interpret(finalMeasurement, content);
   classificationComplete = true;
   shareMeasurement();
