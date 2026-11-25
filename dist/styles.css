@@ -323,11 +323,7 @@ img { display: block; max-width: 100%; }
 .story-label small { font-size: 0.72em; font-weight: 500; color: var(--muted); }
 .story-text { display: flex; flex-direction: column; gap: 0.5em; min-width: 0; }
 .story-text .story-body { margin: 0; }
-.story-basis { font-family: var(--mono); font-size: 0.74em; color: var(--muted); margin: 0; }
-.story-basis b { font-weight: 700; color: var(--accent); }
 .story-tag { align-self: flex-start; padding: 0.15em 0.95em; border-radius: 999px; background: var(--sky); color: var(--accent); font-size: calc(var(--fs) * 0.7); font-weight: 700; letter-spacing: 0.02em; }
-.story-basis-list { display: flex; flex-direction: column; gap: 3px; margin-top: 0.5em; }
-.story-basis-title { margin: 0; font-family: var(--mono); font-size: 0.7em; letter-spacing: 0.08em; color: var(--muted); }
 .closing .story-lead { font-size: clamp(18px, min(1.9vw, 3vh), 26px); }
 
 .slide :is(.story-page > *) { transition: opacity 0.7s cubic-bezier(0.45, 0, 0.2, 1), transform 0.7s cubic-bezier(0.45, 0, 0.2, 1); }

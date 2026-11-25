@@ -304,7 +304,7 @@ export function composeStory(parts, shape, extras = { lines: [], size: null, sto
 
   // 2. work and money
   const work = gather(entries, "work", 5, told);
-  const second = { title: "일과 재물", lead: `그리고 일과 재물에서는 ${main.work}`, body: [], rows: [], basis: work.basis };
+  const second = { title: "일과 재물", lead: `일과 재물에서는 ${main.work}`, body: [], rows: [], basis: work.basis };
   const leak = gather(entries, "workMinus", 3, told);
   if (work.items.length) add(second, "재물의 흐름", "모이는 풀이", `${josa(list(work.items), "을", "를")} 꼽는 풀이가 이 얼굴에 모입니다.`, work.links);
   if (leak.items.length) {

@@ -783,20 +783,6 @@ function marked(tag, className, text) {
   return node;
 }
 
-/** "근거" under a reading row: each part, how it reads on this face, and the wording it gives. */
-function basisBlock(basis) {
-  const box = el("div", "story-basis-list");
-  box.append(el("p", "story-basis-title", "근거"));
-  for (const entry of basis) {
-    const line = el("p", "story-basis");
-    line.append(el("b", "", entry.part));
-    if (entry.name) line.append(document.createTextNode(` (${entry.name})`));
-    if (entry.items?.length) line.append(document.createTextNode(` → ${entry.items.join(", ")}`));
-    box.append(line);
-  }
-  return box;
-}
-
 function storyPage(page, { first = false } = {}) {
   const wrap = first ? storyFirst : el("div", "story-page");
   // The name of the page as a small pill above its first line.
@@ -811,14 +797,10 @@ function storyPage(page, { first = false } = {}) {
       head.append(el("strong", "", row.label), el("small", "", row.sub));
       const text = el("div", "story-text");
       for (const line of row.lines) text.append(marked("p", "story-body", line));
-      // The parts of the face this row was read from, and what each one says here.
-      if (row.basis?.length) text.append(basisBlock(row.basis));
       box.append(head, text);
       wrap.append(box);
     }
   } else for (const line of page.body.filter(Boolean)) wrap.append(marked("p", "story-body", line));
-  // Pages with grouped rows show the basis under each row; the others keep one line at the end.
-  if (!page.rows?.length && page.basis.length) wrap.append(el("p", "story-basis", `근거 · ${page.basis.join(" · ")}`));
   return wrap;
 }
 
@@ -827,7 +809,7 @@ function renderStory() {
   const shape = classifyFaceShape(finalMeasurement);
   story = composeStory(parts.all, shape, extrasOf(finalMeasurement, parts.all, myAge));
   // The first page keeps the teacher's greeting; the rest are rebuilt each time.
-  storyFirst.querySelectorAll(".story-tag, .story-lead, .story-row, .story-body, .story-basis").forEach((n) => n.remove());
+  storyFirst.querySelectorAll(".story-tag, .story-lead, .story-row, .story-body").forEach((n) => n.remove());
   storyPage(story.pages[0], { first: true });
   pages.querySelectorAll(".slide.is-story").forEach((n) => n.remove());
   const closingPage = pages.querySelector('[data-page="last"]');
@@ -858,7 +840,10 @@ function showSlide(index, { force = false } = {}) {
     slide.classList.toggle("is-active", i === next);
     if (slide.dataset.page === "fortune") { if (i === next) playClosingNotes(); else stopClosingNotes(); }
     slide.classList.toggle("is-before", i < next);
-    slide.scrollTop = 0;
+    // The page being left keeps its scroll position while it fades out; going back to the top at
+    // once would flash the top of the old page for a moment. It is reset after the fade (0.7 s).
+    if (i === next) slide.scrollTop = 0;
+    else setTimeout(() => { if (!slide.classList.contains("is-active")) slide.scrollTop = 0; }, 800);
   });
   slideDots.querySelectorAll("button").forEach((dot, i) => dot.classList.toggle("is-on", i === next));
   // The fortune page has no picture on the left: only the lines, in the middle.
