@@ -415,7 +415,7 @@ export function composeStory(parts, shape, extras = { lines: [], size: null, sto
   // 2. work and money. The heading is made from the passage under it (headingOf). The sentence of the
   // kind of person (POLES) only stands in when the page has nothing from the parts to tell.
   const work = pickBoth(entries, "work", entries, "workMinus", told);
-  const second = { title: "일과 재물", lead: headingOf("일과 재물", work) ?? `일과 재물에서는 ${main.work}`, body: [], rows: [], basis: [...new Set(partsOf(work))] };
+  const second = { title: "일과 재물", lead: headingOf("일과 재물", work) ?? `일과 재물에서는 ${em(main.work)}`, body: [], rows: [], basis: [...new Set(partsOf(work))] };
   if (work.plus.length || work.minus.length) {
     add(second, "재물의 흐름", "", tellParts(work, { seen, afterMinus: "들어온 것을 지키는 관리가 관건입니다." }), linksOf(work));
   }
@@ -423,7 +423,7 @@ export function composeStory(parts, shape, extras = { lines: [], size: null, sto
 
   // 3. people and love
   const people = pickBoth(entries, "people", entries, "peopleMinus", told);
-  const third = { title: "사람과 사랑", lead: `이어서 ${headingOf("사람과 사랑", people) ?? `사람과 사랑에서는 ${main.love}`}`, body: [], rows: [], basis: [...new Set(partsOf(people))] };
+  const third = { title: "사람과 사랑", lead: `이어서 ${headingOf("사람과 사랑", people) ?? `사람과 사랑에서는 ${em(main.love)}`}`, body: [], rows: [], basis: [...new Set(partsOf(people))] };
   if (people.plus.length || people.minus.length) {
     add(third, "관계의 모습", "", tellParts(people, { seen }), linksOf(people));
   }
@@ -451,7 +451,7 @@ export function composeStory(parts, shape, extras = { lines: [], size: null, sto
   fourth.basis = [...new Set(fourth.basis)];
   // The heading names the stages the passages below are about.
   const stageNames = stagesTold.length > 1 ? `${stagesTold.slice(0, -1).join(", ")}과 ${stagesTold.at(-1)}` : stagesTold[0];
-  fourth.lead = stageNames ? `그러다 보면 시기로는 ${stageNames}에 풀이가 모이는 얼굴입니다.` : `그러다 보면 시기로는 ${main.stage}`;
+  fourth.lead = stageNames ? `그러다 보면 시기로는 ${em(stageNames)}에 풀이가 모이는 얼굴입니다.` : `그러다 보면 시기로는 ${em(main.stage)}`;
 
   // 5. who fits
   const fits = (poles.length ? poles.map((p) => FIT[p]) : [EVEN_FIT]);

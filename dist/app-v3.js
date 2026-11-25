@@ -828,6 +828,8 @@ function renderClosing() {
 // ---------- slides: one region on screen, the content itself changes ----------
 let slideIndex = 0;
 let slideLockedUntil = 0;
+// ARTIFICIAL: how long the wheel must stay quiet after a page turn before it scrolls again.
+const WHEEL_QUIET_MS = 140;
 const slidesOf = () => [...pages.querySelectorAll(".slide")];
 const slideDots = $("#slideDots");
 
@@ -878,6 +880,15 @@ function atEdge(slide, delta) {
   return delta > 0 ? slide.scrollTop + slide.clientHeight >= slide.scrollHeight - 2 : slide.scrollTop <= 0;
 }
 resultView.addEventListener("wheel", (event) => {
+  const now = performance.now();
+  // Right after a page turn the trackpad keeps sending wheel events for a while (momentum). They
+  // must not scroll the page that was just opened, or it would start in the middle. They are
+  // swallowed, and each one holds the lock a little longer, until the gesture is really over.
+  if (now < slideLockedUntil) {
+    event.preventDefault();
+    slideLockedUntil = Math.max(slideLockedUntil, now + WHEEL_QUIET_MS);
+    return;
+  }
   if (Math.abs(event.deltaY) < 12) return;
   event.preventDefault();
   if (atEdge(slidesOf()[slideIndex], event.deltaY)) step(event.deltaY > 0 ? 1 : -1);
