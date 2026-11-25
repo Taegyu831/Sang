@@ -153,9 +153,6 @@ export function mergeItems(items, told = new Set()) {
   return kept.filter((a) => ![...told].some((t) => t.includes(a)));
 }
 
-// The "함께 읽히는 면" lines come from the overall lean of all the read parts, not from one part.
-const OVERALL_BASIS = ["여러 부위의 종합 경향"];
-
 function gather(entries, field, limit, told = new Set()) {
   const all = [];
   const source = new Map(); // wording -> the parts that say it
@@ -304,7 +301,7 @@ const ADD_WORDS = [
  * ("앞에서 본 ..."), parts that read the other way come after "다만", and kind picks how those are worded:
  * "reading" (풀이 ... 나옵니다) or "side" (다른 면도 함께 보입니다, for the person's other side).
  */
-function tellParts({ plus, minus }, { seen = new Set(), kind = "reading", open = null } = {}) {
+function tellParts({ plus, minus }, { seen = new Set(), kind = "reading", open = null, afterMinus = "" } = {}) {
   const sentences = [];
   let again = 0;
   plus.forEach((x, i) => {
@@ -334,7 +331,24 @@ function tellParts({ plus, minus }, { seen = new Set(), kind = "reading", open =
         : `${strong(x.name)}에서도 ${josa(w, "이라는", "라는")} 풀이가 보입니다.`);
     }
   });
+  if (afterMinus && minus.length) sentences.push(afterMinus);
   return sentences.join(" ");
+}
+
+/**
+ * The heading of a page, made from what the page then explains: the first wordings of its two strongest
+ * parts. The heading is a summary of the passage under it, not a separate sentence from another source.
+ * Returns null when the page has nothing to tell.
+ */
+function headingOf(topic, { plus, minus }) {
+  if (plus.length) {
+    const items = [];
+    for (const x of plus) { if (items.length < 2) items.push(x.items[0]); }
+    if (items.length < 2 && plus[0].items[1]) items.push(plus[0].items[1]);
+    return `${topic}에서는 ${josa(items.map(em).join(", "), "이", "가")} 먼저 읽히는 얼굴입니다.`;
+  }
+  if (minus.length) return `${topic}에서는 ${josa(em(minus[0].items[0]), "이라는", "라는")} 풀이가 먼저 나오는 얼굴입니다.`;
+  return null;
 }
 
 const linksOf = ({ plus, minus }) => [...plus, ...minus].map((x) => ({ part: x.part, name: x.name, items: [...x.items] }));
@@ -398,27 +412,28 @@ export function composeStory(parts, shape, extras = { lines: [], size: null, sto
 
   (extras.lines ?? []).forEach((line, i) => add(first, "그 밖", "표정과 인상", line, extras.lineBasis?.[i]));
 
-  // 2. work and money
+  // 2. work and money. The heading is made from the passage under it (headingOf). The sentence of the
+  // kind of person (POLES) only stands in when the page has nothing from the parts to tell.
   const work = pickBoth(entries, "work", entries, "workMinus", told);
-  const second = { title: "일과 재물", lead: `일과 재물에서는 ${main.work}`, body: [], rows: [], basis: [...new Set(partsOf(work))] };
+  const second = { title: "일과 재물", lead: headingOf("일과 재물", work) ?? `일과 재물에서는 ${main.work}`, body: [], rows: [], basis: [...new Set(partsOf(work))] };
   if (work.plus.length || work.minus.length) {
-    const text = tellParts(work, { seen }) + (work.minus.length ? " 들어온 것을 지키는 관리가 관건입니다." : "");
-    add(second, "재물의 흐름", "부위를 따라", text, linksOf(work));
+    add(second, "재물의 흐름", "", tellParts(work, { seen, afterMinus: "들어온 것을 지키는 관리가 관건입니다." }), linksOf(work));
   }
-  if (b) add(second, "재물의 흐름", "부위를 따라", `여기에 ${b.work}`, OVERALL_BASIS);
   partsOf(work).forEach((x) => seen.add(x));
 
   // 3. people and love
   const people = pickBoth(entries, "people", entries, "peopleMinus", told);
-  const third = { title: "사람과 사랑", lead: `이어서 사람과 사랑에서는 ${main.love}`, body: [], rows: [], basis: [...new Set(partsOf(people))] };
-  if (people.plus.length || people.minus.length) add(third, "관계의 모습", "부위를 따라", tellParts(people, { seen }), linksOf(people));
-  if (b) add(third, "관계의 모습", "부위를 따라", `이와 함께 ${b.love}`, OVERALL_BASIS);
+  const third = { title: "사람과 사랑", lead: `이어서 ${headingOf("사람과 사랑", people) ?? `사람과 사랑에서는 ${main.love}`}`, body: [], rows: [], basis: [...new Set(partsOf(people))] };
+  if (people.plus.length || people.minus.length) {
+    add(third, "관계의 모습", "", tellParts(people, { seen }), linksOf(people));
+  }
   partsOf(people).forEach((x) => seen.add(x));
 
   // 4. the life stages, one passage for each
-  const fourth = { title: "시기", lead: `그러다 보면 시기로는 ${main.stage}`, body: [], rows: [], basis: [] };
+  const fourth = { title: "시기", lead: "", body: [], rows: [], basis: [] };
   for (const line of extras.ageLines ?? []) add(fourth, "지금의 나이", "선택한 나이대", line, extras.ageBasis);
   let budget = PAGE_PARTS;
+  const stagesTold = [];
   for (const [label, field] of [["초년", "early"], ["중년", "mid"], ["말년", "late"]]) {
     if (budget <= 0) break;
     const stage = pickBoth(entries, field, entries, `${field}Minus`, told, 1);
@@ -430,13 +445,13 @@ export function composeStory(parts, shape, extras = { lines: [], size: null, sto
       ? `${strong(label)}에는 앞에서 본 ${josa(strong(n), "은", "는")} 여기서도 ${josa(w, "이", "가")} 읽힙니다.`
       : `${strong(label)}에는 ${strong(n)}에서 ${josa(w, "이", "가")} 읽힙니다.`);
     add(fourth, label, "흐름", tellParts(stage, { seen, open }), linksOf(stage));
+    stagesTold.push(label);
     fourth.basis.push(...partsOf(stage));
   }
   fourth.basis = [...new Set(fourth.basis)];
-  if (b) {
-    const last = fourth.rows[fourth.rows.length - 1];
-    add(fourth, last?.label ?? "시기", last?.sub ?? "흐름", `아울러 ${b.stage}`, OVERALL_BASIS);
-  }
+  // The heading names the stages the passages below are about.
+  const stageNames = stagesTold.length > 1 ? `${stagesTold.slice(0, -1).join(", ")}과 ${stagesTold.at(-1)}` : stagesTold[0];
+  fourth.lead = stageNames ? `그러다 보면 시기로는 ${stageNames}에 풀이가 모이는 얼굴입니다.` : `그러다 보면 시기로는 ${main.stage}`;
 
   // 5. who fits
   const fits = (poles.length ? poles.map((p) => FIT[p]) : [EVEN_FIT]);
