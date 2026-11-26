@@ -87,7 +87,7 @@ check("measurement carries confidence and coverage", st.finalMeasurement.confide
 win.__sang.show();
 await sleep(200);
 const text = (sel) => doc.querySelector(sel)?.textContent ?? "";
-check("the story has eight pages that open with the connectors", doc.querySelectorAll("#pages .slide").length === 8 && /^이 사람은/.test(doc.querySelector("#storyFirst .story-lead")?.textContent ?? "") && [...doc.querySelectorAll("#pages .slide .story-lead")].some((e) => /^그래서 잘 맞는 인연은/.test(e.textContent)));
+check("the story has nine pages: the frame, then the temperament, then the rest with the connectors", doc.querySelectorAll("#pages .slide").length === 9 && /^이 얼굴은|^이 사람은/.test(doc.querySelector("#storyFirst .story-lead")?.textContent ?? "") && [...doc.querySelectorAll("#pages .slide .story-lead")].some((e) => /^이 사람은/.test(e.textContent)) && [...doc.querySelectorAll("#pages .slide .story-lead")].some((e) => /^그래서 잘 맞는 인연은/.test(e.textContent)));
 await sleep(400);
 const bondImages = [...doc.querySelectorAll(".bond .avatar-photo")];
 check("20s: the 인연 pictures are the ready-made ones and no picture service call is made", portraitCalls.length === 0 && bondImages.length > 0 && bondImages.every((i) => /\/fallback\/.+\.jpg/.test(i.src)), `calls ${portraitCalls.length}, images ${bondImages.map((i) => i.src.slice(-30)).join(",")}`);
@@ -107,7 +107,8 @@ check("every page says something and nothing is folded away", [...doc.querySelec
   check("the picture steps aside on the fortune page", doc.querySelector(".reading").classList.contains("is-fortune"));
   check("all five lines and the quotation are shown, then the buttons", shown() === 4 && doc.querySelector(".fortune").classList.contains("is-done"));
 }
-check("the posed shots add their lines to the first page", /힘을 주면 각이|더 뚜렷|웃으면|절제된|달라지지 않습니다/.test(text("#storyFirst")), text("#storyFirst").slice(-160));
+check("the posed shots add their lines to the temperament page", /힘을 주면 각이|더 뚜렷|웃으면|절제된|달라지지 않습니다/.test(text("#pages .slide.is-story")), text("#pages .slide.is-story").slice(0, 160));
+check("part names in the story can be pointed at, and each row has a gist line", doc.querySelectorAll("#pages .ink[data-part]").length >= 3 && doc.querySelectorAll("#pages .story-gist").length >= 3);
 check("no placeholder text in the story", !/undefined|NaN|\{|보통 범위/.test(text("#pages")));
 check("no NaN or undefined anywhere in the reading", !/NaN|undefined/.test(doc.querySelector("#resultView").textContent));
 check("no em dash in the reading", !/[\u2014\u2013]/.test(doc.querySelector("#resultView").textContent));

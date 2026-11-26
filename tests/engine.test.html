@@ -395,12 +395,15 @@ for (const [yaw, pitch, roll] of [[22, 0, 0], [-24, 12, 0], [0, -18, 0], [15, 15
   const ps = readParts(v, partsContent);
   const story = composeStory(ps.all, { name: "각진형", text: "각진형입니다. 둘째 문장입니다." }, extrasOf(v, ps.all, 20));
   {
-    const told = ps.all.length ? story.pages.slice(1, 4).map((pg) => pg.body.join(" ")).join(" ") : "";
-    check("pages 2 to 4 follow the parts of the face (a bold part name before each reading)", story.pages.slice(1, 4).some((pg) => pg.body.some((l) => /⟪[^⟫]+⟫/.test(l))), told.slice(0, 200));
+    const told = ps.all.length ? story.pages.slice(2, 5).map((pg) => pg.body.join(" ")).join(" ") : "";
+    check("part names carry the id of their card (so the face picture can light the part)", story.pages.slice(1, 5).some((pg) => pg.body.some((l) => /⟪[A-Za-z0-9]+\|[^⟫]+⟫/.test(l))));
+    check("each part of a passage is its own paragraph", story.pages.slice(1, 5).some((pg) => pg.body.some((l) => l.includes("\n"))));
+    check("the aside mark only starts a paragraph", story.pages.every((pg) => pg.body.every((l) => l.split("\n").every((par) => !par.includes("§") || par.startsWith("§")))));
+    check("the temperament page and pages 3 to 5 follow the parts of the face (a bold part name before each reading)", story.pages.slice(1, 5).some((pg) => pg.body.some((l) => /⟪[^⟫]+⟫/.test(l))), told.slice(0, 200));
     check("no page lists more than 6 parts", story.pages.slice(0, 4).every((pg) => pg.rows.every((r) => r.basis.filter((x) => x.items?.length).length <= 6)));
   }
   check("the story opens with the form, not the plain shape sentence", story.pages[0].body[0].includes("금형") && !story.pages[0].body.some((l) => l.includes("각진형")));
-  check("the 시기 page begins with the decade reading", story.pages[3].body[0].includes("20대"));
+  check("the 시기 page begins with the decade reading", story.pages[4].body[0].includes("20대"));
   const noForm = composeStory(ps.all, { name: "각진형", text: "각진형입니다. 둘째 문장입니다." }, { lines: [], size: null, stop: null, frame: [] });
   check("without a form the plain shape sentence is kept", noForm.pages[0].body[0].includes("각진형"));
 }

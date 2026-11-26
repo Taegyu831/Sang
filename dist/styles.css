@@ -321,7 +321,7 @@ img { display: block; max-width: 100%; }
 .story-label { display: flex; flex-direction: column; gap: 2px; word-break: keep-all; }
 .story-label strong { font-size: clamp(15px, 1.35vw, 18px); font-weight: 800; color: var(--accent); line-height: 1.5; letter-spacing: -0.01em; }
 .story-label small { font-size: 0.72em; font-weight: 500; color: var(--muted); }
-.story-text { display: flex; flex-direction: column; gap: 0.5em; min-width: 0; }
+.story-text { display: flex; flex-direction: column; gap: 0.6em; min-width: 0; }
 .story-text .story-body { margin: 0; }
 .story-tag { align-self: flex-start; padding: 0.15em 0.95em; border-radius: 999px; background: var(--sky); color: var(--accent); font-size: calc(var(--fs) * 0.7); font-weight: 700; letter-spacing: 0.02em; }
 .closing .story-lead { font-size: clamp(18px, min(1.9vw, 3vh), 26px); }
@@ -383,8 +383,26 @@ img { display: block; max-width: 100%; }
 @media (max-width: 760px) { .bond { flex-direction: column; align-items: flex-start; } }
 
 /* 이야기의 핵심 낱말: 고동색 굵게, 쪽 안의 갈래 이름은 먹색 굵게 */
-.story-body .em { font-weight: 700; color: var(--accent); }
+.story-body .em { font-weight: 600; color: var(--accent); background: linear-gradient(transparent 62%, rgba(142, 197, 255, 0.5) 62%); }
 .story-body .ink { font-weight: 800; color: var(--ink); }
+/* Part names can be pointed at: the part lights up on the face picture. */
+.story-body .ink[data-part] { cursor: pointer; border-bottom: 1.5px dotted rgba(59, 36, 24, 0.55); }
+.story-body .ink[data-part]:hover, .story-body .ink.is-lit { background: var(--sky); border-bottom-color: transparent; }
+/* A part that reads the other way: quieter than the main passage, set off by a thin rule. */
+.story-body.is-aside { font-size: 0.88em; color: var(--muted); padding-left: 0.85em; border-left: 2px solid rgba(59, 36, 24, 0.16); }
+.story-body.is-aside .em { font-weight: 500; color: var(--ink-2); background: none; }
+.story-body.is-aside .ink { font-weight: 700; color: var(--ink-2); }
+/* One line of conclusion above the explanation of a row. */
+.story-gist { margin: 0; font-size: 1.02em; font-weight: 800; line-height: 1.6; color: var(--ink); word-break: keep-all; letter-spacing: -0.01em; }
+/* A thin rule between the groups of a page. */
+.story-row + .story-row { border-top: 1px solid rgba(59, 36, 24, 0.12); padding-top: clamp(10px, 1.6vh, 18px); }
+/* The part lit on the face picture; everything else on the picture steps back. */
+#resultFrontOverlay > * { transition: opacity 0.2s; }
+#resultFrontOverlay.has-hl > :not(.part-hl) { opacity: 0.25; }
+.part-hl-halo { stroke-width: 6px; stroke-linecap: round; opacity: 0.55; vector-effect: non-scaling-stroke; }
+.part-hl-line { stroke-width: 3px; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.part-hl-dot { stroke-width: 0.35; }
+.part-hl-label { font-family: var(--sans, inherit); font-size: 4.2px; font-weight: 800; fill: #fff; paint-order: stroke; stroke: var(--accent); stroke-width: 1.6px; stroke-linejoin: round; }
 .story-lead .em { color: var(--accent); }
 /* 제목은 보통 굵기로 두고 핵심 말만 굵게 해서 굵은 글씨가 섞이게 한다. 굵게 할 말이 없는 제목은 통째로 중간 굵기 */
 .story-lead strong { font-weight: 800; }

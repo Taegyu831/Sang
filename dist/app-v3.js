@@ -354,6 +354,64 @@ function renderFrontAnnotation(svg, points) {
   overlayLabel(svg, points.faceLeft, "광대", "#315d52", -11.5, -1.4);
 }
 
+// ---------- lighting a part on the face picture (hover or tap a part name in the story) ----------
+let framePoints = null; // the measured points of the picture on screen (percent of the picture)
+let litPart = null;     // the part kept lit by a tap
+const HL_HALO = "#3b2418";
+const HL_COLOR = "#8ec5ff";
+
+function highlightPart(id) {
+  resultFrontOverlay.querySelectorAll(".part-hl").forEach((n) => n.remove());
+  resultFrontOverlay.classList.remove("has-hl");
+  resultView.querySelectorAll(".ink.is-lit").forEach((n) => n.classList.remove("is-lit"));
+  const card = id && partsContent?.cards?.find((c) => c.id === id);
+  const p = framePoints;
+  if (!card || !p?.faceLeft || !p?.faceRight) return;
+  const left = Math.min(p.faceLeft.x, p.faceRight.x);
+  const right = Math.max(p.faceLeft.x, p.faceRight.x);
+  const g = svgNode("g", { class: "part-hl" });
+  let anchor = null;
+  for (const spec of card.draw ?? []) {
+    let a; let b;
+    if (typeof spec === "string" && spec.startsWith("h:")) {
+      const at = p[spec.slice(2)];
+      if (!at) continue;
+      a = { x: left, y: at.y }; b = { x: right, y: at.y };
+    } else if (Array.isArray(spec)) {
+      a = p[spec[0]]; b = p[spec[1]];
+    }
+    if (!a || !b) continue;
+    const box = { x1: a.x.toFixed(2), y1: a.y.toFixed(2), x2: b.x.toFixed(2), y2: b.y.toFixed(2) };
+    g.append(
+      svgNode("line", { ...box, stroke: HL_HALO, class: "part-hl-halo" }),
+      svgNode("line", { ...box, stroke: HL_COLOR, class: "part-hl-line" }),
+      svgNode("circle", { cx: box.x1, cy: box.y1, r: 1.2, fill: HL_COLOR, stroke: HL_HALO, class: "part-hl-dot" }),
+      svgNode("circle", { cx: box.x2, cy: box.y2, r: 1.2, fill: HL_COLOR, stroke: HL_HALO, class: "part-hl-dot" }),
+    );
+    anchor ??= b;
+  }
+  if (!anchor) return;
+  g.append(svgNode("text", { x: clamp(anchor.x + 2, 5, 90).toFixed(2), y: clamp(anchor.y - 1.6, 6, 96).toFixed(2), class: "part-hl-label" }, card.part));
+  resultFrontOverlay.append(g);
+  resultFrontOverlay.classList.add("has-hl");
+  resultView.querySelectorAll(`.ink[data-part="${id}"]`).forEach((n) => n.classList.add("is-lit"));
+}
+
+const partOf = (event) => event.target.closest?.(".ink[data-part]")?.dataset.part ?? null;
+resultView.addEventListener("pointerover", (event) => { const id = partOf(event); if (id) highlightPart(id); });
+resultView.addEventListener("pointerout", (event) => { if (partOf(event) && event.pointerType === "mouse") highlightPart(litPart); });
+resultView.addEventListener("click", (event) => {
+  const id = partOf(event);
+  if (!id) return;
+  litPart = litPart === id ? null : id;
+  highlightPart(litPart);
+});
+resultView.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter") return;
+  const id = partOf(event);
+  if (id) { litPart = litPart === id ? null : id; highlightPart(litPart); }
+});
+
 function createPreviewFrame() {
   const portrait = `<ellipse cx="320" cy="392" rx="178" ry="266" fill="#c9b79e" stroke="#5a4b3c" stroke-width="3"/><path d="M210 330 C245 307 276 308 302 331 M338 331 C366 307 400 309 430 333" fill="none" stroke="#5a4b3c" stroke-width="5"/><path d="M222 356 C249 371 277 370 299 356 M342 356 C370 372 400 370 421 355" fill="none" stroke="#3e372f" stroke-width="4"/><path d="M318 356 C306 420 302 455 320 470 C340 461 348 455 348 444" fill="none" stroke="#665446" stroke-width="4"/><path d="M264 523 C304 545 349 545 389 520" fill="none" stroke="#7b4639" stroke-width="4"/>`;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="800" viewBox="0 0 640 800"><rect width="640" height="800" fill="#dfd2bd"/>${portrait}</svg>`;
@@ -765,7 +823,7 @@ pages.addEventListener("click", (event) => {
   }
 });
 
-// ⟦word⟧ -> bold in the accent colour, ⟪word⟫ -> bold in ink.
+// ⟦word⟧ -> the reading (accent colour, sky highlighter), ⟪word⟫ -> the part name (bold ink).
 function marked(tag, className, text) {
   const node = el(tag, className);
   // A "\n" in the text is a line break.
@@ -774,13 +832,37 @@ function marked(tag, className, text) {
     if (part) node.append(document.createTextNode(part));
   });
   let last = 0;
-  for (const m of text.matchAll(/⟦(.+?)⟧|⟪(.+?)⟫/g)) {
+  // ⟪id|name⟫ is a part name with the id of its card: hovering or tapping it lights that part on the face.
+  for (const m of text.matchAll(/⟦(.+?)⟧|⟪(?:([A-Za-z0-9]+)\|)?(.+?)⟫/g)) {
     plain(text.slice(last, m.index));
-    node.append(el("strong", m[1] ? "em" : "ink", m[1] ?? m[2]));
+    const word = el("strong", m[1] ? "em" : "ink", m[1] ?? m[3]);
+    if (m[2]) { word.dataset.part = m[2]; word.tabIndex = 0; }
+    node.append(word);
     last = m.index + m[0].length;
   }
   plain(text.slice(last));
   return node;
+}
+
+// The "§" a paragraph may start with marks a side note (a part that reads the other way); it is shown quieter.
+const ASIDE_MARK = "§";
+const paragraphsOf = (lines) => lines.flatMap((line) => line.split("\n")).filter(Boolean);
+function addParagraphs(into, lines) {
+  for (const text of paragraphsOf(lines)) {
+    const aside = text.startsWith(ASIDE_MARK);
+    const node = marked("p", aside ? "story-body is-aside" : "story-body", aside ? text.slice(ASIDE_MARK.length) : text);
+    into.append(node);
+  }
+}
+// ARTIFICIAL: how many key phrases the one-line gist above a row shows.
+const GIST_PHRASES = 3;
+/** The key phrases of a row, in the order they are told (side notes are left out): a one-line conclusion. */
+function gistOf(lines) {
+  const found = [];
+  for (const text of paragraphsOf(lines).filter((t) => !t.startsWith(ASIDE_MARK))) {
+    for (const m of text.matchAll(/⟦(.+?)⟧/g)) if (!found.includes(m[1])) found.push(m[1]);
+  }
+  return found.slice(0, GIST_PHRASES).join(" · ");
 }
 
 function storyPage(page, { first = false } = {}) {
@@ -790,17 +872,19 @@ function storyPage(page, { first = false } = {}) {
   wrap.append(marked("h2", "story-lead", page.lead));
   if (page.bond) wrap.append(bondBlock(page.bond));
   if (page.rows?.length) {
-    // Grouped under a bold heading on the left, the text on the right.
+    // Grouped under a bold heading on the left; on the right a one-line gist, then the text.
     for (const row of page.rows) {
       const box = el("div", "story-row");
       const head = el("div", "story-label");
       head.append(el("strong", "", row.label), el("small", "", row.sub));
       const text = el("div", "story-text");
-      for (const line of row.lines) text.append(marked("p", "story-body", line));
+      const gist = gistOf(row.lines);
+      if (gist) text.append(el("p", "story-gist", gist));
+      addParagraphs(text, row.lines);
       box.append(head, text);
       wrap.append(box);
     }
-  } else for (const line of page.body.filter(Boolean)) wrap.append(marked("p", "story-body", line));
+  } else addParagraphs(wrap, page.body.filter(Boolean));
   return wrap;
 }
 
@@ -838,6 +922,8 @@ function showSlide(index, { force = false } = {}) {
   const next = Math.max(0, Math.min(slides.length - 1, index));
   if (next === slideIndex && !force) return;
   slideIndex = next;
+  litPart = null;
+  highlightPart(null);
   slides.forEach((slide, i) => {
     slide.classList.toggle("is-active", i === next);
     if (slide.dataset.page === "fortune") { if (i === next) playClosingNotes(); else stopClosingNotes(); }
@@ -924,6 +1010,8 @@ function renderResult() {
     resultFrontImage.src = shot.src;
     renderFrontAnnotation(resultFrontOverlay, shot.points);
   }
+  framePoints = shot?.points ?? null;
+  litPart = null;
   renderStory();
   renderClosing();
   buildSlides();

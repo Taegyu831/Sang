@@ -15,7 +15,7 @@ const v = { ...base, leftEye: 1, rightEye: 1, outerLeft: 1.27, outerRight: 1.27,
 for (const kv of (q.get("v")||"").split(",").filter(Boolean)) { const [k,x]=kv.split(":"); v[k]=Number(x); }
 const parts = readParts(v, content);
 const story = composeStory(parts.all, null, extrasOf(v, parts.all, Number(q.get("age")||30)));
-function marked(tag, cls, text){const n=document.createElement(tag);n.className=cls;let last=0;const plain=(c)=>c.split("\n").forEach((p,i)=>{if(i)n.append(document.createElement("br"));if(p)n.append(document.createTextNode(p))});for(const m of text.matchAll(/⟦(.+?)⟧|⟪(.+?)⟫/g)){plain(text.slice(last,m.index));const s=document.createElement("strong");s.className=m[1]?"em":"ink";s.textContent=m[1]??m[2];n.append(s);last=m.index+m[0].length}plain(text.slice(last));return n}
+function marked(tag, cls, text){const n=document.createElement(tag);n.className=cls;let last=0;const plain=(c)=>c.split("\n").forEach((p,i)=>{if(i)n.append(document.createElement("br"));if(p)n.append(document.createTextNode(p))});for(const m of text.matchAll(/⟦(.+?)⟧|⟪(?:[A-Za-z0-9]+\|)?(.+?)⟫/g)){plain(text.slice(last,m.index));const s=document.createElement("strong");s.className=m[1]?"em":"ink";s.textContent=m[1]??m[2];n.append(s);last=m.index+m[0].length}plain(text.slice(last));return n}
 const el=(t,c,x)=>{const n=document.createElement(t);if(c)n.className=c;if(x!==undefined)n.textContent=x;return n};
 for (const page of story.pages.slice(0,4)) {
   const wrap = el("div","story-page"); wrap.append(marked("h2","story-lead",page.lead));

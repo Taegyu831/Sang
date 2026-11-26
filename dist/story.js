@@ -221,7 +221,10 @@ export function leanings(entries, base = AXIS_BASE, strong = STRONG) {
 
 // ⟦word⟧ is shown bold in the accent colour, ⟪word⟫ bold in ink (see the app).
 const em = (text) => `⟦${text}⟧`;
-const strong = (text) => `⟪${text}⟫`;
+// ⟪id|name⟫: a part name, with the id of its card so the page can light that part on the face picture.
+const strong = (text, id) => (id ? `⟪${id}|${text}⟫` : `⟪${text}⟫`);
+// A paragraph that starts with this mark is a side note ("reads the other way"); the page shows it quieter.
+const ASIDE = "§";
 // Only the first three are marked, so a long list keeps a rhythm.
 const list = (items) => items.map((x, i) => (i < 3 ? em(x) : x)).join(", ");
 
@@ -272,7 +275,7 @@ function pickParts(entries, field, told, limit, taken = new Set()) {
       items.push(item);
       if (items.length >= PART_WORDINGS) break;
     }
-    if (items.length) picks.push({ part: e.part.part, name: e.part.name, items });
+    if (items.length) picks.push({ part: e.part.part, id: e.part.id, name: e.part.name, items });
     if (picks.length >= limit) break;
   }
   return picks;
@@ -289,11 +292,11 @@ function pickBoth(plusEntries, plusField, minusEntries, minusField, told, otherM
 }
 
 const ADD_WORDS = [
-  (n, w) => `먼저 ${strong(n)}에서는 ${josa(w, "이", "가")} 읽힙니다.`,
-  (n, w) => `여기에 ${strong(n)}에서는 ${josa(w, "이", "가")} 더해집니다.`,
-  (n, w) => `${strong(n)}에서도 ${josa(w, "이", "가")} 읽힙니다.`,
-  (n, w) => `또 ${strong(n)}에서는 ${josa(w, "이", "가")} 보입니다.`,
-  (n, w) => `${strong(n)}에서는 ${josa(w, "이", "가")} 나옵니다.`,
+  (n, w, id) => `먼저 ${strong(n, id)}에서는 ${josa(w, "이", "가")} 읽힙니다.`,
+  (n, w, id) => `여기에 ${strong(n, id)}에서는 ${josa(w, "이", "가")} 더해집니다.`,
+  (n, w, id) => `${strong(n, id)}에서도 ${josa(w, "이", "가")} 읽힙니다.`,
+  (n, w, id) => `또 ${strong(n, id)}에서는 ${josa(w, "이", "가")} 보입니다.`,
+  (n, w, id) => `${strong(n, id)}에서는 ${josa(w, "이", "가")} 나옵니다.`,
 ];
 
 /**
@@ -308,31 +311,32 @@ function tellParts({ plus, minus }, { seen = new Set(), kind = "reading", open =
     const w = wordsOf(x.items);
     const known = seen.has(x.part);
     if (i === 0 && open) {
-      sentences.push(open(x.name, w, known));
+      sentences.push(open(x.name, w, known, x.id));
       if (known) again += 1;
     }
     else if (known) {
       sentences.push(again === 0
-        ? `앞에서 본 ${josa(strong(x.name), "은", "는")} 여기서도 ${josa(w, "이", "가")} 읽힙니다.`
-        : `${josa(strong(x.name), "은", "는")} 이쪽에서도 마찬가지로 ${josa(w, "이", "가")} 읽힙니다.`);
+        ? `앞에서 본 ${josa(strong(x.name, x.id), "은", "는")} 여기서도 ${josa(w, "이", "가")} 읽힙니다.`
+        : `${josa(strong(x.name, x.id), "은", "는")} 이쪽에서도 마찬가지로 ${josa(w, "이", "가")} 읽힙니다.`);
       again += 1;
-    } else if (i >= 3 && i === plus.length - 1) sentences.push(`끝으로 ${strong(x.name)}에서는 ${josa(w, "이", "가")} 읽힙니다.`);
-    else sentences.push(ADD_WORDS[i % ADD_WORDS.length](x.name, w));
+    } else if (i >= 3 && i === plus.length - 1) sentences.push(`끝으로 ${strong(x.name, x.id)}에서는 ${josa(w, "이", "가")} 읽힙니다.`);
+    else sentences.push(ADD_WORDS[i % ADD_WORDS.length](x.name, w, x.id));
   });
   minus.forEach((x, i) => {
     const w = wordsOf(x.items);
     if (kind === "side") {
       sentences.push(i === 0
-        ? `그런데 ${strong(x.name)}에서는 ${josa(w, "이", "가")} 읽혀, 다른 면도 함께 보입니다.`
-        : `또 ${strong(x.name)}에서는 ${josa(w, "이", "가")} 읽혀 이 면을 더합니다.`);
+        ? `${ASIDE}그런데 ${strong(x.name, x.id)}에서는 ${josa(w, "이", "가")} 읽혀, 다른 면도 함께 보입니다.`
+        : `${ASIDE}또 ${strong(x.name, x.id)}에서는 ${josa(w, "이", "가")} 읽혀 이 면을 더합니다.`);
     } else {
       sentences.push(i === 0
-        ? `${plus.length ? "다만 " : ""}${strong(x.name)}에서는 ${josa(w, "이라는", "라는")} 풀이도 함께 나옵니다.`
-        : `${strong(x.name)}에서도 ${josa(w, "이라는", "라는")} 풀이가 보입니다.`);
+        ? `${ASIDE}${plus.length ? "다만 " : ""}${strong(x.name, x.id)}에서는 ${josa(w, "이라는", "라는")} 풀이도 함께 나옵니다.`
+        : `${ASIDE}${strong(x.name, x.id)}에서도 ${josa(w, "이라는", "라는")} 풀이가 보입니다.`);
     }
   });
   if (afterMinus && minus.length) sentences.push(afterMinus);
-  return sentences.join(" ");
+  // One part, one paragraph: the page puts each "\n" in a paragraph of its own.
+  return sentences.join("\n");
 }
 
 /**
@@ -353,6 +357,32 @@ function headingOf(topic, { plus, minus }) {
 
 const linksOf = ({ plus, minus }) => [...plus, ...minus].map((x) => ({ part: x.part, name: x.name, items: [...x.items] }));
 const partsOf = ({ plus, minus }) => [...plus, ...minus].map((x) => x.part);
+
+/**
+ * The heading of the first page, made from what is under it: the form (오행형 or the plain shape),
+ * the zones (삼정) and the pairs (짝 부위). Returns null when none of them is known.
+ */
+function frameHeading(extras, shape) {
+  const name = extras.formLines?.[0]?.match(/⟦(.+?)⟧/)?.[1] ?? shape?.name;
+  const stop = extras.stop;
+  const pair = extras.pair;
+  // Each piece is told once to be followed by another ("conn") and once to end the sentence ("adn").
+  const pieces = [];
+  if (name) pieces.push({ conn: `${em(name)}에 가깝고`, adn: `${em(name)}에 가까운`, marked: true });
+  if (stop) {
+    const zone = stop.state === "even" ? ["삼정이 고르고", "삼정이 고른"] : stop.state === "middleLong" ? ["중정이 긴 편이고", "중정이 긴"] : ["하정이 긴 편이고", "하정이 긴"];
+    pieces.push({ conn: zone[0], adn: zone[1] });
+  }
+  if (pair) {
+    const adn = pair.kind === "balanced" ? "짝 부위가 서로 잘 맞는"
+      : pair.kind === "fortune" ? (pair.dir === "wide" ? "이마는 넓고 턱은 좁은" : "이마는 좁고 턱은 넓은")
+      : pair.kind === "eyes" ? "두 눈의 길이 차이가 눈에 띄는" : "두 광대의 폭 차이가 눈에 띄는";
+    pieces.push({ conn: adn, adn });
+  }
+  if (!pieces.length) return null;
+  const told = pieces.map((x, i) => { const t = i === pieces.length - 1 ? x.adn : x.conn; return x.marked ? t : em(t); });
+  return `이 얼굴은 ${told.join(", ")} 얼굴입니다.`;
+}
 
 export function composeStory(parts, shape, extras = { lines: [], size: null, stop: null, frame: [] }) {
   // The zones (삼정) come from the frame judgement (sanjeong.js), not from the part cards: parts.js skips
@@ -392,25 +422,29 @@ export function composeStory(parts, shape, extras = { lines: [], size: null, sto
   const main = a ?? EVEN;
   const headline = b ? `${em(a.conn)}, ${em(b.adn)} 사람입니다.` : `${em(main.adn)} 사람입니다.`;
 
-  // 1. who this is
+  // 1. the frame of the face (형, 삼정, 짝 부위), then 2. the temperament as a page of its own
   const aligned = entries.filter((e) => !opposes(e.key, poles));
   const against = entries.filter((e) => opposes(e.key, poles));
   const seen = new Set(); // parts already told on an earlier page
   const traits = pickBoth(aligned.length ? aligned : entries, "traits", aligned.length ? against : [], "traits", told);
   traits.basis = [...new Set(partsOf(traits))];
-  const first = { title: "이 사람은", lead: `이 사람은 ${headline}`, body: [], rows: [], basis: traits.basis };
+  const first = { title: "얼굴의 틀", lead: frameHeading(extras, shape) ?? `이 사람은 ${headline}`, body: [], rows: [], basis: [] };
   // The form (오행형) is the first step, so when it is known it takes the place of the plain face shape sentence.
   for (const line of extras.formLines ?? []) add(first, "얼굴의 형", "윤곽", line, extras.formBasis);
   if (shape && !(extras.formLines ?? []).length) add(first, "얼굴의 형", "윤곽", (shape.text.match(/[^.]+\.\s*/g)?.slice(0, 2).join("").trim() ?? "").replace(shape.name, em(shape.name)), ["얼굴 길이와 폭"]);
   for (const line of extras.frame ?? []) add(first, "삼정", "얼굴의 세 구간", line, extras.frameBasis);
   for (const line of extras.pairLines ?? []) add(first, "짝 부위", "눈여겨볼 곳", line, extras.pairBasis);
+  first.basis = [...new Set(first.rows.flatMap((r) => r.basis.map((x) => x.part)))];
+
+  // Its heading is the kind of person; the parts that pull the same way explain it, the ones that pull
+  // the other way are told last as "다른 면".
+  const character = { title: "성격", lead: `이 사람은 ${headline}`, body: [], rows: [], basis: traits.basis };
   if (traits.plus.length || traits.minus.length) {
-    const text = tellParts(traits, { kind: "side" }) + (traits.minus.length && traits.plus.length ? " 그래서 한 가지로만 단정하기 어려운 사람입니다." : "");
-    add(first, "성격", "기질", text, linksOf(traits));
+    const text = tellParts(traits, { kind: "side" }) + (traits.minus.length && traits.plus.length ? "\n그래서 한 가지로만 단정하기 어려운 사람입니다." : "");
+    add(character, "성격", "기질", text, linksOf(traits));
   }
   partsOf(traits).forEach((x) => seen.add(x));
-
-  (extras.lines ?? []).forEach((line, i) => add(first, "그 밖", "표정과 인상", line, extras.lineBasis?.[i]));
+  (extras.lines ?? []).forEach((line, i) => add(character, "그 밖", "표정과 인상", line, extras.lineBasis?.[i]));
 
   // 2. work and money. The heading is made from the passage under it (headingOf). The sentence of the
   // kind of person (POLES) only stands in when the page has nothing from the parts to tell.
@@ -441,9 +475,9 @@ export function composeStory(parts, shape, extras = { lines: [], size: null, sto
     stage.minus = stage.minus.slice(0, Math.max(0, budget - stage.plus.length));
     if (!stage.plus.length && !stage.minus.length) continue;
     budget -= stage.plus.length + stage.minus.length;
-    const open = (n, w, known) => (known
-      ? `${strong(label)}에는 앞에서 본 ${josa(strong(n), "은", "는")} 여기서도 ${josa(w, "이", "가")} 읽힙니다.`
-      : `${strong(label)}에는 ${strong(n)}에서 ${josa(w, "이", "가")} 읽힙니다.`);
+    const open = (n, w, known, id) => (known
+      ? `${strong(label)}에는 앞에서 본 ${josa(strong(n, id), "은", "는")} 여기서도 ${josa(w, "이", "가")} 읽힙니다.`
+      : `${strong(label)}에는 ${strong(n, id)}에서 ${josa(w, "이", "가")} 읽힙니다.`);
     add(fourth, label, "흐름", tellParts(stage, { seen, open }), linksOf(stage));
     stagesTold.push(label);
     fourth.basis.push(...partsOf(stage));
@@ -476,5 +510,5 @@ export function composeStory(parts, shape, extras = { lines: [], size: null, sto
   const clashText = em(clashes[0].desc);
   const closing = `정리하면 ${headline.replace(/입니다\.$/, "입니다.")} ${fitText} 사람과 가장 잘 맞고, ${clashText} 사람과는 거리를 두면 좋습니다.`;
 
-  return { headline, poles, pages: [first, second, third, fourth, fifth, sixth], closing };
+  return { headline, poles, pages: [first, character, second, third, fourth, fifth, sixth], closing };
 }
