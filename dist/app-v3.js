@@ -62,6 +62,7 @@ const closingNotes = $("#closingNotes");
 const resultFrontFigure = $("#resultFrontFigure");
 const resultFrontImage = $("#resultFrontImage");
 const resultFrontOverlay = $("#resultFrontOverlay");
+const resultFrontLabels = $("#resultFrontLabels");
 const restartButton = $("#restartButton");
 const homeButton = $("#homeButton");
 
@@ -322,19 +323,26 @@ function overlayLine(svg, from, to, color, className = "annotation-line") {
   }));
 }
 
+// A dot and a name over the picture. They are HTML placed in percent: the SVG is stretched to the
+// picture's shape, so letters and circles drawn in it would be squashed.
+function placeAt(node, x, y) {
+  node.style.left = `${x.toFixed(2)}%`;
+  node.style.top = `${y.toFixed(2)}%`;
+  return node;
+}
 function overlayLabel(svg, pointValue, label, color, offsetX = 2.2, offsetY = -1.5) {
   if (!pointValue) return;
-  const labelX = clamp(pointValue.x + offsetX, 5, 95);
-  const labelY = clamp(pointValue.y + offsetY, 5, 96);
-  svg.append(
-    svgNode("circle", { cx: pointValue.x.toFixed(2), cy: pointValue.y.toFixed(2), r: 1.15, fill: color, class: "annotation-point" }),
-    svgNode("text", { x: labelX.toFixed(2), y: labelY.toFixed(2), fill: color, class: "annotation-label" }, label),
-  );
+  const dot = placeAt(el("i", "face-dot"), pointValue.x, pointValue.y);
+  dot.style.background = color;
+  const name = placeAt(el("span", "face-label", label), clamp(pointValue.x + offsetX, 5, 95), clamp(pointValue.y + offsetY, 5, 96));
+  name.style.color = color;
+  resultFrontLabels.append(dot, name);
 }
 
 // Lines for 삼정 (horizontal bands) and 오안 (vertical marks) over the face.
 function renderFrontAnnotation(svg, points) {
   svg.replaceChildren();
+  resultFrontLabels.replaceChildren();
   if (!points) return;
   const left = Math.min(points.faceLeft.x, points.faceRight.x);
   const right = Math.max(points.faceLeft.x, points.faceRight.x);
@@ -359,10 +367,13 @@ let framePoints = null; // the measured points of the picture on screen (percent
 let litPart = null;     // the part kept lit by a tap
 const HL_HALO = "#3b2418";
 const HL_COLOR = "#8ec5ff";
+const TICK = 1.8; // half length of the tick at each end of a lit line, in percent of the picture height
 
 function highlightPart(id) {
   resultFrontOverlay.querySelectorAll(".part-hl").forEach((n) => n.remove());
+  resultFrontLabels.querySelectorAll(".is-hl").forEach((n) => n.remove());
   resultFrontOverlay.classList.remove("has-hl");
+  resultFrontLabels.classList.remove("has-hl");
   resultView.querySelectorAll(".ink.is-lit").forEach((n) => n.classList.remove("is-lit"));
   const card = id && partsContent?.cards?.find((c) => c.id === id);
   const p = framePoints;
@@ -385,15 +396,19 @@ function highlightPart(id) {
     g.append(
       svgNode("line", { ...box, stroke: HL_HALO, class: "part-hl-halo" }),
       svgNode("line", { ...box, stroke: HL_COLOR, class: "part-hl-line" }),
-      svgNode("circle", { cx: box.x1, cy: box.y1, r: 1.2, fill: HL_COLOR, stroke: HL_HALO, class: "part-hl-dot" }),
-      svgNode("circle", { cx: box.x2, cy: box.y2, r: 1.2, fill: HL_COLOR, stroke: HL_HALO, class: "part-hl-dot" }),
+      // The ends are short straight ticks across the line, not dots.
+      ...[a, b].flatMap((end) => {
+        const tick = { x1: end.x.toFixed(2), x2: end.x.toFixed(2), y1: (end.y - TICK).toFixed(2), y2: (end.y + TICK).toFixed(2) };
+        return [svgNode("line", { ...tick, stroke: HL_HALO, class: "part-hl-halo is-tick" }), svgNode("line", { ...tick, stroke: HL_COLOR, class: "part-hl-line" })];
+      }),
     );
     anchor ??= b;
   }
   if (!anchor) return;
-  g.append(svgNode("text", { x: clamp(anchor.x + 2, 5, 90).toFixed(2), y: clamp(anchor.y - 1.6, 6, 96).toFixed(2), class: "part-hl-label" }, card.part));
+  resultFrontLabels.append(placeAt(el("span", "face-label is-hl", card.part), clamp(anchor.x + 2, 5, 90), clamp(anchor.y - 1.6, 6, 96)));
   resultFrontOverlay.append(g);
   resultFrontOverlay.classList.add("has-hl");
+  resultFrontLabels.classList.add("has-hl");
   resultView.querySelectorAll(`.ink[data-part="${id}"]`).forEach((n) => n.classList.add("is-lit"));
 }
 

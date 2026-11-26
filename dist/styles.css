@@ -139,8 +139,13 @@ img { display: block; max-width: 100%; }
 .face-plate svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .annotation-line { vector-effect: non-scaling-stroke; stroke-width: 1.5px; }
 .annotation-line.is-five { stroke-dasharray: 3 2; }
-.annotation-point { stroke: #fff; stroke-width: 0.3; }
-.annotation-label { font-family: var(--mono); font-size: 3.6px; paint-order: stroke; stroke: rgba(255, 255, 255, 0.9); stroke-width: 0.9px; }
+/* Names and dots over the picture (HTML so Korean letters keep their shape). Hairline outline, ordinary shadow. */
+.face-plate { container-type: inline-size; }
+.face-labels { position: absolute; inset: 0; pointer-events: none; }
+.face-label { position: absolute; transform: translateY(-100%); font-size: clamp(11px, 3.6cqw, 22px); font-weight: 700; line-height: 1; white-space: nowrap; letter-spacing: 0; paint-order: stroke fill; -webkit-text-stroke: 0.25px rgba(255, 255, 255, 0.85); text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); transition: opacity 0.2s; }
+.face-dot { position: absolute; width: 2.3cqw; height: 2.3cqw; min-width: 8px; min-height: 8px; transform: translate(-50%, -50%); border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.9); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35); transition: opacity 0.2s; }
+.face-labels.has-hl > :not(.is-hl) { opacity: 0.25; }
+.face-label.is-hl { color: #fff; -webkit-text-stroke: 0.25px rgba(59, 36, 24, 0.9); text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6); }
 .stamp, .seal {
   display: grid; place-items: center; aspect-ratio: 1; background: var(--seal); color: #fff;
   font-family: var(--seal-font); font-weight: 700; line-height: 1; border-radius: 2px;
@@ -324,7 +329,8 @@ img { display: block; max-width: 100%; }
 .story-text { display: flex; flex-direction: column; gap: 0.6em; min-width: 0; }
 .story-text .story-body { margin: 0; }
 .story-tag { align-self: flex-start; padding: 0.15em 0.95em; border-radius: 999px; background: var(--sky); color: var(--accent); font-size: calc(var(--fs) * 0.7); font-weight: 700; letter-spacing: 0.02em; }
-.closing .story-lead { font-size: clamp(18px, min(1.9vw, 3vh), 26px); }
+.closing .story-lead { font-size: clamp(18px, min(1.9vw, 3vh), 26px); font-weight: 500; line-height: 1.75; }
+.closing .story-lead strong { font-weight: 700; background: linear-gradient(transparent 62%, rgba(142, 197, 255, 0.5) 62%); }
 
 .slide :is(.story-page > *) { transition: opacity 0.7s cubic-bezier(0.45, 0, 0.2, 1), transform 0.7s cubic-bezier(0.45, 0, 0.2, 1); }
 .slide:not(.is-active) .story-page > * { opacity: 0; transform: translateY(28px); }
@@ -399,10 +405,8 @@ img { display: block; max-width: 100%; }
 /* The part lit on the face picture; everything else on the picture steps back. */
 #resultFrontOverlay > * { transition: opacity 0.2s; }
 #resultFrontOverlay.has-hl > :not(.part-hl) { opacity: 0.25; }
-.part-hl-halo { stroke-width: 6px; stroke-linecap: round; opacity: 0.55; vector-effect: non-scaling-stroke; }
-.part-hl-line { stroke-width: 3px; stroke-linecap: round; vector-effect: non-scaling-stroke; }
-.part-hl-dot { stroke-width: 0.35; }
-.part-hl-label { font-family: var(--sans, inherit); font-size: 4.2px; font-weight: 800; fill: #fff; paint-order: stroke; stroke: var(--accent); stroke-width: 1.6px; stroke-linejoin: round; }
+.part-hl-halo { stroke-width: 3px; stroke-linecap: butt; opacity: 0.45; vector-effect: non-scaling-stroke; }
+.part-hl-line { stroke-width: 1.5px; stroke-linecap: butt; vector-effect: non-scaling-stroke; }
 .story-lead .em { color: var(--accent); }
 /* 제목은 보통 굵기로 두고 핵심 말만 굵게 해서 굵은 글씨가 섞이게 한다. 굵게 할 말이 없는 제목은 통째로 중간 굵기 */
 .story-lead strong { font-weight: 800; }

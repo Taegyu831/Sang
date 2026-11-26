@@ -508,7 +508,10 @@ export function composeStory(parts, shape, extras = { lines: [], size: null, sto
   // closing
   const fitText = em(fits[0].desc);
   const clashText = em(clashes[0].desc);
-  const closing = `정리하면 ${headline.replace(/입니다\.$/, "입니다.")} ${fitText} 사람과 가장 잘 맞고, ${clashText} 사람과는 거리를 두면 좋습니다.`;
+  // Three short lines instead of one long block, and only the two kinds of person are marked: the
+  // headline's own marks are dropped here so that the closing is not bold from end to end.
+  const plainHeadline = headline.replace(/[⟦⟧]/g, "");
+  const closing = `정리하면 ${plainHeadline}\n${fitText} 사람과 가장 잘 맞고,\n${clashText} 사람과는 거리를 두면 좋습니다.`;
 
   return { headline, poles, pages: [first, character, second, third, fourth, fifth, sixth], closing };
 }
