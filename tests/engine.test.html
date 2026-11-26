@@ -18,6 +18,7 @@ import { readParts } from "../dist/parts.js";
 import { applyPoseResidual, POSE_RESIDUAL } from "../dist/residual.js";
 import { mergeItems, composeStory } from "../dist/story.js";
 import { extrasOf } from "../dist/extras.js";
+import { FACETS } from "../dist/facets.js";
 import { classifyOhaeng, ohaengLines, FORMS } from "../dist/ohaeng.js";
 import { ageLines, AGE_STAGES } from "../dist/age.js";
 import { judgePairs, pairLines, PAIR_RULES } from "../dist/pairs.js";
@@ -396,6 +397,7 @@ for (const [yaw, pitch, roll] of [[22, 0, 0], [-24, 12, 0], [0, -18, 0], [15, 15
   const story = composeStory(ps.all, { name: "각진형", text: "각진형입니다. 둘째 문장입니다." }, extrasOf(v, ps.all, 20));
   {
     const told = ps.all.length ? story.pages.slice(2, 5).map((pg) => pg.body.join(" ")).join(" ") : "";
+    check("a wide nose is read as a vessel for money and the strength to keep it", /재물을 잘 지키는 힘/.test(JSON.stringify(FACETS["noseWidth.high"])));
     check("part names carry the id of their card (so the face picture can light the part)", story.pages.slice(1, 5).some((pg) => pg.body.some((l) => /⟪[A-Za-z0-9]+\|[^⟫]+⟫/.test(l))));
     check("each part of a passage is its own paragraph", story.pages.slice(1, 5).some((pg) => pg.body.some((l) => l.includes("\n"))));
     check("the aside mark only starts a paragraph", story.pages.every((pg) => pg.body.every((l) => l.split("\n").every((par) => !par.includes("§") || par.startsWith("§")))));

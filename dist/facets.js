@@ -26,7 +26,8 @@ export const FACETS = {
   "eyeTilt.high": { traits: ["강한 자존심", "의지", "승부욕", "실행력"], caution: ["남과 부딪히기 쉬운 성격"] },
   "eyeTilt.low": { traits: ["많은 정", "온화함", "깊은 배려심"], people: ["좋은 결혼운과 인덕"], caution: ["거절하지 못해 보는 손해"] },
   "eyeAsym.high": { traits: ["재치"], peopleMinus: ["고르지 않은 부모운과 부부운"], caution: ["겉과 속이 다를 수 있는 면"] },
-  "noseWidth.high": { traits: ["일을 주도하는 실천력"], work: ["재물을 담는 큰 그릇", "경제 감각"] },
+  // "재물을 잘 지키는 힘": parts.json noseWidth high ("콧볼이 넓으면 처세술이 뛰어나고 재물을 잘 지킵니다", n=2), told with the vessel wording.
+  "noseWidth.high": { traits: ["일을 주도하는 실천력"], work: ["재물을 담는 큰 그릇", "재물을 잘 지키는 힘", "경제 감각"] },
   "noseWidth.low": { traits: ["뛰어난 자기 관리"], workMinus: ["재물이 새기 쉬운 흐름"], caution: ["경제적인 소심함"] },
   "noseLength.high": { traits: ["강한 자존심과 책임감", "기품", "한 우물을 파는 성향"], caution: ["적은 융통성", "보수적인 태도"] },
   "noseLength.low": { traits: ["융통성", "용기", "몸으로 하는 부지런함"], workMinus: ["재물이 모이기 어려운 흐름"] },
