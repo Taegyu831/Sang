@@ -1,3 +1,4 @@
+import { openCameraStream } from "./camera.js";
 import { createMap, summarySpecOf } from "./map.js";
 import { estimatePose, frontalizePoints, poseFromMatrix } from "./pose.js";
 import { LANDMARK, getPoints, computeFrontFeatures, vertical, horizontal, mean } from "./features.js";
@@ -628,14 +629,11 @@ async function startCamera() {
   setCameraButton("카메라 켜는 중", "busy", true);
   try {
     const isMobileView = window.matchMedia("(max-width: 780px)").matches;
-    stream = await navigator.mediaDevices.getUserMedia({
-      audio: false,
-      video: {
-        facingMode: "user",
-        width: { ideal: isMobileView ? 720 : 1280 },
-        height: { ideal: isMobileView ? 960 : 720 },
-        aspectRatio: { ideal: isMobileView ? 3 / 4 : 16 / 9 },
-      },
+    stream = await openCameraStream({
+      facingMode: "user",
+      width: { ideal: isMobileView ? 720 : 1280 },
+      height: { ideal: isMobileView ? 960 : 720 },
+      aspectRatio: { ideal: isMobileView ? 3 / 4 : 16 / 9 },
     });
     video.srcObject = stream;
     await video.play();

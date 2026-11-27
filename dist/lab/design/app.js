@@ -10,6 +10,7 @@ import { applyPoseResidual } from "../../residual.js";
 import { CALIBRATION } from "../../calibration.js";
 import { readParts, classifyFaceShape } from "../../parts.js";
 import { composeStory } from "../../story.js";
+import { openCameraStream } from "../../camera.js";
 import { extrasOf } from "../../extras.js";
 
 const VENDOR = new URL("../../vendor/mediapipe/", import.meta.url).href;
@@ -84,7 +85,8 @@ function sampleFace() {
 
 // ---------- camera ----------
 async function openCamera(video) {
-  stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1920 }, height: { ideal: 1080 }, facingMode: "user" }, audio: false });
+  // The same size as the app: asking for more than a laptop camera has makes a Mac offer the phone.
+  stream = await openCameraStream({ width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" });
   video.srcObject = stream;
   await video.play();
   if (!landmarker) {
