@@ -1,0 +1,48 @@
+/* Shared by the three looks: a 1920x1080 stage scaled to the window, the photo and its overlay. */
+@font-face { font-family: "Plex Sans KR"; src: url("../../fonts/PlexSansKR-Regular.woff2") format("woff2"); font-weight: 400; }
+@font-face { font-family: "Plex Sans KR"; src: url("../../fonts/PlexSansKR-Medium.woff2") format("woff2"); font-weight: 500; }
+@font-face { font-family: "Plex Sans KR"; src: url("../../fonts/PlexSansKR-Bold.woff2") format("woff2"); font-weight: 700 900; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+[hidden] { display: none !important; }
+html, body { height: 100%; background: #000; font-family: "Apple SD Gothic Neo", "Plex Sans KR", "Malgun Gothic", system-ui, sans-serif; word-break: keep-all; }
+button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; text-align: inherit; }
+#chooser { min-height: 100%; background: #0d0d12; color: #fff; display: flex; flex-direction: column; gap: 24px; align-items: center; justify-content: center; padding: 32px 16px; text-align: center; }
+#chooser .choices { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; }
+#chooser a { display: flex; flex-direction: column; gap: 8px; width: 300px; padding: 30px 22px; border-radius: 18px; background: #1d1d27; color: #fff; text-decoration: none; }
+#chooser a:hover { background: #34344a; }
+#chooser b { font-size: 24px; }
+#chooser kbd { padding: 2px 8px; border: 1px solid #666; border-radius: 6px; }
+#fit { position: fixed; inset: 0; overflow: hidden; background: #000; }
+#stage { position: absolute; left: 50%; top: 50%; width: 1920px; height: 1080px; transform: translate(-50%, -50%) scale(var(--scale, 0.5)); overflow: hidden; color: #f5f5f7; }
+.is-paused *, .is-paused *::before, .is-paused *::after { animation-play-state: paused !important; }
+.photo { position: relative; flex: none; overflow: hidden; aspect-ratio: 4 / 5; background: #222; }
+.zoom { position: absolute; inset: 0; transform-origin: 0 0; transition: transform 0.9s cubic-bezier(0.7, 0, 0.2, 1); }
+.zoom img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.zoom svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.dots ellipse { fill: var(--accent); opacity: 0; animation: dot 0.5s ease-out forwards; }
+@keyframes dot { from { opacity: 0; transform: translateY(-3px); } to { opacity: 0.95; transform: none; } }
+.dots.is-faded { opacity: 0.2; transition: opacity 0.6s; }
+.measure line { stroke: var(--accent); stroke-width: 7px; vector-effect: non-scaling-stroke; stroke-linecap: round; filter: drop-shadow(0 0 7px var(--accent)); animation: draw 0.8s ease-out 0.45s both; }
+@keyframes draw { from { opacity: 0; stroke-width: 34px; } to { opacity: 1; stroke-width: 7px; } }
+.scanning::after { content: ""; position: absolute; left: 0; right: 0; height: 22%; background: linear-gradient(transparent, color-mix(in srgb, var(--accent) 40%, transparent), transparent); animation: scanline 2.2s linear infinite; pointer-events: none; }
+@keyframes scanline { from { top: -25%; } to { top: 100%; } }
+.up { animation: up 0.55s cubic-bezier(0.16, 1, 0.3, 1) both; }
+@keyframes up { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: none; } }
+.in { animation: pop 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+@keyframes pop { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+.camera { position: relative; overflow: hidden; background: #08080a; }
+.camera video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+.camera .ring { position: absolute; left: 50%; top: 50%; height: 82%; aspect-ratio: 0.78; transform: translate(-50%, -50%); border-radius: 50%; border: 6px dashed #fff; box-shadow: 0 0 0 1400px rgba(0, 0, 0, 0.45); transition: border-color 0.2s; }
+.camera.is-found .ring { border-style: solid; border-color: var(--accent); }
+.camera .count { position: absolute; inset: 0; display: grid; place-items: center; font-size: 360px; font-weight: 900; text-shadow: 0 10px 40px rgba(0, 0, 0, 0.6); pointer-events: none; }
+.flash { position: absolute; inset: 0; background: #fff; animation: flash 0.5s both; }
+@keyframes flash { from { opacity: 1; } to { opacity: 0; } }
+/* A cartoon face used on the waiting screens. */
+.toon { position: relative; width: 340px; height: 400px; border-radius: 48% 48% 46% 46%; background: color-mix(in srgb, var(--accent) 18%, #15151c); border: 4px solid var(--accent); overflow: hidden; animation: bob 3.2s ease-in-out infinite; }
+@keyframes bob { 50% { transform: translateY(-22px) rotate(2deg); } }
+.toon i { position: absolute; display: block; background: var(--accent); }
+.toon i:nth-child(1), .toon i:nth-child(2) { top: 145px; left: 82px; width: 40px; height: 54px; border-radius: 50%; animation: blink 3.6s infinite; }
+.toon i:nth-child(2) { left: 210px; }
+.toon i:nth-child(3) { top: 262px; left: 110px; width: 112px; height: 56px; border-radius: 0 0 112px 112px; }
+@keyframes blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } }
+@media (prefers-reduced-motion: reduce) { *, *::after { animation-duration: 0.01s !important; animation-delay: 0s !important; animation-iteration-count: 1 !important; transition: none !important; } }

@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>상 가로 화면 시안</title>
+  <link rel="stylesheet" href="./base.css" />
+  <link rel="stylesheet" href="./video.css" />
+  <link rel="stylesheet" href="./chat.css" />
+  <link rel="stylesheet" href="./music.css" />
+</head>
+<body>
+  <main id="chooser" hidden>
+    <h1>가로 화면 시안 3가지</h1>
+    <p>하나를 누르면 시작합니다. 체험 중에 <kbd>T</kbd>는 시안 바꾸기, <kbd>S</kbd>는 카메라 없이 예시 얼굴로 보기입니다.</p>
+    <div class="choices">
+      <a href="?skin=video"><b>1. 관상TV</b><span>영상 플랫폼처럼, 다음 영상이 저절로 재생</span></a>
+      <a href="?skin=chat"><b>2. 관상챗</b><span>AI 채팅처럼, 말을 걸며 하나씩 알려 줌</span></a>
+      <a href="?skin=music"><b>3. 관상 플레이</b><span>음악 앱처럼, 가사처럼 흐르는 풀이</span></a>
+    </div>
+  </main>
+  <div id="fit" hidden><div id="stage" aria-live="polite"></div></div>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
