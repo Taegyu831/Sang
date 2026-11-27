@@ -130,6 +130,20 @@ function bondOf(kind, entry, even) {
 
 const AXIS_NAMES = ["drive", "social", "feel", "steady"];
 
+/** The ids of the kinds of person. */
+export const POLE_IDS = Object.keys(POLES);
+
+/** Who this is and who fits or clashes, in plain words (used by the summary prompt). */
+export function outlineOf(poles) {
+  const [first, second] = poles.map((p) => POLES[p]);
+  const main = first ?? EVEN;
+  return {
+    person: second ? `${first.conn}, ${second.adn} 사람` : `${main.adn} 사람`,
+    fit: `${(poles.length ? FIT[poles[0]] : EVEN_FIT).desc} 사람. ${(poles.length ? FIT[poles[0]] : EVEN_FIT).why}`,
+    clash: `${(poles.length ? CLASH[poles[0]] : EVEN_CLASH).desc} 사람. ${(poles.length ? CLASH[poles[0]] : EVEN_CLASH).why}`,
+  };
+}
+
 /** Looks (face features) that carry a kind of person most strongly. */
 export function looksOf(pole, limit = 3) {
   const axis = pole.slice(0, -1);
@@ -384,7 +398,9 @@ function frameHeading(extras, shape) {
   return `이 얼굴은 ${told.join(", ")} 얼굴입니다.`;
 }
 
-export function composeStory(parts, shape, extras = { lines: [], size: null, stop: null, frame: [] }) {
+// alone: each page is read by itself (the two-step screen), so no page leans on an earlier one: no
+// connecting words, no "앞에서 본", and a wording may come again on another page.
+export function composeStory(parts, shape, extras = { lines: [], size: null, stop: null, frame: [] }, { alone = false } = {}) {
   // The zones (삼정) come from the frame judgement (sanjeong.js), not from the part cards: parts.js skips
   // the middle and lower zone card, so a long zone is read once, and an equal face is told by a sentence.
   const entries = [...parts, ...sanjeongParts(extras.stop)]
@@ -443,29 +459,32 @@ export function composeStory(parts, shape, extras = { lines: [], size: null, sto
     const text = tellParts(traits, { kind: "side" }) + (traits.minus.length && traits.plus.length ? "\n그래서 한 가지로만 단정하기 어려운 사람입니다." : "");
     add(character, "성격", "기질", text, linksOf(traits));
   }
-  partsOf(traits).forEach((x) => seen.add(x));
+  if (!alone) partsOf(traits).forEach((x) => seen.add(x));
   (extras.lines ?? []).forEach((line, i) => add(character, "그 밖", "표정과 인상", line, extras.lineBasis?.[i]));
 
   // 2. work and money. The heading is made from the passage under it (headingOf). The sentence of the
   // kind of person (POLES) only stands in when the page has nothing from the parts to tell.
+  if (alone) told.clear();
   const work = pickBoth(entries, "work", entries, "workMinus", told);
   const second = { title: "일과 재물", lead: headingOf("일과 재물", work) ?? `일과 재물에서는 ${em(main.work)}`, body: [], rows: [], basis: [...new Set(partsOf(work))] };
   if (work.plus.length || work.minus.length) {
     add(second, "재물의 흐름", "", tellParts(work, { seen, afterMinus: "들어온 것을 지키는 관리가 관건입니다." }), linksOf(work));
   }
-  partsOf(work).forEach((x) => seen.add(x));
+  if (!alone) partsOf(work).forEach((x) => seen.add(x));
 
   // 3. people and love
+  if (alone) told.clear();
   const people = pickBoth(entries, "people", entries, "peopleMinus", told);
-  const third = { title: "사람과 사랑", lead: `이어서 ${headingOf("사람과 사랑", people) ?? `사람과 사랑에서는 ${em(main.love)}`}`, body: [], rows: [], basis: [...new Set(partsOf(people))] };
+  const third = { title: "사람과 사랑", lead: `${alone ? "" : "이어서 "}${headingOf("사람과 사랑", people) ?? `사람과 사랑에서는 ${em(main.love)}`}`, body: [], rows: [], basis: [...new Set(partsOf(people))] };
   if (people.plus.length || people.minus.length) {
     add(third, "관계의 모습", "", tellParts(people, { seen }), linksOf(people));
   }
-  partsOf(people).forEach((x) => seen.add(x));
+  if (!alone) partsOf(people).forEach((x) => seen.add(x));
 
   // 4. the life stages, one passage for each
   const fourth = { title: "시기", lead: "", body: [], rows: [], basis: [] };
   for (const line of extras.ageLines ?? []) add(fourth, "지금의 나이", "선택한 나이대", line, extras.ageBasis);
+  if (alone) told.clear();
   let budget = PAGE_PARTS;
   const stagesTold = [];
   for (const [label, field] of [["초년", "early"], ["중년", "mid"], ["말년", "late"]]) {
@@ -485,11 +504,11 @@ export function composeStory(parts, shape, extras = { lines: [], size: null, sto
   fourth.basis = [...new Set(fourth.basis)];
   // The heading names the stages the passages below are about.
   const stageNames = stagesTold.length > 1 ? `${stagesTold.slice(0, -1).join(", ")}과 ${stagesTold.at(-1)}` : stagesTold[0];
-  fourth.lead = stageNames ? `그러다 보면 시기로는 ${em(stageNames)}에 풀이가 모이는 얼굴입니다.` : `그러다 보면 시기로는 ${em(main.stage)}`;
+  fourth.lead = stageNames ? `${alone ? "" : "그러다 보면 "}시기로는 ${em(stageNames)}에 풀이가 모이는 얼굴입니다.` : `${alone ? "" : "그러다 보면 "}시기로는 ${em(main.stage)}`;
 
   // 5. who fits
   const fits = (poles.length ? poles.map((p) => FIT[p]) : [EVEN_FIT]);
-  const fifth = { title: "잘 맞는 인연", bond: bondOf("fit", fits[0]), lead: `그래서 잘 맞는 인연은 ${em(fits[0].desc)} 사람입니다.`, body: [fits[0].why], basis: [] };
+  const fifth = { title: "잘 맞는 인연", bond: bondOf("fit", fits[0]), lead: `${alone ? "" : "그래서 "}잘 맞는 인연은 ${em(fits[0].desc)} 사람입니다.`, body: [fits[0].why], basis: [] };
   const fitLooks = fits[0].to ? looksOf(fits[0].to) : [];
   if (fitLooks.length) fifth.body.push(`이런 상대는 얼굴에서 ${list(fitLooks)} 쪽에 그 성향이 주로 드러납니다.`);
   if (fits[1]) fifth.body.push(`이에 더해 본인은 ${em(fits[1].desc)} 사람과도 잘 어울립니다. ${fits[1].why}`);
@@ -498,7 +517,7 @@ export function composeStory(parts, shape, extras = { lines: [], size: null, sto
   const clashes = (poles.length ? poles.map((p) => CLASH[p]) : [EVEN_CLASH]);
   const cautions = gather(entries, "caution", 6, told);
   const watch = poles.map((p) => POLES[p].watch).filter(Boolean);
-  const sixth = { title: "조심할 인연", bond: bondOf("clash", clashes[0]), lead: `다만 ${em(clashes[0].desc)} 사람과는 부딪히기 쉽습니다.`, body: [clashes[0].why], basis: cautions.basis };
+  const sixth = { title: "조심할 인연", bond: bondOf("clash", clashes[0]), lead: `${alone ? "" : "다만 "}${em(clashes[0].desc)} 사람과는 부딪히기 쉽습니다.`, body: [clashes[0].why], basis: cautions.basis };
   const clashLooks = clashes[0].to ? looksOf(clashes[0].to) : [];
   if (clashLooks.length) sixth.body.push(`이런 상대는 얼굴에서 ${list(clashLooks)} 쪽에 그 성향이 주로 드러납니다.`);
   if (clashes[1]) sixth.body.push(`${em(clashes[1].desc)} 사람과도 마찬가지로 부딪히기 쉽습니다. ${clashes[1].why}`);

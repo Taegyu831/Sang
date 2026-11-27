@@ -1,0 +1,57 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>map test</title>
+<pre id="out">RUNNING</pre>
+<iframe id="app" src="../dist/index.html?preview=1&layout=map&summary=default&v=jawCheek:90,noseWidth:29,eyeSize:25&age=20" style="width:1400px;height:900px;border:0"></iframe>
+<script type="module">
+// The two-step result screen. The summary service is not called: the page's fetch is replaced.
+const lines = [];
+let failed = 0;
+const check = (name, ok, detail = "") => { if (!ok) failed += 1; lines.push(`${ok ? "PASS" : "FAIL"} ${name}${detail ? "  " + detail : ""}`); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const frame = document.getElementById("app");
+await new Promise((r) => frame.addEventListener("load", r));
+const doc = frame.contentDocument;
+const win = frame.contentWindow;
+const calls = [];
+let reply = async () => ({ ok: true, json: async () => ({ summary: "이 사람은 차분하게 살피는 편으로 읽힙니다. ".repeat(8) }) });
+const realFetch = win.fetch.bind(win);
+win.fetch = (url, init) => { if (String(url).includes("/api/summary")) { calls.push(JSON.parse(init.body)); return reply(); } return realFetch(url, init); };
+const $ = (s) => doc.querySelector(s);
+const $$ = (s) => [...doc.querySelectorAll(s)];
+for (let i = 0; i < 150 && $("#resultView").hidden; i += 1) await sleep(100);
+check("the overview is shown", !$("#resultView").hidden && !$("#mapView").hidden && $$(".map-tile[data-region]").length >= 5, String($$(".map-tile[data-region]").length));
+check("five topics and the summary tile", $$(".map-tile[data-topic]").length === 5 && !!$(".map-tile.is-all"));
+check("pins sit on the picture", $$(".face-pin").length >= 2);
+check("the overview asks for no summary yet", calls.length === 0);
+const clean = () => !/undefined|NaN|[\u2013\u2014]|\{[a-z]/.test($("#mapView").textContent);
+for (const id of $$(".map-tile[data-region]").map((n) => n.dataset.region)) {
+  $(`.map-tile[data-region="${id}"]`).click();
+  check(`region ${id} opens in detail`, !!$(".map-back") && $(".map-detail").textContent.length > 20 && clean());
+  $(".map-back").click();
+}
+$('.map-tile[data-region="nose"]').click();
+check("the nose detail has its card and key words", !!$('.map-card[data-card="noseWidth"] .map-words span') && $(".map-detail").textContent.includes("재물을 잘 지키는 힘"));
+check("the picked part is lit on the picture", !!$("#resultFrontOverlay .part-hl"));
+$(".map-back").click();
+check("going back puts the light out", !$("#resultFrontOverlay .part-hl") && !!$(".map-tile.is-all"));
+for (const name of $$(".map-tile[data-topic]").map((n) => n.dataset.topic)) {
+  $(`.map-tile[data-topic="${name}"]`).click();
+  const text = $(".map-detail").textContent;
+  check(`topic ${name} reads by itself`, !!$(".map-detail .story-lead") && clean() && !/앞에서 본|이어서 |그러다 보면|이쪽에서도 마찬가지/.test(text), text.slice(0, 80));
+  $(".map-back").click();
+}
+$(".map-tile.is-all").click();
+await sleep(100);
+check("the summary is asked once with ids only", calls.length === 1 && calls[0].spec.keys.includes("noseWidth.high") && Object.keys(calls[0].spec).sort().join() === "age,keys,poles", JSON.stringify(calls[0]));
+check("the summary is shown", $$(".map-summary .story-body").length === 1 && !!$(".map-note"));
+$(".map-back").click(); $(".map-tile.is-all").click(); await sleep(50);
+check("the same summary is not asked again", calls.length === 1);
+$(".map-detail > .big-btn").click();
+await sleep(100);
+check("the last words page follows", $("#mapView").hidden && $(".slide.fortune, [data-page=\"fortune\"]").classList.contains("is-active"));
+// A failing service falls back to the rule-made closing.
+win.localStorage.removeItem("sang.summary");
+lines.push(failed === 0 ? "ALL PASSED" : `${failed} FAILED`);
+document.getElementById("out").textContent = lines.join("\n");
+</script>

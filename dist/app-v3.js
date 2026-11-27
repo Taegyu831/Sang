@@ -1,3 +1,4 @@
+import { createMap, summarySpecOf } from "./map.js";
 import { estimatePose, frontalizePoints, poseFromMatrix } from "./pose.js";
 import { LANDMARK, getPoints, computeFrontFeatures, vertical, horizontal, mean } from "./features.js";
 import { CALIBRATION } from "./calibration.js";
@@ -27,6 +28,8 @@ const SEARCH_PARAMS = new URLSearchParams(window.location.search);
 // ?pose=raw turns the head pose correction off, to compare against the old behaviour.
 const POSE_CORRECTION = SEARCH_PARAMS.get("pose") !== "raw";
 // ?debug=1 opens the measurement panel for the team (all ratios, recording, CSV).
+// ?layout=map shows the two-step result screen (map.js) instead of the pages that follow one another.
+const MAP_LAYOUT = SEARCH_PARAMS.get("layout") === "map";
 const DEBUG_MODE = SEARCH_PARAMS.get("debug") === "1";
 // ?resid=off turns off the leftover head-angle correction (see dist/residual.js).
 const POSE_RESIDUAL_ON = SEARCH_PARAMS.get("resid") !== "off";
@@ -63,6 +66,7 @@ const resultFrontFigure = $("#resultFrontFigure");
 const resultFrontImage = $("#resultFrontImage");
 const resultFrontOverlay = $("#resultFrontOverlay");
 const resultFrontLabels = $("#resultFrontLabels");
+const resultFrontPins = $("#resultFrontPins");
 const restartButton = $("#restartButton");
 const homeButton = $("#homeButton");
 
@@ -896,10 +900,12 @@ function storyPage(page, { first = false } = {}) {
   return wrap;
 }
 
+let extras = null;
 function renderStory() {
   parts = readParts(finalMeasurement, partsContent);
   const shape = classifyFaceShape(finalMeasurement);
-  story = composeStory(parts.all, shape, extrasOf(finalMeasurement, parts.all, myAge));
+  extras = extrasOf(finalMeasurement, parts.all, myAge);
+  story = composeStory(parts.all, shape, extras, { alone: MAP_LAYOUT });
   // The first page keeps the teacher's greeting; the rest are rebuilt each time.
   storyFirst.querySelectorAll(".story-tag, .story-lead, .story-row, .story-body").forEach((n) => n.remove());
   storyPage(story.pages[0], { first: true });
@@ -974,6 +980,7 @@ function atEdge(slide, delta) {
   return delta > 0 ? slide.scrollTop + slide.clientHeight >= slide.scrollHeight - 2 : slide.scrollTop <= 0;
 }
 resultView.addEventListener("wheel", (event) => {
+  if (MAP_LAYOUT) return;
   const now = performance.now();
   // Right after a page turn the trackpad keeps sending wheel events for a while (momentum). They
   // must not scroll the page that was just opened, or it would start in the middle. They are
@@ -997,7 +1004,7 @@ resultView.addEventListener("touchstart", (event) => {
   touchEdge = { up: atEdge(slide, -1), down: atEdge(slide, 1) };
 }, { passive: true });
 resultView.addEventListener("touchend", (event) => {
-  if (touchStartY === null) return;
+  if (MAP_LAYOUT || touchStartY === null) return;
   const dy = touchStartY - event.changedTouches[0].clientY;
   touchStartY = null;
   if (Math.abs(dy) < 60) return;
@@ -1005,9 +1012,38 @@ resultView.addEventListener("touchend", (event) => {
   else if (dy < 0 && touchEdge.up) step(-1);
 }, { passive: true });
 document.addEventListener("keydown", (event) => {
-  if (resultView.hidden || event.target.closest?.("button, a, input")) return;
+  if (MAP_LAYOUT || resultView.hidden || event.target.closest?.("button, a, input")) return;
   if (["ArrowDown", "ArrowRight", "PageDown", " "].includes(event.key)) { event.preventDefault(); step(1); }
   else if (["ArrowUp", "ArrowLeft", "PageUp"].includes(event.key)) { event.preventDefault(); step(-1); }
+});
+
+// ---------- the two-step result screen ----------
+const mapView = $("#mapView");
+const readingBox = document.querySelector(".reading");
+function showMapSide(showMap) {
+  readingBox.classList.toggle("is-map", showMap);
+  mapView.hidden = !showMap;
+  resultFrontPins.hidden = !showMap;
+}
+const map = createMap(mapView, {
+  el, marked,
+  storyPage: (page) => storyPage(page),
+  // keep: the part stays lit after the pointer leaves a part name inside the detail
+  highlight: (id, keep = false) => { litPart = keep ? id : null; highlightPart(id); },
+  pin: (list) => {
+    resultFrontPins.replaceChildren();
+    for (const { point, name, open } of list) {
+      const at = framePoints?.[point];
+      if (!at) continue;
+      const pin = placeAt(el("button", "face-pin", name), clamp(at.x, 8, 92), clamp(at.y, 6, 94));
+      pin.type = "button";
+      pin.addEventListener("click", open);
+      resultFrontPins.append(pin);
+    }
+  },
+  // The last words are the same page as in the other layout.
+  fortune: () => { showMapSide(false); showSlide(slidesOf().findIndex((s) => s.dataset.page === "fortune"), { force: true }); },
+  home: () => homeButton.click(),
 });
 
 function renderResult() {
@@ -1023,6 +1059,11 @@ function renderResult() {
   renderStory();
   renderClosing();
   buildSlides();
+  showMapSide(MAP_LAYOUT);
+  if (MAP_LAYOUT) {
+    if (shot) { resultFrontOverlay.replaceChildren(); resultFrontLabels.replaceChildren(); }
+    map.render({ parts, story, spec: summarySpecOf(parts.all, extras.stop, story.poles, myAge) });
+  }
 }
 
 const LOADING_LINES = ["관상서를 펼치는 중입니다", "삼정과 오안을 맞춰 보는 중입니다", "부위마다 풀이를 모으는 중입니다"];

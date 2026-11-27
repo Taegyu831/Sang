@@ -1,4 +1,4 @@
-# The Vercel project only runs api/portrait.mjs. The site itself is served by
+# The Vercel project only runs the functions in api/. The site itself is served by
 # GitHub Pages, so everything the function does not import stays out of the upload.
 archives
 docs

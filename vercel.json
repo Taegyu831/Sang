@@ -3,6 +3,9 @@
     "api/portrait.mjs": {
       "maxDuration": 60
     },
+    "api/summary.mjs": {
+      "maxDuration": 30
+    },
     "api/measure.mjs": {
       "maxDuration": 10
     },
