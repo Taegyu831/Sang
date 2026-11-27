@@ -20,27 +20,21 @@ win.fetch = (url, init) => { if (String(url).includes("/api/summary")) { calls.p
 const $ = (s) => doc.querySelector(s);
 const $$ = (s) => [...doc.querySelectorAll(s)];
 for (let i = 0; i < 150 && $("#resultView").hidden; i += 1) await sleep(100);
-check("the overview is shown", !$("#resultView").hidden && !$("#mapView").hidden && $$(".map-tile[data-region]").length >= 5, String($$(".map-tile[data-region]").length));
-check("five topics and the summary tile", $$(".map-tile[data-topic]").length === 5 && !!$(".map-tile.is-all"));
-check("pins sit on the picture", $$(".face-pin").length >= 2);
+check("the overview shows six topics and the summary tile", !$("#resultView").hidden && !$("#mapView").hidden && $$(".map-tile[data-topic]").length === 6 && !!$(".map-tile.is-all"));
+check("no region tiles and no pins", !$(".map-tile[data-region]") && !$(".face-pin"));
 check("the overview asks for no summary yet", calls.length === 0);
 const clean = () => !/undefined|NaN|[\u2013\u2014]|\{[a-z]/.test($("#mapView").textContent);
-for (const id of $$(".map-tile[data-region]").map((n) => n.dataset.region)) {
-  $(`.map-tile[data-region="${id}"]`).click();
-  check(`region ${id} opens in detail`, !!$(".map-back") && $(".map-detail").textContent.length > 20 && clean());
-  $(".map-back").click();
-}
-$('.map-tile[data-region="nose"]').click();
-check("the nose detail has its card and key words", !!$('.map-card[data-card="noseWidth"] .map-words span') && $(".map-detail").textContent.includes("재물을 잘 지키는 힘"));
-check("the picked part is lit on the picture", !!$("#resultFrontOverlay .part-hl"));
-$(".map-back").click();
-check("going back puts the light out", !$("#resultFrontOverlay .part-hl") && !!$(".map-tile.is-all"));
 for (const name of $$(".map-tile[data-topic]").map((n) => n.dataset.topic)) {
   $(`.map-tile[data-topic="${name}"]`).click();
   const text = $(".map-detail").textContent;
   check(`topic ${name} reads by itself`, !!$(".map-detail .story-lead") && clean() && !/앞에서 본|이어서 |그러다 보면|이쪽에서도 마찬가지/.test(text), text.slice(0, 80));
   $(".map-back").click();
 }
+$('.map-tile[data-topic="일과 재물"]').click();
+$("#mapView .ink[data-part]").dispatchEvent(new win.PointerEvent("pointerover", { bubbles: true, pointerType: "mouse" }));
+check("pointing at a part name lights it on the picture", !!$("#resultFrontOverlay .part-hl"));
+$(".map-back").click();
+check("going back puts the light out", !$("#resultFrontOverlay .part-hl"));
 $(".map-tile.is-all").click();
 await sleep(100);
 check("the summary is asked once with ids only", calls.length === 1 && calls[0].spec.keys.includes("noseWidth.high") && Object.keys(calls[0].spec).sort().join() === "age,keys,poles", JSON.stringify(calls[0]));

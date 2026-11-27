@@ -492,19 +492,14 @@ img { display: block; max-width: 100%; }
 .map-head { display: flex; flex-direction: column; gap: 6px; }
 .map-head .story-lead { font-size: clamp(19px, min(2.1vw, 3.3vh), 28px); }
 .map-hint { font-size: 0.74em; color: var(--muted); }
-.map-section { margin: 0; font-size: 0.74em; font-weight: 700; color: var(--muted); }
-.map-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.map-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.map-tile.is-all { grid-column: 1 / -1; align-items: center; }
 .map-tile { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; padding: clamp(8px, 1.5vh, 14px) 14px; text-align: left; line-height: 1.45; border: 1px solid var(--line); border-radius: var(--radius); background: rgba(255, 255, 255, 0.38); transition: background 0.15s, border-color 0.15s, transform 0.15s; }
 .map-tile:hover, .map-tile:focus-visible { background: #fff; border-color: var(--accent); transform: translateY(-1px); }
 .map-tile small { font-size: 0.68em; font-weight: 700; color: var(--muted); }
-.map-tile strong { font-size: 0.92em; font-weight: 800; color: var(--accent); }
 .map-tile span { font-size: 0.72em; color: var(--ink-2); }
-/* The part that stands out most is shaded. */
-.map-grid.is-parts .map-tile:first-child { background: var(--accent-soft); }
-.map-grid.is-parts .map-tile:first-child:hover { background: #fff; }
-.map-tile.is-even { background: transparent; }
-.map-tile.is-even strong { font-weight: 500; color: var(--muted); }
-.map-tile.is-topic small { font-size: 0.82em; color: var(--accent); }
+.map-tile.is-topic { min-height: clamp(70px, 12vh, 120px); justify-content: center; }
+.map-tile.is-topic small { font-size: 0.9em; color: var(--accent); }
 .map-tile.is-all { background: var(--accent); border-color: var(--accent); justify-content: center; }
 .map-tile.is-all :is(strong, span) { color: #fff; }
 .map-tile.is-all:hover, .map-tile.is-all:focus-visible { background: #53362a; }
@@ -515,17 +510,6 @@ img { display: block; max-width: 100%; }
 .map-detail .story-page { margin: 0; padding: 0; }
 .map-detail .story-page .story-lead { font-size: clamp(19px, min(2vw, 3.2vh), 27px); }
 .map-detail .story-page .story-tag { display: none; }
-.map-about { font-size: 0.82em; color: var(--muted); }
-.map-card { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius); background: rgba(255, 255, 255, 0.38); }
-.map-card-name { margin: 0; font-size: 1.1em; font-weight: 800; color: var(--accent); }
-.map-card-name small { margin-left: 0.6em; font-size: 0.62em; font-weight: 500; color: var(--muted); }
-.map-measure { font-size: 0.76em; color: var(--muted); }
-.map-card .story-body { margin: 0; }
-.map-words { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; font-size: 0.76em; }
-.map-words b { min-width: 5.6em; color: var(--muted); }
-.map-words span { padding: 0.1em 0.7em; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-weight: 500; }
-.map-even { font-size: 0.78em; color: var(--muted); }
-.map-even h4 { margin: 0 0 4px; font-size: 1em; }
 .map-summary { display: flex; flex-direction: column; gap: 0.9em; min-height: 8em; }
 .map-summary .story-body { margin: 0; font-size: 1em; color: var(--ink); }
 .map-closing { font-size: clamp(18px, min(1.9vw, 3vh), 26px); line-height: 1.75; }
@@ -534,12 +518,8 @@ img { display: block; max-width: 100%; }
 .map-wait { color: var(--muted); }
 .map-note { font-size: 0.7em; color: var(--muted); }
 .map-detail > .big-btn { align-self: center; }
-.face-pins { position: absolute; inset: 0; pointer-events: none; }
-.face-pin { position: absolute; transform: translate(-50%, -50%); pointer-events: auto; min-width: 44px; padding: 0.35em 0.8em; border-radius: 999px; border: 1px solid #fff; background: rgba(59, 36, 24, 0.82); color: #fff; font-size: clamp(12px, 3.4cqw, 18px); font-weight: 700; line-height: 1.2; white-space: nowrap; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35); }
-.face-pin:hover, .face-pin:focus-visible { background: var(--sky); color: var(--accent); }
 @media (max-width: 760px) {
   .reading.is-map { grid-template-columns: minmax(0, 1fr); }
-  .map-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .face-pins { display: none; } /* the picture is too small for them on a phone: the tiles do the same */
+  .map-grid { grid-template-columns: minmax(0, 1fr); }
 }
 @media (prefers-reduced-motion: reduce) { .map-tile { transition: none; } }

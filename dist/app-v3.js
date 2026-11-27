@@ -66,7 +66,6 @@ const resultFrontFigure = $("#resultFrontFigure");
 const resultFrontImage = $("#resultFrontImage");
 const resultFrontOverlay = $("#resultFrontOverlay");
 const resultFrontLabels = $("#resultFrontLabels");
-const resultFrontPins = $("#resultFrontPins");
 const restartButton = $("#restartButton");
 const homeButton = $("#homeButton");
 
@@ -1023,24 +1022,11 @@ const readingBox = document.querySelector(".reading");
 function showMapSide(showMap) {
   readingBox.classList.toggle("is-map", showMap);
   mapView.hidden = !showMap;
-  resultFrontPins.hidden = !showMap;
 }
 const map = createMap(mapView, {
   el, marked,
   storyPage: (page) => storyPage(page),
-  // keep: the part stays lit after the pointer leaves a part name inside the detail
-  highlight: (id, keep = false) => { litPart = keep ? id : null; highlightPart(id); },
-  pin: (list) => {
-    resultFrontPins.replaceChildren();
-    for (const { point, name, open } of list) {
-      const at = framePoints?.[point];
-      if (!at) continue;
-      const pin = placeAt(el("button", "face-pin", name), clamp(at.x, 8, 92), clamp(at.y, 6, 94));
-      pin.type = "button";
-      pin.addEventListener("click", open);
-      resultFrontPins.append(pin);
-    }
-  },
+  highlight: (id) => { litPart = null; highlightPart(id); },
   // The last words are the same page as in the other layout.
   fortune: () => { showMapSide(false); showSlide(slidesOf().findIndex((s) => s.dataset.page === "fortune"), { force: true }); },
   home: () => homeButton.click(),
