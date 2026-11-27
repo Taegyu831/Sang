@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>상 스크롤 시안</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main id="chooser" hidden>
+    <h1>스크롤 시안 3가지</h1>
+    <p>하나를 누르면 시작합니다. 체험 중에 <kbd>T</kbd>는 시안 바꾸기, <kbd>S</kbd>는 카메라 없이 예시 얼굴로 보기입니다.</p>
+    <div class="choices">
+      <a href="?look=puzzle" class="c-puzzle"><b>1. 퍼즐</b><span>조각들이 끌려와 한 판으로 맞춰짐</span></a>
+      <a href="?look=sticker" class="c-sticker"><b>2. 스티커</b><span>얼굴에서 스티커가 떨어져 나와 붙음</span></a>
+      <a href="?look=type" class="c-type"><b>3. 문장 조립</b><span>흩어진 글자가 모여 큰 문장이 됨</span></a>
+    </div>
+  </main>
+  <div id="top" hidden><b></b><nav></nav><i></i></div>
+  <div id="screen" hidden></div>
+  <div id="page" hidden></div>
+  <div id="cue" hidden>아래로 스크롤<span></span></div>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

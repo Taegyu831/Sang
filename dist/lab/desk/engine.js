@@ -174,10 +174,13 @@ export function focusPart(photo, face, part, most = 1.8) {
   photo.over.querySelectorAll(".measure").forEach((n) => n.remove());
   photo.over.querySelector(".dots")?.classList.toggle("is-faded", Boolean(part));
   if (!lines.length) { photo.zoom.style.transform = ""; return; }
-  const [a, b] = lines[0];
-  const scale = Math.max(Math.min(1.3, most), Math.min(most, 48 / Math.max(8, Math.hypot(a.x - b.x, a.y - b.y)))); // ARTIFICIAL: zoom range
+  // The box around everything that gets drawn, so that both eyes (or a part and its reference) stay in view.
+  const ends = lines.flat(); const xs = ends.map((p) => p.x); const ys = ends.map((p) => p.y);
+  const span = Math.max(8, Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
+  const scale = Math.max(Math.min(1.3, most), Math.min(most, 62 / span)); // ARTIFICIAL: zoom range
+  const centre = { x: (Math.max(...xs) + Math.min(...xs)) / 2, y: (Math.max(...ys) + Math.min(...ys)) / 2 };
   const clampPct = (v) => Math.max(100 - 100 * scale, Math.min(0, v));
-  photo.zoom.style.transform = `translate(${clampPct(50 - ((a.x + b.x) / 2) * scale)}%, ${clampPct(50 - ((a.y + b.y) / 2) * scale)}%) scale(${scale})`;
+  photo.zoom.style.transform = `translate(${clampPct(50 - centre.x * scale)}%, ${clampPct(50 - centre.y * scale)}%) scale(${scale})`;
   const g = svg("g", { class: "measure" });
   for (const [p, q] of lines) g.append(svg("line", { x1: p.x, y1: p.y, x2: q.x, y2: q.y }));
   photo.over.append(g);
