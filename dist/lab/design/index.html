@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>상 디자인 시안</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gothic+A1:wght@500;700;900&family=Jua&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main id="chooser" hidden>
+    <h1>세로 화면 시안 3가지</h1>
+    <p>하나를 누르면 시작합니다. 체험 중에 <kbd>T</kbd>를 누르면 시안이 바뀌고, <kbd>S</kbd>는 카메라 없이 예시 얼굴로 봅니다.</p>
+    <div class="choices">
+      <a href="?theme=pop"><b>1. 스티커 팝</b><span>밝고 통통 튀는 친근함</span></a>
+      <a href="?theme=scan"><b>2. 네온 스캔</b><span>어두운 화면에 빛나는 분석</span></a>
+      <a href="?theme=block"><b>3. 컬러 블록</b><span>큰 글자와 색면의 임팩트</span></a>
+    </div>
+  </main>
+  <div id="fit" hidden><div id="stage" aria-live="polite"></div></div>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
