@@ -1,0 +1,42 @@
+<!doctype html><meta charset="utf-8"><title>face batch</title>
+<pre id="out">RUNNING</pre>
+<script type="module">
+// Runs the same measuring pipeline as the app over still pictures (no camera) and prints one JSON row per picture.
+import { estimatePose, frontalizePoints } from "./dist/pose.js";
+import { getPoints, computeFrontFeatures } from "./dist/features.js";
+import { applyPoseResidual } from "./dist/residual.js";
+import { readParts, classifyFaceShape } from "./dist/parts.js";
+import { composeStory } from "./dist/story.js";
+import { extrasOf } from "./dist/extras.js";
+const out = document.getElementById("out");
+window.addEventListener("error", (e) => { out.textContent = "ERR " + e.message; });
+window.addEventListener("unhandledrejection", (e) => { out.textContent = "ERR " + e.reason; });
+const q = new URLSearchParams(location.search);
+const names = (q.get("files") ?? "").split(",").filter(Boolean).map(decodeURIComponent);
+out.textContent = "RUNNING import";
+const mod = await import("./dist/vendor/mediapipe/vision_bundle.mjs");
+const vision = await mod.FilesetResolver.forVisionTasks("./dist/vendor/mediapipe/wasm");
+out.textContent = "RUNNING model";
+const lm = await mod.FaceLandmarker.createFromOptions(vision, {
+  baseOptions: { modelAssetPath: "./dist/vendor/mediapipe/face_landmarker.task", delegate: "CPU" },
+  runningMode: "IMAGE", numFaces: 1, outputFaceBlendshapes: false, outputFacialTransformationMatrixes: false,
+});
+const partsContent = await (await fetch("./dist/parts.json")).json();
+const load = (src) => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
+const rows = [];
+for (const name of names) {
+  try {
+    const img = await load(`./faces/${encodeURIComponent(name)}`);
+    const r = lm.detect(img);
+    if (!r.faceLandmarks.length) { rows.push({ name, error: "no face" }); continue; }
+    const raw = getPoints(r.faceLandmarks[0], img.naturalWidth, img.naturalHeight);
+    const pose = estimatePose(raw);
+    const values = applyPoseResidual(computeFrontFeatures(frontalizePoints(raw, pose)), pose);
+    const parts = readParts(values, partsContent);
+    const shape = classifyFaceShape(values);
+    const story = composeStory(parts.all, shape, extrasOf(values, parts.all, 20));
+    rows.push({ name, pose, values, parts: parts.all.map((p) => ({ id: p.id, dir: p.dir, z: +p.z.toFixed(2) })), headline: story.headline, poles: story.poles, shape: shape?.name ?? null });
+  } catch (e) { rows.push({ name, error: String(e) }); }
+}
+document.getElementById("out").textContent = "DONE" + JSON.stringify(rows);
+</script>
