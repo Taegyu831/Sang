@@ -67,9 +67,7 @@ const restartButton = $("#restartButton");
 const homeButton = $("#homeButton");
 
 let FaceLandmarker;
-let DrawingUtils;
 let faceLandmarker;
-let drawingUtils;
 let stream;
 let animationId;
 let running = false;
@@ -233,15 +231,10 @@ function resizeCanvas() {
   canvas.style.bottom = "auto";
 }
 
+// The camera shows only the picture (2026-11-27): no mesh, outlines or points are drawn
+// over the face. ?debug=1 still names the measured points.
 function drawFace(landmarks) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  // Phosphor green mesh, like an old monitor drawing over the face.
-  drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_TESSELATION, { color: "rgba(140, 255, 140, 0.16)", lineWidth: 0.65 });
-  drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_FACE_OVAL, { color: "rgba(200, 255, 200, 0.8)", lineWidth: 1.4 });
-  drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_LEFT_EYE, { color: "rgba(255, 220, 90, 0.95)", lineWidth: 1.5 });
-  drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_RIGHT_EYE, { color: "rgba(255, 220, 90, 0.95)", lineWidth: 1.5 });
-  drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_LIPS, { color: "rgba(255, 120, 100, 0.9)", lineWidth: 1.4 });
-  // The red dots on the measured points are not drawn any more (2026-11-25); ?debug=1 still names them.
   if (DEBUG_MODE) drawDebugLabels(landmarks);
 }
 
@@ -1095,7 +1088,6 @@ async function initialize() {
     await loadContent();
     const module = await withTimeout(import(MEDIAPIPE_MODULE), MODEL_LOAD_TIMEOUT, "측정 모델을 불러오는 시간이 초과되었습니다.");
     FaceLandmarker = module.FaceLandmarker;
-    DrawingUtils = module.DrawingUtils;
     const vision = await withTimeout(module.FilesetResolver.forVisionTasks(MEDIAPIPE_WASM), MODEL_LOAD_TIMEOUT, "측정 엔진을 준비하는 시간이 초과되었습니다.");
     // GPU first; a computer without a usable GPU falls back to the CPU (slower, but it works).
     const createLandmarker = (delegate) => withTimeout(
@@ -1118,7 +1110,6 @@ async function initialize() {
       console.warn("GPU delegate failed, trying the CPU", gpuError);
       faceLandmarker = await createLandmarker("CPU");
     }
-    drawingUtils = new DrawingUtils(ctx);
     // The hair model is opt-in (?hair=1) until it is confirmed safe in Safari.
     if (SEARCH_PARAMS.get("hair") === "1") loadHairSegmenter(module, vision);
     setCameraButton(CAMERA_LABEL, "camera");
@@ -1217,8 +1208,6 @@ async function startPreview() {
 if (isLocal && SEARCH_PARAMS.get("sim") === "1") {
   // Test hook: feed landmark arrays through the real pipeline without a camera.
   loadContent().then(() => {
-    drawingUtils = { drawConnectors() {}, drawLandmarks() {} };
-    FaceLandmarker = { FACE_LANDMARKS_TESSELATION: [], FACE_LANDMARKS_FACE_OVAL: [], FACE_LANDMARKS_LEFT_EYE: [], FACE_LANDMARKS_RIGHT_EYE: [], FACE_LANDMARKS_LIPS: [] };
     Object.defineProperty(video, "videoWidth", { value: 1280, configurable: true });
     Object.defineProperty(video, "videoHeight", { value: 720, configurable: true });
     window.__sang = {
