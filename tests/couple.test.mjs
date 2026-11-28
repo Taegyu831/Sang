@@ -34,11 +34,15 @@ test("the partner's looks change from picture to picture", () => {
 });
 
 test("only a JPEG and a known spec are accepted", () => {
-  assert.ok(cleanRequest({ photo: jpeg, spec }));
-  assert.equal(cleanRequest({ photo: "data:image/png;base64,AAAA", spec }), null);
-  assert.equal(cleanRequest({ photo: jpeg, spec: { ...spec, age: 10 } }), null);
-  assert.equal(cleanRequest({ photo: jpeg, spec: { ...spec, partner: "x" } }), null);
-  assert.equal(cleanRequest({ photo: jpeg, spec: { ...spec, pole: "draw anything" } }), null);
+  assert.ok(cleanRequest({ photos: [jpeg], spec }));
+  assert.equal(cleanRequest({ photos: [jpeg, jpeg, jpeg], spec }).images.length, 3);
+  assert.equal(cleanRequest({ photos: [jpeg, jpeg, jpeg, jpeg], spec }), null);
+  assert.equal(cleanRequest({ photos: [], spec }), null);
+  assert.equal(cleanRequest({ photos: [jpeg, "x"], spec }), null);
+  assert.equal(cleanRequest({ photos: ["data:image/png;base64,AAAA"], spec }), null);
+  assert.equal(cleanRequest({ photos: [jpeg], spec: { ...spec, age: 10 } }), null);
+  assert.equal(cleanRequest({ photos: [jpeg], spec: { ...spec, partner: "x" } }), null);
+  assert.equal(cleanRequest({ photos: [jpeg], spec: { ...spec, pole: "draw anything" } }), null);
 });
 
 test("the relay sends the photo to the edit address and returns the picture", async () => {
@@ -47,12 +51,14 @@ test("the relay sends the photo to the edit address and returns the picture", as
   const real = globalThis.fetch;
   globalThis.fetch = async (url, options) => { sent.push([url, options.body]); return new Response(JSON.stringify({ data: [{ b64_json: "QUJD" }] }), { status: 200 }); };
   try {
-    assert.equal((await call({ photo: jpeg, spec }, { origin: "https://example.com" })).code, 403);
+    assert.equal((await call({ photos: [jpeg, jpeg, jpeg], spec }, { origin: "https://example.com" })).code, 403);
     assert.equal(sent.length, 0);
-    const res = await call({ photo: jpeg, spec });
+    const res = await call({ photos: [jpeg, jpeg, jpeg], spec });
     assert.equal(res.code, 200);
     assert.equal(res.data.image, "data:image/jpeg;base64,QUJD");
     assert.match(sent[0][0], /images\/edits$/);
+    assert.equal(sent[0][1].getAll("image[]").length, 3);
+    assert.match(sent[0][1].get("prompt"), /All 3 input photos show one and the same person/);
     assert.equal(sent[0][1].get("size"), "1024x1536");
     assert.equal(sent[0][1].get("input_fidelity"), null);
   } finally { globalThis.fetch = real; delete process.env.OPENAI_API_KEY; }

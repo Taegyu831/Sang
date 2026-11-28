@@ -15,6 +15,7 @@ const STRICT = { maxPitch: 8, maxRoll: 15, maxCenterOffset: 0.12, minFaceFill: 0
 const limits = () => (new URLSearchParams(location.search).get("strict") === "0" ? {} : STRICT);
 const HARD_LIMIT_MS = 40000; // ARTIFICIAL: after this long the capture finishes with what it has
 const MIN_AT_LIMIT = 15; // ARTIFICIAL: ... if at least this many frames were usable
+const SIDE_YAW = 16; // ARTIFICIAL: the head angle (degrees) preferred for the side pictures
 let landmarker = null;
 let files = null;
 let mod = null;
@@ -41,7 +42,8 @@ export function prepare() {
 /**
  * Runs the whole capture. on.stage(id) when a new thing is asked for ("front", "left", "right",
  * "done", "clench", "smile"), on.trouble(code | null) while the picture cannot be used,
- * on.progress(0..1). Returns the face to show with its values, or null when the scene ended.
+ * on.progress(0..1). Returns the face to show with its values and `sides` (one picture from each
+ * head turn, for the couple picture), or null when the scene ended.
  */
 export async function captureFace(video, alive, on) {
   stopCamera();
@@ -55,6 +57,12 @@ export async function captureFace(video, alive, on) {
   const canvas = document.createElement("canvas");
   let compare = null; let compareIndex = 0; const compared = {}; let base = null;
   let best = null; let asked = null; let began = null;
+  const turned = {}; // the best picture of each head turn
+  const picture = () => {
+    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+    canvas.getContext("2d").drawImage(video, 0, 0);
+    return canvas;
+  };
   const ask = (id) => { if (asked !== id) { asked = id; on.stage(id); } };
 
   while (alive()) {
@@ -95,9 +103,14 @@ export async function captureFace(video, alive, on) {
       capture.add(values, verdict.weight, pose, t, faceFill, fix);
       const straight = Math.abs(pose.yaw) < 8 && Math.abs(pose.pitch) < 12;
       if (straight && verdict.weight > (best?.weight ?? 0)) {
-        canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-        canvas.getContext("2d").drawImage(video, 0, 0);
-        best = { weight: verdict.weight, shot: cropFace(canvas, { found, values }) };
+        best = { weight: verdict.weight, shot: cropFace(picture(), { found, values }) };
+      }
+      const zone = capture.zoneOf(pose.yaw);
+      if (zone === "left" || zone === "right") {
+        // clearly turned is worth more than barely turned
+        const score = verdict.weight * (1 - Math.abs(Math.abs(pose.yaw) - SIDE_YAW) / 30);
+        // not every frame: cutting a picture out costs time
+        if (score > (turned[zone]?.score ?? 0) * 1.05) turned[zone] = { score, src: cropFace(picture(), { found, values }).src };
       }
       ask(capture.zoneTimedOut ? "done" : capture.nextZone ?? "done");
       on.progress(capture.progress);
@@ -116,5 +129,5 @@ export async function captureFace(video, alive, on) {
   const snap = capture.snapshot(CALIBRATION);
   const confidence = Math.round(60 * snap.stability + 40 * Math.max(0, Math.min(1, snap.totalWeight / capture.options.targetWeight)));
   const measurement = { ...snap.values, ...compareDeltas(base, compared.clench, compared.smile), ...snap.context, residOn: 1, residVersion: RESIDUAL_VERSION, confidence, frames: snap.frames, stability: snap.stability, coverage: snap.coverage };
-  return { ...best.shot, values: measurement };
+  return { ...best.shot, values: measurement, sides: [turned.left?.src, turned.right?.src].filter(Boolean) };
 }

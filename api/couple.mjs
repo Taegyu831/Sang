@@ -1,14 +1,14 @@
 // Vercel function: the couple picture at the end (dist/talk/couple.js). The page sends the visitor's
-// photo (only after the visitor chose to) and {partner, age, pole}; the prompt is built here, so the
-// address cannot be used with another prompt. The photo is passed on to OpenAI and not stored or
+// photos (one to three, only after the visitor chose to) and {partner, age, pole}; the prompt is built
+// here, so the address cannot be used with another prompt. The photos are passed on to OpenAI and not stored or
 // logged here. OPENAI_API_KEY is set in the Vercel project, never in the repo.
-import { couplePrompt, PARTNERS, AGES } from "../dist/talk/couple.js";
+import { couplePrompt, PARTNERS, AGES, MAX_PHOTOS } from "../dist/talk/couple.js";
 
 const ALLOWED_ORIGINS = ["https://taegyu831.github.io", "http://127.0.0.1:8001", "http://localhost:8001"];
 const MODELS = (process.env.IMAGE_MODEL || "gpt-image-2,gpt-image-1.5,gpt-image-1").split(",").filter(Boolean);
 const SIZE = process.env.COUPLE_SIZE || "1024x1536";
 const QUALITY = process.env.COUPLE_QUALITY || "medium";
-const MAX_PHOTO_CHARS = 2_000_000; // the page sends an 800x1000 JPEG, far below this
+const MAX_PHOTO_CHARS = 1_000_000; // per picture; the page sends 800x1000 JPEGs, far below this
 const POLES = ["drive+", "drive-", "social+", "social-", "feel+", "feel-", "steady+", "steady-"];
 
 // Per server instance only, so the OpenAI monthly limit is still the real cap.
@@ -23,18 +23,24 @@ function tooMany(ip, now = Date.now()) {
   return recent.length > MAX_PER_WINDOW;
 }
 
-/** Checks what the page sent; returns {bytes, spec} or null. */
-export function cleanRequest(body) {
-  const photo = body?.photo;
-  const spec = body?.spec;
-  if (typeof photo !== "string" || photo.length > MAX_PHOTO_CHARS || !spec || typeof spec !== "object") return null;
+function jpegBytes(photo) {
+  if (typeof photo !== "string" || photo.length > MAX_PHOTO_CHARS) return null;
   const match = /^data:image\/jpeg;base64,([A-Za-z0-9+/]+={0,2})$/.exec(photo);
   if (!match) return null;
   const bytes = Buffer.from(match[1], "base64");
-  if (bytes.length < 1000 || bytes[0] !== 0xff || bytes[1] !== 0xd8) return null;
+  return bytes.length >= 1000 && bytes[0] === 0xff && bytes[1] === 0xd8 ? bytes : null;
+}
+
+/** Checks what the page sent; returns {images, spec} or null. The front picture comes first. */
+export function cleanRequest(body) {
+  const photos = body?.photos;
+  const spec = body?.spec;
+  if (!Array.isArray(photos) || photos.length < 1 || photos.length > MAX_PHOTOS || !spec || typeof spec !== "object") return null;
+  const images = photos.map(jpegBytes);
+  if (images.includes(null)) return null;
   const pole = spec.pole ?? null;
   if (!PARTNERS.includes(spec.partner) || !AGES.includes(Number(spec.age)) || (pole !== null && !POLES.includes(pole))) return null;
-  return { bytes, spec: { partner: spec.partner, age: Number(spec.age), pole } };
+  return { images, spec: { partner: spec.partner, age: Number(spec.age), pole } };
 }
 
 export default async function handler(req, res) {
@@ -48,17 +54,18 @@ export default async function handler(req, res) {
   if (req.method !== "POST" || !ALLOWED_ORIGINS.includes(origin)) return res.status(403).json({ error: "not allowed" });
 
   const request = cleanRequest(req.body);
-  if (!request) return res.status(400).json({ error: "send {photo: jpeg data URL, spec: {partner, age, pole}}" });
+  if (!request) return res.status(400).json({ error: "send {photos: [jpeg data URL, ...], spec: {partner, age, pole}}" });
   const ip = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim() || "unknown";
   if (tooMany(ip)) return res.status(429).json({ error: "too many requests" });
   if (!process.env.OPENAI_API_KEY) return res.status(500).json({ error: "server has no key" });
 
-  const prompt = couplePrompt(request.spec);
+  const prompt = couplePrompt({ ...request.spec, shots: request.images.length });
   for (const model of MODELS) {
     const form = new FormData();
     form.set("model", model);
     form.set("prompt", prompt);
-    form.set("image", new Blob([request.bytes], { type: "image/jpeg" }), "face.jpg");
+    const field = request.images.length > 1 ? "image[]" : "image";
+    request.images.forEach((bytes, i) => form.append(field, new Blob([bytes], { type: "image/jpeg" }), `face-${i + 1}.jpg`));
     form.set("size", SIZE);
     form.set("quality", QUALITY);
     form.set("n", "1");

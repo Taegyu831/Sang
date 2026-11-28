@@ -1,7 +1,7 @@
 // The last present: a photo booth picture of the visitor with a matching, invented partner, made
-// by an image API from the visitor's own photo.
+// by an image API from the visitor's own photos (front and one from each head turn).
 //
-// The photo leaves this browser only after the visitor chooses it (talk/app.js offer()). It goes to
+// The photos leave this browser only after the visitor chooses it (talk/app.js ask()). They go to
 // our relay (api/couple.mjs), which adds the key and sends it to OpenAI. We keep no copy; the
 // result lives on the screen until the start screen comes back.
 import { MOOD } from "../portrait.js";
@@ -9,6 +9,7 @@ import { MOOD } from "../portrait.js";
 export const DEFAULT_COUPLE_ENDPOINT = "https://project-zek4t.vercel.app/api/couple";
 export const PARTNERS = ["female", "male"];
 export const AGES = [20, 30, 40, 50]; // all adults
+export const MAX_PHOTOS = 3;
 
 /** ?couple=off turns the present off; ?couple=<url> uses another relay (for tests). */
 export function coupleEndpoint(params) {
@@ -48,7 +49,7 @@ const draw = (list, random) => list[Math.min(list.length - 1, Math.floor(random(
 
 /** The prompt. `pole` is the kind of person who fits (story.js sayingsOf().fit.to), or null.
  *  ARTIFICIAL: light, framing and everything in VARIETY. */
-export function couplePrompt({ partner, age = 20, pole = null }, random = Math.random) {
+export function couplePrompt({ partner, age = 20, pole = null, shots = 1 }, random = Math.random) {
   const decade = AGES.includes(age) ? age : 20;
   const gender = partner === "male" ? "male" : "female";
   const person = gender === "male" ? "man" : "woman";
@@ -57,7 +58,10 @@ export function couplePrompt({ partner, age = 20, pole = null }, random = Math.r
   const looks = [`${mine("hair")} with ${mine("bangs")}`, own("color"), own("look"), own("skin"), own("glasses")];
   return [
     "Make one natural, candid photograph taken in a Korean self photo booth, showing two adults who are a couple.",
-    "The first person is the person in the input photo. Keep their face, facial features, face shape, hairstyle, glasses and skin tone faithful and clearly recognisable. Do not beautify them or change who they are.",
+    shots > 1
+      ? `All ${shots} input photos show one and the same person, the first person, seen from the front and slightly turned. Use them together for a faithful likeness, and show that person only once.`
+      : "The first person is the person in the input photo.",
+    "Keep their face, facial features, face shape, hairstyle, glasses and skin tone faithful and clearly recognisable. Do not beautify them or change who they are.",
     "Everything described for the second person belongs to the second person only. Never give the first person glasses, bangs, a hair colour or anything else that is not in the input photo.",
     `The second person is an invented, fictional Korean ${person} in their ${decade}s, not a real individual and not a celebrity, an ordinary-looking person with their own distinct face, whose face and hair are clearly different from the first person's. Looks: ${looks.join("; ")}. Wearing ${own("clothes")}. Presence: ${MOOD[pole] ?? "a balanced, pleasant, warm expression"}.`,
     `They sit close side by side facing the camera with relaxed happy smiles, ${own("pose")}.`,
@@ -67,7 +71,7 @@ export function couplePrompt({ partner, age = 20, pole = null }, random = Math.r
 }
 
 /** Resolves to the picture as a data URL, or throws. */
-export async function requestCouple(endpoint, { photo, partner, age, pole }, { signal, timeoutMs = 180000 } = {}) {
+export async function requestCouple(endpoint, { photos, partner, age, pole }, { signal, timeoutMs = 180000 } = {}) {
   const timer = new AbortController();
   const stop = () => timer.abort();
   const id = setTimeout(stop, timeoutMs);
@@ -76,7 +80,7 @@ export async function requestCouple(endpoint, { photo, partner, age, pole }, { s
     const response = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ photo, spec: { partner, age, pole } }),
+      body: JSON.stringify({ photos, spec: { partner, age, pole } }),
       signal: timer.signal,
     });
     if (!response.ok) throw new Error(`couple relay answered ${response.status}`);
