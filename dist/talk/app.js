@@ -72,8 +72,8 @@ function build() {
   const promise = h("p", "promise", "얼굴 사진과 영상은 저장되지 않아요 · 비율 숫자는 이름 없이 통계로 모아요");
   // The start screen covers the whole window until the button is pressed.
   const floaters = ["성격", "재물", "전성기", "첫인상", "연애", "인연"].map((w, i) => h("span", `float f${i}`, w));
-  const title = h("h1", "", h("span", "", "내 얼굴,"), h("span", "mark", "읽어 보기"));
-  const cover = h("div", "cover", ...floaters, h("div", "cover-mid", title, button("cta", () => notice(), "내 관상 보기")));
+  const title = h("h1", "", h("span", "", "내 얼굴"), h("span", "mark", "읽어 보기"));
+  const cover = h("div", "cover", h("p", "team", "이음 | IUM"), ...floaters, h("div", "cover-mid", title, button("cta", () => notice(), "내 관상 보기")));
   // shown for a moment on an empty page, between the start screen and the first question
   const notes = h("div", "notice", ...["약 3분이면 돼요", "얼굴 사진은 저장되지 않아요", "얼굴 비율 숫자는 이름 없이 통계로 모아요"].map((t, i) => { const p = h("p", "", t); p.style.setProperty("--i", i); return p; }));
   notes.addEventListener("click", () => skip());
