@@ -62,15 +62,23 @@ export function prepare() {
   return loading;
 }
 
+/** Where the camera lets its zoom be set, the widest view. */
+async function zoomOut(opened) {
+  const [track] = opened.getVideoTracks();
+  const min = track?.getCapabilities?.().zoom?.min;
+  if (Number.isFinite(min)) await track.applyConstraints({ advanced: [{ zoom: min }] }).catch(() => {});
+}
+
 /**
  * Runs the whole capture. on.stage(id) when a new thing is asked for ("front", "left", "right",
  * "done", "clench", "smile"), on.trouble(code | null) while the picture cannot be used,
  * on.progress(0..1). Returns the face to show with its values and `sides` (one picture from each
  * head turn, for the couple picture), or null when the scene ended.
  */
-export async function captureFace(video, alive, on, { limits: own } = {}) {
+export async function captureFace(video, alive, on, { limits: own, camera, widest = false } = {}) {
   stopCamera();
-  const opened = await openCameraStream({ width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" });
+  const opened = await openCameraStream(camera ?? { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" });
+  if (widest) await zoomOut(opened);
   if (!alive()) { opened.getTracks().forEach((t) => t.stop()); return null; }
   stream = opened;
   video.srcObject = stream;

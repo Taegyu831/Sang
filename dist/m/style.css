@@ -45,12 +45,13 @@ em { font-style: normal; font-weight: 900; background: linear-gradient(transpare
 
 .camera { min-height: 100svh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 12px 0; }
 .camera .bubble { min-height: 84px; width: 100%; display: flex; align-items: center; justify-content: center; margin: 0 0 12px; }
-.glass { --p: 0; position: relative; width: min(84vw, 360px, 48svh); aspect-ratio: 1; border-radius: 50%; padding: 7px; background: conic-gradient(var(--lime) calc(var(--p) * 360deg), var(--ink) 0); box-shadow: var(--shadow); flex: none; }
-.glass video { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; transform: scaleX(-1); background: var(--ink); }
-.oval { position: absolute; left: 50%; top: 50%; width: 50%; height: 68%; translate: -50% -50%; border: 3px dashed var(--white); border-radius: 50%; }
+/* the whole camera picture in its own shape: nothing is cut off, so it does not look zoomed in */
+.glass { --p: 0; position: relative; padding: 7px; border-radius: 34px; background: conic-gradient(var(--lime) calc(var(--p) * 360deg), var(--ink) 0); box-shadow: var(--shadow); flex: none; }
+.glass video { display: block; width: min(82vw, 360px, 44svh); height: auto; min-height: 200px; border-radius: 28px; transform: scaleX(-1); background: var(--ink); }
+.oval { position: absolute; left: 50%; top: 47%; width: 46%; aspect-ratio: 3 / 4; translate: -50% -50%; border: 3px dashed var(--white); border-radius: 50%; }
 .arrow { position: absolute; top: 38%; left: 0; font-size: 56px; text-shadow: 0 0 8px var(--rim); }
 .arrow[data-side="right"] { left: auto; right: 0; }
-.camera .stage.mid { --w: min(36vw, 150px, 18svh); margin-top: 6px; }
+.camera .stage.mid { --w: min(30vw, 130px, 15svh); margin-top: 6px; }
 .way-out { width: 100%; }
 
 .top { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 12px; margin: 0 -20px; padding: calc(8px + env(safe-area-inset-top)) 20px 8px; background: var(--paper); box-shadow: 0 8px 12px -10px rgba(31, 59, 48, 0.35); }

@@ -13,6 +13,9 @@ import { DEFAULT_COLLECT_ENDPOINT, buildRecord, submitMeasurement } from "../col
 
 // A phone is held upright and at arm's length: the face is smaller in the picture than at the desk.
 const LIMITS = { minFaceFill: 0.2, maxFaceFill: 0.85, maxCenterOffset: 0.25 };
+// A phone cuts its picture down to give the 16:9 size the desk camera is asked for, which looks
+// zoomed in. The 4:3 size keeps the whole view of the front camera (not yet checked on every phone).
+const CAMERA = { facingMode: "user", width: { ideal: 1440 }, height: { ideal: 1080 }, resizeMode: { ideal: "none" } };
 const params = new URLSearchParams(location.search);
 const collect = params.get("collect") === "off" ? "" : params.get("collect") || DEFAULT_COLLECT_ENDPOINT;
 const page = document.querySelector("#page");
@@ -111,7 +114,7 @@ async function shoot() {
         if (performance.now() - since > 1200 && shown !== code && TROUBLE[code]) { shown = code; words.textContent = TROUBLE[code]; }
       },
       progress(p) { glass.style.setProperty("--p", p); },
-    }, { limits: LIMITS });
+    }, { limits: LIMITS, camera: CAMERA, widest: true });
     if (!face || !alive()) return;
     visitor.face = face;
     share();
