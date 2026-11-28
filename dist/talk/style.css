@@ -119,9 +119,9 @@ em { font-style: normal; font-weight: 900; background: linear-gradient(transpare
 .cta { padding: 3.2rem 9rem; border-radius: 99rem; background: var(--ink); color: var(--paper); font-size: 4.6rem; font-weight: 900; transition: scale 0.2s; animation: arrive 0.6s cubic-bezier(0.2, 1.4, 0.4, 1) 0.5s backwards; }
 .cta:hover { scale: 1.05; }
 /* the notice between the start screen and the first question: in line by line, then gone */
-.notice { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3rem; background: var(--paper); text-align: center; cursor: pointer; animation: leave 0.45s ease-in 2.75s forwards; }
-.notice p { font-size: 5rem; font-weight: 800; animation: rise 0.55s cubic-bezier(0.33, 0, 0.2, 1) calc(var(--i) * 0.32s + 0.1s) backwards; }
-.notice p:first-child { font-size: 6.8rem; font-weight: 900; color: var(--green); }
+.notice { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.4rem; background: var(--paper); text-align: center; cursor: pointer; animation: leave 0.45s ease-in 2.75s forwards; }
+.notice p { font-size: 2.6rem; line-height: 1.5; font-weight: 600; animation: rise 0.55s cubic-bezier(0.33, 0, 0.2, 1) calc(var(--i) * 0.32s + 0.1s) backwards; }
+.notice p:first-child { font-size: 4.2rem; font-weight: 900; color: var(--green); margin-bottom: 1.2rem; }
 @keyframes leave { to { opacity: 0; translate: 0 -2rem; } }
 .float { position: absolute; padding: 1.8rem 4.6rem; border-radius: 99rem; border: 0.8rem solid #f1f2ea; background: var(--ink); color: var(--paper); font-size: 4rem; font-weight: 900; box-shadow: 0 1rem 2.4rem rgba(31, 59, 48, 0.25); animation: arrive 0.6s cubic-bezier(0.2, 1.4, 0.4, 1) calc(var(--d) + 0.3s) backwards, float 3.8s ease-in-out calc(var(--d) * -6) infinite alternate; }
 /* three on the left (dark), three on the right (lime) */
