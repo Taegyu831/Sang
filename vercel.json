@@ -1,5 +1,8 @@
 {
   "functions": {
+    "api/couple.mjs": {
+      "maxDuration": 200
+    },
     "api/portrait.mjs": {
       "maxDuration": 60
     },

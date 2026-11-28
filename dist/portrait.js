@@ -67,7 +67,7 @@ const HAIR = {
 };
 
 // What each kind of person looks and feels like in a photo (story.js POLES).
-const MOOD = {
+export const MOOD = {
   "drive+": "strong straight eyebrows, a steady direct gaze, a confident slight smile, upright posture",
   "drive-": "soft calm eyes, relaxed eyebrows, a thoughtful and observant expression, gentle closed-lip smile",
   "social+": "a bright open smile, lively eyes, a warm and approachable face",

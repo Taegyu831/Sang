@@ -1,20 +1,22 @@
 // The exhibition page: the visitor sits across from a small, serious fortune reader and is led
 // through the whole experience as a conversation.
 //   start screen -> the master asks gender, age, name -> guided capture -> thinking
-//   -> pick a question (again and again) -> "이제 충분해요" -> the last words and a card
+//   -> (if chosen) the couple picture is ordered -> pick a question (again and again)
+//   -> "이제 충분해요" -> the last words -> the couple picture, or a card without it
 // Keys: space / enter = go on, digits = choose, Esc = start over.
 // For development: ?dev=1 adds S (a drawn sample face) and ?scene=ask|shoot|menu|read|end with
-// &sample=1&topic=self&hold=1. ?collect=off sends nothing, ?strict=0 loosens the capture limits.
+// &sample=1&topic=self&hold=1. ?collect=off sends nothing, ?couple=off offers no picture, ?strict=0 loosens the capture limits.
 // The earlier page is classic.html (its ?debug=1 records samples).
 import { h, button, sampleFace, photoCard } from "./kit.js";
 import { CLOSING_QUOTE, CLOSING_SPOKEN } from "../closing.js";
 import { DEFAULT_COLLECT_ENDPOINT, buildRecord, submitMeasurement, flushQueue } from "../collect.js";
+import { coupleEndpoint, requestCouple } from "./couple.js";
 import { createCharacter } from "./character.js";
 import { captureFace, stopCamera, prepare as prepareModel } from "./capture-room.js";
 import { TOPICS, answer, readingFor, josa } from "./spoken.js";
 
 // ARTIFICIAL: timings (ms).
-const T = { type: 38, after: 900, perChar: 55, rise: 200, stuck: 60000, askIdle: 45000, menuIdle: 60000, endIdle: 60000 };
+const T = { type: 38, after: 900, perChar: 55, rise: 200, stuck: 60000, askIdle: 45000, menuIdle: 60000, endIdle: 60000, offerIdle: 60000, photoIdle: 120000, printTalk: 11000 };
 
 const params = new URLSearchParams(location.search);
 const DEV = params.get("dev") === "1";
@@ -26,9 +28,10 @@ const COLLECT_ENDPOINT = collectParam === "off" ? "" : collectParam || DEFAULT_C
 const READ = { gesture: 700, write: 18, type: 28, after: 600, stay: 40 };
 const NAME_MAX = 10;
 const SAMPLE_NAME = "홍길동"; // only for the ?dev=1 shortcuts
+const COUPLE_ENDPOINT = coupleEndpoint(params);
 const stage = document.querySelector("#stage");
 let content = null;
-const fresh = () => ({ gender: null, age: null, name: null, shared: false, face: null, reading: null, heard: [] });
+const fresh = () => ({ gender: null, age: null, name: null, shared: false, face: null, reading: null, heard: [], couple: null });
 let visitor = fresh();
 let master = null;
 let ui = null;
@@ -79,6 +82,7 @@ function enter(name) {
   stopCamera();
   stage.dataset.scene = name;
   ui.book.classList.remove("closing");
+  ui.card.className = "card";
   ui.choices.replaceChildren(); ui.card.replaceChildren(); ui.arrow.textContent = "";
   ui.enough.hidden = !["menu", "read"].includes(name);
   ui.cover.hidden = name !== "attract";
@@ -199,6 +203,7 @@ async function write(ctx, line, step = 30) {
 // ---------- the conversation ----------
 function attract() {
   enter("attract");
+  visitor.couple?.stop.abort();
   visitor = fresh();
   heading("");
   ui.who.textContent = "";
@@ -297,7 +302,38 @@ async function shoot() {
   ui.arrow.textContent = "";
   master.pose("peek");
   if (!(await say(ctx, "찰칵! 다 봤어요. 아주 좋아요.", { hold: 900 }))) return;
+  offer();
+}
+/** The present at the end. The photo is sent only if the visitor picks a partner here; it is
+ *  ordered now so that it is ready when the readings are over. */
+async function offer() {
+  prepare();
+  // the drawn sample face is not a photo; in development it goes to a test relay all the same
+  if (!COUPLE_ENDPOINT || (visitor.face.sample && !DEV)) return ponder();
+  const ctx = enter("offer");
+  heading("마지막 선물");
+  ui.book.querySelector("ul").append(...[
+    "고르면 ⟦방금 찍은 얼굴 사진 한 장⟧을 AI 회사(OpenAI)로 보내요.",
+    "저희는 저장하지 않아요. OpenAI에는 정책상 최대 30일가량 남을 수 있어요.",
+    "연인은 AI가 만든 가상 인물이에요. ⟦만 19세 이상⟧만 골라 주세요.",
+  ].map((line) => marked("li", "", line)));
+  master.pose("push");
+  if (!(await say(ctx, "잘 어울리는 연인과 찍은 네컷 사진, 마지막에 만들어 드릴까요?", { hold: null }))) return;
+  const partner = await choose(ctx, [["동의하고 남자 연인과 찍기", "male"], ["동의하고 여자 연인과 찍기", "female"], ["괜찮아요, 안 보낼래요", ""]], { idle: T.offerIdle, className: "offer" });
+  if (!ctx.alive()) return;
+  if (partner) visitor.couple = order(partner);
+  master.pose(partner ? "cheer" : "listen");
+  if (!(await say(ctx, partner ? "좋아요! 풀이를 듣는 동안 몰래 만들어 둘게요." : "알겠어요. 사진은 보내지 않을게요.", { hold: 900 }))) return;
   ponder();
+}
+/** Asks for the picture and keeps track of it. */
+function order(partner) {
+  const job = { done: false, image: null, stop: new AbortController() };
+  const wanted = { photo: visitor.face.src, partner, age: visitor.age, pole: visitor.reading.say.fit.to ?? null };
+  requestCouple(COUPLE_ENDPOINT, wanted, { signal: job.stop.signal })
+    .then((image) => { job.image = image; }, (error) => console.warn("no couple picture", error))
+    .finally(() => { job.done = true; });
+  return job;
 }
 /** One anonymous record per finished capture (numbers only, announced on the start screen), never
  *  for the drawn sample face. */
@@ -372,8 +408,50 @@ async function ending() {
     if (i === 1) { showSaying(); if (!(await ctx.wait(1200))) return; master.pose("listen"); }
     if (!(await say(ctx, spoken.replace("{name}", () => visitor.name), { hold: HOLD && i === Number(params.get("at") ?? 99) ? 1e9 : undefined }))) return;
   }
-  stage.dataset.scene = "card";
-  scene = "card";
+  const job = visitor.couple;
+  if (!job) return card(ctx);
+  if (!job.done && !(await printing(ctx, job))) return;
+  if (job.image) return booth(ctx, job.image);
+  job.stop.abort();
+  master.pose("think");
+  if (!(await say(ctx, "아쉽게도 사진은 이번에 못 받았어요. 대신 관상 카드를 드릴게요.", { hold: 1600 }))) return;
+  card(ctx);
+}
+const show = (name) => { stage.dataset.scene = name; scene = name; };
+/** Waits for the picture. False when the part of the conversation has ended meanwhile. */
+async function printing(ctx, job) {
+  show("printing");
+  ui.card.className = "booth";
+  ui.card.replaceChildren(h("div", "print", h("i", ""), h("p", "", "네컷 사진 인화 중")));
+  let gaveUp = false;
+  choose(ctx, [["기다리지 않고 마칠래요", true]], { idle: 1e9, className: "stuck one" }).then(() => { gaveUp = true; });
+  const talk = ["사진이 아직 인화 중이에요. 조금만 기다려 주세요.", "두 분 표정을 고르는 중인가 봐요.", "거의 다 됐을 거예요."];
+  const poses = ["focus", "sky", "peek"];
+  for (let i = 0; !job.done && !gaveUp; i += 1) {
+    master.pose(poses[i % 3]);
+    say(ctx, talk[Math.min(i, talk.length - 1)], { hold: null });
+    for (let spent = 0; spent < T.printTalk && !job.done && !gaveUp; spent += 300) if (!(await ctx.wait(300))) return false;
+  }
+  ui.choices.replaceChildren();
+  return ctx.alive();
+}
+/** The end with the picture: one cut in a booth frame, with the saying under it. */
+async function booth(ctx, image) {
+  show("photo");
+  const picture = h("img", "");
+  picture.src = image; picture.alt = "AI가 만든 커플 사진";
+  ui.card.className = "booth";
+  ui.card.replaceChildren(picture, h("h2", "", `${visitor.name}님과 잘 맞는 인연`), h("p", "han", CLOSING_QUOTE.han), h("p", "mean", CLOSING_QUOTE.meaning),
+    h("p", "tip", "AI가 만든 가상의 사진이에요 · 휴대폰으로 찍어 가세요"), button("again", attract, "처음으로"));
+  keys = (k) => { if (k === " " || k === "Enter") attract(); };
+  master.pose("cheer");
+  if (!(await say(ctx, "짜잔! 잘 어울리죠? 또 놀러 오세요!", { hold: null }))) return;
+  await ctx.wait(900); if (ctx.alive()) master.pose("hello");
+  if (!HOLD && (await ctx.wait(T.photoIdle))) attract();
+}
+/** The end without a picture. */
+async function card(ctx) {
+  show("card");
   const kept = visitor.heard.map((id) => { const { memo } = answer(visitor.reading, id, visitor.name); return id === "self" || id === "bond" ? memo[0] : memo[1] ?? memo[0]; }).filter(Boolean).slice(0, 4);
   ui.card.replaceChildren(h("small", "", "오늘의 관상 노트"), h("h2", "", visitor.name), photoCard(visitor.face),
     h("div", "tags", ...(kept.length ? kept : [`${visitor.reading.say.adn} 사람`]).map((w) => h("span", "", w))),
@@ -401,7 +479,7 @@ addEventListener("keydown", (event) => {
   if (k === "Escape") return attract();
   if (DEV && (k === "s" || k === "S" || k === "ㄴ") && ["attract", "ask", "shoot"].includes(scene)) { visitor.face = sampleFace(); return ponder(); }
   if (k === " ") event.preventDefault();
-  if ((k === " " || k === "Enter") && scene !== "attract" && scene !== "card") return skip();
+  if ((k === " " || k === "Enter") && !["attract", "card", "photo"].includes(scene)) return skip();
   keys(k);
 });
 const jump = DEV ? params.get("scene") : null;
@@ -411,6 +489,7 @@ else if (jump === "read") { prepare(); read(params.get("topic") ?? "self"); }
 else if (jump === "end") ending();
 else if (jump === "shoot") { visitor.name = SAMPLE_NAME; visitor.age = 20; shoot(); }
 else if (jump === "ask") ask();
+else if (jump === "offer") { visitor.name = SAMPLE_NAME; visitor.age = 20; visitor.face ??= sampleFace(); offer(); }
 else attract();
 prepareModel().catch((error) => console.warn("the measuring model will be loaded again later", error));
 // numbers left over from an earlier visit (no internet at the time) go out when the page opens
