@@ -8,6 +8,10 @@ import { composeStory, sayingsOf } from "../story.js";
 import { extrasOf } from "../extras.js";
 import { facetsOf } from "../facets.js";
 
+// ARTIFICIAL: names for a visitor who would rather not type one (the team's earlier nickname list).
+export const NICKNAMES = ["새벽빛 고래", "다정한 은하", "느긋한 민들레", "반짝이는 조약돌", "수줍은 파도", "용감한 책갈피", "포근한 눈송이", "고요한 등대", "산뜻한 자두", "꿈꾸는 우체통", "말간 초승달", "씩씩한 도토리", "설레는 오솔길", "따스한 모닥불", "총총한 별사탕", "나른한 구름", "단단한 솔방울", "해맑은 물수제비"];
+export const anyName = (except = "", random = Math.random) => { const rest = NICKNAMES.filter((n) => n !== except); return rest[Math.floor(random() * rest.length)]; };
+
 export const TOPICS = [
   { id: "self", ask: "나는 어떤 사람?", note: "성격" },
   { id: "work", ask: "일이랑 돈", note: "일과 재물" },

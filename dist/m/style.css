@@ -43,6 +43,8 @@ em { font-style: normal; font-weight: 900; background: linear-gradient(transpare
 .name:focus { box-shadow: 0 0 0 4px var(--lime); }
 .field .small { margin-top: 8px; }
 
+.any { display: block; margin: 10px auto 0; padding: 9px 18px; border-radius: 99px; background: var(--white); box-shadow: var(--shadow); font-size: 14px; font-weight: 800; }
+.any:active { background: var(--lime); }
 .camera { min-height: 100svh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 12px 0; }
 .camera .bubble { min-height: 84px; width: 100%; display: flex; align-items: center; justify-content: center; margin: 0 0 12px; }
 /* the whole camera picture in its own shape: nothing is cut off, so it does not look zoomed in */

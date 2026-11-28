@@ -7,7 +7,7 @@
 import { h, button, sampleFace, photoCard } from "../talk/kit.js";
 import { createCharacter } from "../talk/character.js";
 import { captureFace, stopCamera, prepare, ASKS, TROUBLE } from "../talk/capture-room.js";
-import { TOPICS, answer, readingFor, profileOf } from "../talk/spoken.js";
+import { TOPICS, answer, readingFor, profileOf, anyName } from "../talk/spoken.js";
 import { CLOSING_QUOTE, CLOSING_SPOKEN } from "../closing.js";
 import { DEFAULT_COLLECT_ENDPOINT, buildRecord, submitMeasurement } from "../collect.js";
 
@@ -76,10 +76,12 @@ function ask() {
     tail.textContent = last >= 0 && last < 11172 && last % 28 ? "이라고 합니다." : "라고 합니다.";
     ready();
   });
+  // for whoever would rather not type: a name is filled in (press again for another)
+  const any = button("any", () => { input.value = anyName(input.value); input.dispatchEvent(new Event("input")); master.pose("write"); }, "아무 이름으로 불러 주세요");
   const form = h("form", "ask",
     pick("나이대", "age", [["20대", 20], ["30대", 30], ["40대", 40], ["50대", 50]]),
     pick("성별", "gender", [["여성", "female"], ["남성", "male"]]),
-    h("div", "field", h("h2", "", "이름"), h("label", "sentence", h("span", "", "저는"), input, tail), h("p", "small", "이름은 저장하지 않아요")),
+    h("div", "field", h("h2", "", "이름"), h("label", "sentence", h("span", "", "저는"), input, tail), h("p", "small", "이름은 저장하지 않아요"), any),
     go,
     h("p", "small", "카메라 허용을 눌러 주세요. 처음에는 준비에 시간이 걸릴 수 있어요(약 17MB)."));
   form.addEventListener("submit", (event) => {

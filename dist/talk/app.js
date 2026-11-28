@@ -14,7 +14,7 @@ import { DEFAULT_COLLECT_ENDPOINT, buildRecord, submitMeasurement, flushQueue } 
 import { coupleEndpoint, requestCouple } from "./couple.js";
 import { createCharacter } from "./character.js";
 import { captureFace, stopCamera, prepare as prepareModel, ASKS, TROUBLE } from "./capture-room.js";
-import { TOPICS, answer, readingFor, profileOf, draw, josa } from "./spoken.js";
+import { TOPICS, answer, readingFor, profileOf, draw, josa, anyName } from "./spoken.js";
 
 // ARTIFICIAL: timings (ms).
 const T = { type: 38, after: 900, perChar: 55, rise: 200, stuck: 60000, askIdle: 120000, menuIdle: 120000, endIdle: 120000, photoIdle: 120000, printTalk: 11000, notice: 3200, closingGap: 2000, closingRead: 5000 };
@@ -172,7 +172,9 @@ function askName(ctx) {
     send.setAttribute("aria-label", "다 적었어요");
     const tail = h("span", "", "라고 합니다.");
     const row = h("div", "name-row", h("span", "", "저는"), input, tail, send);
-    const form = h("form", "name-form", row, h("p", "name-note", "이름은 저장하지 않아요"));
+    // for whoever would rather not type: one press, and he picks a name
+    const any = button("name-any", () => finish(anyName()), "아무 이름으로 불러 주세요");
+    const form = h("form", "name-form", row, h("p", "name-note", "이름은 저장하지 않아요"), any);
     let typed = performance.now(); let done = false;
     input.addEventListener("input", () => {
       typed = performance.now(); form.classList.remove("is-empty");
@@ -187,10 +189,14 @@ function askName(ctx) {
       if (done || !ctx.alive()) return;
       const name = cleanName(input.value);
       if (!name) { form.classList.add("is-empty"); input.focus(); return; }
+      finish(name);
+    });
+    function finish(name) {
+      if (done || !ctx.alive()) return;
       done = true;
       ui.choices.replaceChildren();
       resolve(name);
-    });
+    }
     keys = () => {};
     ui.choices.className = "choices naming";
     ui.choices.replaceChildren(form);

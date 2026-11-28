@@ -71,6 +71,8 @@ em { font-style: normal; font-weight: 900; background: linear-gradient(transpare
 .name-send { flex: none; height: 9rem; padding: 0 3rem; border-radius: 99rem; background: var(--lime); color: var(--ink); font-size: 2.6rem; font-weight: 900; }
 .name-send:hover { background: var(--lime-soft); }
 .name-note { text-align: center; font-size: 2.2rem; font-weight: 600; opacity: 0.75; }
+.name-any { align-self: center; padding: 1.4rem 3.6rem; border-radius: 99rem; background: var(--white); box-shadow: var(--shadow); color: var(--ink); font-size: 2.6rem; font-weight: 800; }
+.name-any:hover { background: var(--lime); }
 .choices.stuck { top: auto; left: 3rem; right: auto; width: 88rem; bottom: 2rem; grid-template-columns: 1fr 1fr; } /* clear of the camera */
 .choice { pointer-events: auto; display: flex; align-items: center; gap: 2rem; min-height: 10.4rem; padding: 1.6rem 3.4rem; border-radius: 99rem; border: 0.7rem solid var(--rim); background: var(--white); box-shadow: var(--shadow); font-size: 3.8rem; font-weight: 900; text-align: left; animation: arrive 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) calc(var(--i) * 0.05s) backwards; transition: background 0.15s, translate 0.15s, scale 0.15s; }
 .choice:hover { background: var(--lime); translate: 0 -0.4rem; }
