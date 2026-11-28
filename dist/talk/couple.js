@@ -38,6 +38,7 @@ export const VARIETY = {
     "a sunny look: crescent smiling eyes, dimples, full cheeks, a broad smile showing teeth",
     "a strong angular look: a square jaw, thick straight eyebrows, deep-set eyes",
   ],
+  glasses: ["no glasses", "no glasses", "no glasses", "thin round metal glasses", "dark rimmed glasses"], // two in five wear them
   skin: ["a fair skin tone", "a medium skin tone", "a warm tanned skin tone"],
   clothes: ["a cream knit sweater", "a navy cardigan over a white T-shirt", "a light blue shirt", "a grey hoodie", "a black turtleneck", "a denim jacket", "a sage green sweatshirt", "a brown corduroy shirt", "a white blouse or shirt with a collar", "a striped long-sleeve T-shirt"],
   backdrop: ["a plain white backdrop", "a pale pink backdrop", "a sky blue backdrop", "a warm beige backdrop", "a soft grey backdrop", "a pale yellow curtain backdrop"],
