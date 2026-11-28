@@ -100,7 +100,7 @@ function enter(name) {
   const mine = run;
   scene = name; skip = () => {}; keys = () => {};
   stopCamera();
-  how?.close();
+  how?.close(true);
   stage.dataset.scene = name;
   ui.book.classList.remove("closing");
   ui.card.className = "card";

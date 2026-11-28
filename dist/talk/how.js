@@ -1,4 +1,4 @@
-// "어떻게 읽나요?": how the app measures, compares and words a reading, in plain words, with a small
+// "어떻게 재나요?": how the app measures, compares and words a reading, in plain words, with a small
 // drawing for each step. Shown below the start screen (how-view.js on the big screen, scrolled on the
 // phone page). Everything said here has to stay true to the code: when the measuring, the standards or
 // the wording change, change this file too. The drawings are illustrations, not a visitor's data.
@@ -34,10 +34,35 @@ const measure = (x1, y1, x2, y2, color) => {
   return `<path d="M${x1} ${y1} L${x2} ${y2} ${end(x1, y1)} ${end(x2, y2)}" fill="none" stroke="${color}" stroke-width="6" stroke-linecap="round"/>`;
 };
 
-export const HOW_TITLE = "어떻게 읽나요?";
+export const HOW_TITLE = "어떻게 재나요?";
 export const HOW_LEAD = "카메라에 비친 얼굴이 풀이 문장이 되기까지, 일곱 걸음이에요.";
 
+// Said on the first page too: whoever opens this must not take it for a chatbot's answer.
+export const HOW_PROMISE = "AI 챗봇에게 사진을 보여 주고 받은 답이 아니라, 재는 과정부터 직접 구현한 풀이예요.";
+
 export const STEPS = [
+  {
+    // not one of the numbered steps. Only the face points come from a ready-made model (MediaPipe);
+    // the only generative AI is the couple picture. Keep this true.
+    aside: true,
+    title: "챗봇에게 묻는 방식이 아니에요",
+    lines: [
+      "ChatGPT나 Gemini에 사진을 올리고 \"관상 봐 줘\" 해서 받는 답이 아니에요. 풀이를 만들 때 생성형 AI를 부르지 않아요.",
+      "얼굴의 점을 찾는 데는 공개된 얼굴 인식 모델(구글 MediaPipe)을 써요. 그 점으로 고개 각도를 바로잡고, 좋은 장면을 모으고, 비율을 재고, 기준과 비교해 풀이를 고르는 과정은 저희가 직접 구현했어요.",
+      "생성형 AI를 쓰는 곳은 하나, 전시 화면에서 원할 때 만들어 주는 연인 사진뿐이에요.",
+    ],
+    art: () => svg(`${["내 사진", "AI 챗봇", "관상 답"].map((name, i) => `${box(22 + i * 130, 28, 96, 46, WHITE, 23, `stroke="${INK}" stroke-width="3" opacity="0.45"`)}${text(70 + i * 130, 57, name, { fill: "#8a968f" })}${i < 2 ? `<g opacity="0.35">${arrow(122 + i * 130, 51, 22)}</g>` : ""}`).join("")}
+      <path class="how-cross" d="M40 20 L360 84" stroke="#e2703a" stroke-width="5" opacity="0.8" stroke-linecap="round"/>
+      ${text(200, 122, "저희 방식", { size: 19 })}
+      ${["점 찾기", "바로 세우기", "장면 모으기", "비율 재기", "기준과 비교", "풀이 고르기"].map((name, i) => {
+        const col = i < 3 ? i : 5 - i; const x = 22 + col * 130; const y = i < 3 ? 140 : 204; // the second row runs back
+        const turn = i === 2 ? `<path d="M${x + 48} 190 v10 m-7 -7 l7 7 l7 -7" fill="none" stroke="${GREEN}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>` : "";
+        const next = i < 2 ? arrow(x + 101, y + 23, 22) : i > 2 && i < 5 ? `<g transform="rotate(180 ${x - 17} ${y + 23})">${arrow(x - 28, y + 23, 22)}</g>` : "";
+        return `<g class="how-link" style="--i:${i}">${box(x, y, 96, 46, i ? LIME : WHITE, 23, `stroke="${INK}" stroke-width="3"`)}${text(x + 48, y + 29, name, { size: 15 })}</g>${next}${turn}`;
+      }).join("")}
+      ${box(66, 268, 22, 16, LIME, 8, `stroke="${INK}" stroke-width="2"`)}${text(96, 282, "직접 구현", { size: 14, anchor: "start" })}
+      ${box(204, 268, 22, 16, WHITE, 8, `stroke="${INK}" stroke-width="2"`)}${text(234, 282, "공개 모델 사용", { size: 14, anchor: "start" })}`),
+  },
   {
     title: "얼굴에 점을 찍어요",
     lines: [
