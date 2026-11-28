@@ -39,7 +39,7 @@ em { font-style: normal; font-weight: 900; background: linear-gradient(transpare
 .book li.advice { padding: 2.4rem 3rem; border-radius: 3rem; background: var(--lime-soft); }
 .book li.advice em { background: linear-gradient(transparent 52%, var(--lime) 52% 94%, transparent 94%); }
 /* the saying at the end */
-.book.closing { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.book.closing { top: 5rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
 .book.closing h3 { font-size: 3.6rem; margin-bottom: 3.6rem; color: var(--green); }
 .book.closing h3::after { margin-inline: auto; background: var(--green-soft); }
 .book.closing .mean { display: flex; flex-direction: column; font-size: 5.4rem; font-weight: 900; line-height: 1.45; color: var(--ink); }

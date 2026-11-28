@@ -56,7 +56,7 @@ function sleeve(x1, y1, r1, x2, y2, r2) {
 
 // The left half of the coat's outline (the same numbers as the coat path below; the right half
 // mirrors it), so that a sleeve can start exactly on it.
-const SHOULDER = [[400, 452], [285, 452], [224, 540], [212, 670]];
+const SHOULDER = [[400, 452], [300, 452], [236, 515], [220, 670]];
 /** A point of that curve, moved half a line inwards, with the direction going down the shoulder. */
 function onCoat(t) {
   const [a, b, c, d] = SHOULDER; const u = 1 - t;
@@ -101,7 +101,8 @@ function makeArm(side) {
   edge[0].setAttribute("stroke-linecap", "butt"); // no knob where it leaves the coat's line
   const crease = el("path", { ...thin, "stroke-width": 5 });
   const cuff = el("path", { fill: "#e6f4b4", ...line, "stroke-width": 6 });
-  const watch = el("g", {}, el("circle", { r: 17, fill: "#d9d6d2", ...line, "stroke-width": 6 }), el("path", { d: "M0 -7 L0 0 L6 3", ...thin, "stroke-width": 4 }));
+  const strap = el("path", { fill: "#8a5a3c", ...line, "stroke-width": 5 }); // across the sleeve, turning with the arm
+  const watch = el("g", {}, strap, el("circle", { r: 17, fill: "#d9d6d2", ...line, "stroke-width": 6 }), el("path", { d: "M0 -7 L0 0 L6 3", ...thin, "stroke-width": 4 }));
   // drawn pointing up from the wrist, the thumb on the inner side
   const hand = el("g", {},
     el("ellipse", { cx: -side * 27, cy: -20, rx: 15, ry: 23, fill: SKIN, ...line, "stroke-width": 7, transform: `rotate(${-side * 32} ${-side * 27} -20)` }),
@@ -122,6 +123,9 @@ function makeArm(side) {
     hand.setAttribute("transform", `translate(${wx + ux * 6} ${wy + uy * 6}) rotate(${(a * 180) / Math.PI + 90})`);
     hand.setAttribute("opacity", folded ? 0 : 1);
     watch.setAttribute("transform", `translate(${wx - ux * 36} ${wy - uy * 36})`);
+    const half = 30 + 13 * Math.min(1, 36 / (Math.hypot(wx - ex, wy - ey) || 1)); // the sleeve's half width there
+    const q = (along, across) => `${(ux * along - uy * across).toFixed(1)} ${(uy * along + ux * across).toFixed(1)}`;
+    strap.setAttribute("d", `M${q(-9, -half)} L${q(9, -half)} L${q(9, half)} L${q(-9, half)} Z`);
     return { x: wx + ux * 36, y: wy + uy * 36 };
   }
   return { group, set };
@@ -129,7 +133,7 @@ function makeArm(side) {
 
 export function createCharacter() {
   // ---- body: coat, shirt, tie ----
-  const coat = el("path", { d: "M400 452 C285 452 224 540 212 670 C203 790 270 884 400 884 C530 884 597 790 588 670 C576 540 515 452 400 452 Z", fill: COAT, ...line });
+  const coat = el("path", { d: "M400 452 C300 452 236 515 220 670 C212 750 210 820 210 884 L590 884 C590 820 588 750 580 670 C564 515 500 452 400 452 Z", fill: COAT, ...line });
   const body = el("g", {}, coat,
     el("path", { d: "M340 466 L400 640 L460 466 Q400 448 340 466 Z", fill: "#e6f4b4", ...line, "stroke-width": 6 }),
     el("path", { d: "M386 492 L414 492 L408 514 L428 640 L400 676 L372 640 L392 514 Z", fill: "#d6f26a", ...line, "stroke-width": 6 }),
