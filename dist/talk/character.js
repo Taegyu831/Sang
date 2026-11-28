@@ -54,14 +54,30 @@ function sleeve(x1, y1, r1, x2, y2, r2) {
   return `M${at(x1, y1, r1, a + b)} A${r1} ${r1} 0 ${big(2 * Math.PI - 2 * b)} 1 ${at(x1, y1, r1, a - b)} L${at(x2, y2, r2, a - b)} A${r2} ${r2} 0 ${big(2 * b)} 1 ${at(x2, y2, r2, a + b)} Z`;
 }
 
+// The left half of the coat's outline (the same numbers as the coat path below; the right half
+// mirrors it), so that a sleeve can start exactly on it.
+const SHOULDER = [[400, 452], [285, 452], [224, 540], [212, 670]];
+/** A point of that curve, moved half a line inwards, with the direction going down the shoulder. */
+function onCoat(t) {
+  const [a, b, c, d] = SHOULDER; const u = 1 - t;
+  const at = (i) => u * u * u * a[i] + 3 * u * u * t * b[i] + 3 * u * t * t * c[i] + t * t * t * d[i];
+  const slope = (i) => 3 * (u * u * (b[i] - a[i]) + 2 * u * t * (c[i] - b[i]) + t * t * (d[i] - c[i]));
+  const long = Math.hypot(slope(0), slope(1));
+  const dir = [slope(0) / long, slope(1) / long]; const inward = [dir[1], -dir[0]];
+  return { p: [at(0) + inward[0] * 4, at(1) + inward[1] * 4], dir, inward, long };
+}
+const FROM = onCoat(0.5); const TO = onCoat(0.64); // about y = 524 to 558
+
 /**
- * The upper sleeve, drawn as part of the coat. Its outer line starts on the coat's own outline at
- * the shoulder and runs along the coat before it turns to the elbow, its inner line ends at the
- * armpit inside the coat, and nothing is drawn between the two, so the sleeve grows out of the coat
- * without a white patch or a broken line.
+ * The upper sleeve, drawn as part of the coat. Its outer line first runs exactly along the coat's
+ * own outline (the same curve, half a line inside, because only the outer half of the sleeve's
+ * wider line shows) and then turns to the elbow; its inner line ends at the armpit inside the coat,
+ * and nothing is drawn between the two, so the sleeve grows out of the coat without a step, a white
+ * patch or a broken line. `lid` closes the fill so that it covers the start of the line.
  */
 function upperSleeve(side, ex, ey, r = 43) {
-  const sx = 400 + side * 146.5; const sy = 536; // on the coat outline, half a line inward so the lines meet
+  const x = (n) => (side < 0 ? n : 800 - n);
+  const sx = x(TO.p[0]); const sy = TO.p[1];
   const ax = 400 + side * 112; const ay = 636; // the armpit
   const dx = ex - sx; const dy = ey - sy; const d = Math.hypot(dx, dy) || 1;
   let nx = -dy / d; let ny = dx / d;
@@ -71,7 +87,11 @@ function upperSleeve(side, ex, ey, r = 43) {
   const sweep = nx * dy - ny * dx > 0 ? 1 : 0;
   const f = (n) => n.toFixed(1);
   const bend = [(sx + outer[0]) / 2 + nx * 8, (sy + outer[1]) / 2 + ny * 8];
-  return `M${sx} ${sy} C${sx + side * 27} ${sy + 46} ${f(bend[0])} ${f(bend[1])} ${f(outer[0])} ${f(outer[1])} A${r} ${r} 0 0 ${sweep} ${f(inner[0])} ${f(inner[1])} Q${f((inner[0] + ax) / 2)} ${f((inner[1] + ay) / 2 + 6)} ${ax} ${ay}`;
+  const step = ((0.64 - 0.5) / 3);
+  const along = `M${f(x(FROM.p[0]))} ${f(FROM.p[1])} C${f(x(FROM.p[0] + FROM.dir[0] * FROM.long * step))} ${f(FROM.p[1] + FROM.dir[1] * FROM.long * step)} ${f(x(TO.p[0] - TO.dir[0] * TO.long * step))} ${f(TO.p[1] - TO.dir[1] * TO.long * step)} ${f(sx)} ${f(sy)}`;
+  const lid = `L${f(x(FROM.p[0] - FROM.dir[0] * 4 + FROM.inward[0] * 22))} ${f(FROM.p[1] - FROM.dir[1] * 4 + FROM.inward[1] * 22)} L${f(x(FROM.p[0] - FROM.dir[0] * 4))} ${f(FROM.p[1] - FROM.dir[1] * 4)} Z`;
+  const edge = `${along} C${f(x(TO.p[0] + TO.dir[0] * 24))} ${f(TO.p[1] + TO.dir[1] * 24)} ${f(bend[0])} ${f(bend[1])} ${f(outer[0])} ${f(outer[1])} A${r} ${r} 0 0 ${sweep} ${f(inner[0])} ${f(inner[1])} Q${f((inner[0] + ax) / 2)} ${f((inner[1] + ay) / 2 + 6)} ${ax} ${ay}`;
+  return { edge, fill: `${edge} ${lid}` };
 }
 
 /** `side`: -1 for the arm on the left of the screen, 1 for the right. */
@@ -91,8 +111,8 @@ function makeArm(side) {
   function set(ex, ey, wx, wy, folded) {
     const upper = upperSleeve(side, ex, ey);
     const fore = sleeve(ex, ey, 43, wx, wy, 30);
-    edge[0].setAttribute("d", upper);
-    fill[0].setAttribute("d", `${upper} L${400 + side * 135} 543 Z`); // the corner also hides the end of the line
+    edge[0].setAttribute("d", upper.edge);
+    fill[0].setAttribute("d", upper.fill);
     edge[1].setAttribute("d", fore); fill[1].setAttribute("d", fore);
     const a = Math.atan2(wy - ey, wx - ex);
     const ux = Math.cos(a); const uy = Math.sin(a);

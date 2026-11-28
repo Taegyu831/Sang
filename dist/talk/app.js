@@ -4,7 +4,7 @@
 //   -> guided capture (the picture is ordered) -> thinking -> pick a question (again and again);
 //      the couple picture closes the 인연 answer (or comes before the last words if never asked)
 //   -> "이제 충분해요" -> the last words -> the card
-// Keys: space / enter = go on, digits = choose, Esc = start over.
+// Keys: space / enter / down / right = go on, digits = choose, Esc = start over.
 // For development: ?dev=1 adds S (a drawn sample face) and ?scene=ask|shoot|menu|read|end with
 // &sample=1&topic=self&hold=1. ?collect=off sends nothing, ?couple=off offers no picture, ?strict=0 loosens the capture limits.
 // The earlier page is classic.html (its ?debug=1 records samples).
@@ -28,6 +28,7 @@ const COLLECT_ENDPOINT = collectParam === "off" ? "" : collectParam || DEFAULT_C
 // a sentence has been typed).
 const READ = { gesture: 700, write: 18, type: 28, after: 600, stay: 40 };
 const NAME_MAX = 10;
+const isNext = (k) => [" ", "Enter", "ArrowDown", "ArrowRight"].includes(k); // "go on"
 // ARTIFICIAL: wordings of the small talk around the readings; one is drawn each time.
 const CHAT = {
   look: ["어디 보자...", "자, 한번 볼게요.", "음, 천천히 볼까요.", "오, 어디 봅시다."],
@@ -68,7 +69,6 @@ function build() {
   const card = h("div", "card");
   const enough = button("enough", () => ending(), "이제 충분해요");
   const table = h("div", "table");
-  const who = h("div", "who");
   const promise = h("p", "promise", "얼굴 사진과 영상은 저장되지 않아요 · 비율 숫자는 이름 없이 통계로 모아요");
   // The start screen covers the whole window until the button is pressed.
   const floaters = ["성격", "재물", "전성기", "첫인상", "연애", "인연"].map((w, i) => h("span", `float f${i}`, w));
@@ -78,9 +78,9 @@ function build() {
   const notes = h("div", "notice", ...["약 3분이면 돼요", "얼굴 사진은 저장되지 않아요", "얼굴 비율 숫자는 이름 없이 통계로 모아요"].map((t, i) => { const p = h("p", "", t); p.style.setProperty("--i", i); return p; }));
   notes.addEventListener("click", () => skip());
   document.body.append(cover, notes);
-  stage.replaceChildren(h("div", "scene", h("div", "room"), h("div", "actor", master.el), table, arrow, bubble, book, choices, mirror, card, enough, who, promise));
+  stage.replaceChildren(h("div", "scene", h("div", "room"), h("div", "actor", master.el), table, arrow, bubble, book, choices, mirror, card, enough, promise));
   bubble.addEventListener("click", () => skip());
-  ui = { bubble, text, choices, book, video, mirror, dots, arrow, card, enough, who, cover, notes };
+  ui = { bubble, text, choices, book, video, mirror, dots, arrow, card, enough, cover, notes };
   seatAtDesk();
 }
 function seatAtDesk() {
@@ -212,11 +212,11 @@ function showSaying() {
   ui.book.replaceChildren(...lines, h("ul", ""));
 }
 /** Writes a line on the page, letter by letter. */
-async function write(ctx, line, step = 30) {
+async function write(ctx, line, step = 30, hurry = () => false) {
   const li = h("li", /^(그래서|그러니)/.test(line) ? "advice" : "");
   ui.book.querySelector("ul").append(li);
   const whole = strip(line);
-  for (let i = 2; i < whole.length + 2; i += 2) {
+  for (let i = 2; i < whole.length + 2 && !hurry(); i += 2) {
     li.textContent = whole.slice(0, i);
     ui.book.scrollTop = ui.book.scrollHeight;
     if (!(await ctx.wait(step))) return false;
@@ -232,11 +232,10 @@ function attract() {
   visitor.couple?.stop.abort();
   visitor = fresh();
   heading("");
-  ui.who.textContent = "";
   ui.text.textContent = "";
   ui.bubble.classList.remove("is-on");
   master.pose("hello");
-  keys = (k) => { if (k === " " || k === "Enter" || k === "1") notice(); };
+  keys = (k) => { if (isNext(k) || k === "1") notice(); };
 }
 /** Waits, unless a key or click asks to go on. False when this part of the conversation is over. */
 async function pause(ctx, ms) {
@@ -269,7 +268,6 @@ async function ask() {
   if (!(await say(ctx, "이름이 어떻게 되세요? 풀이할 때 불러 드릴게요.", { hold: null }))) return;
   visitor.name = await askName(ctx);
   if (!ctx.alive()) return;
-  ui.who.textContent = visitor.name;
   master.pose("write");
   if (!(await write(ctx, `${visitor.name}님`))) return;
   // The present at the end. Photos are sent only if the visitor picks a partner here.
@@ -379,7 +377,6 @@ function share() {
 function prepare() {
   visitor.face ??= sampleFace(); visitor.name ??= SAMPLE_NAME; visitor.age ??= 20;
   visitor.reading ??= readingFor(visitor.face.values, visitor.age, content);
-  ui.who.textContent = visitor.name;
 }
 async function ponder() {
   const ctx = enter("ponder");
@@ -423,9 +420,12 @@ async function read(id) {
   for (const [i, line] of lines.entries()) {
     ui.bubble.classList.remove("is-on");
     master.pose(gestures[i % gestures.length]);
-    if (!(await ctx.wait(READ.gesture))) return;
+    // a press while he gestures or writes hurries to the spoken sentence
+    let hurry = false;
+    skip = () => { hurry = true; };
+    for (let spent = 0; spent < READ.gesture && !hurry; spent += 80) if (!(await ctx.wait(80))) return;
     master.pose("write");
-    if (!(await write(ctx, line, READ.write))) return;
+    if (!(await write(ctx, line, READ.write, () => hurry))) return;
     master.pose(i === lines.length - 1 ? "peek" : i % 2 ? "push" : "listen");
     if (!(await say(ctx, line, { hold: READ.after + strip(line).length * READ.stay, type: READ.type }))) return;
   }
@@ -454,7 +454,8 @@ async function ending() {
     const line = spoken.replace("{name}", () => visitor.name);
     const began = performance.now();
     master.pose(gestures[i % gestures.length]);
-    ui.book.querySelector("ul").append(marked("li", "", line));
+    // the last two sentences are the point of it all: a little larger
+    ui.book.querySelector("ul").append(marked("li", i >= words.length - 2 ? "key" : "", line));
     if (!(await say(ctx, line, { hold: null, type: READ.type }))) return;
     const rest = i === words.length - 1 ? T.closingRead : T.closingGap - (performance.now() - began);
     if (!(await pause(ctx, HOLD && i === Number(params.get("at") ?? 99) ? 1e9 : rest))) return;
@@ -508,7 +509,7 @@ async function booth(ctx, image) {
     h("p", "tip", "AI가 만든 가상의 사진이에요 · 휴대폰으로 찍어 가세요"), button("again", () => { done = true; }, "다 찍었어요"));
   const began = performance.now();
   // keys count only after a moment, so that presses meant for the reading do not close the picture
-  keys = (k) => { if ((k === " " || k === "Enter") && performance.now() - began > 2000) done = true; };
+  keys = (k) => { if (isNext(k) && performance.now() - began > 2000) done = true; };
   master.pose("cheer");
   say(ctx, "짜잔! 잘 어울리죠? 휴대폰으로 찍어 가세요.", { hold: null });
   while (!done && (HOLD || performance.now() - began < T.photoIdle)) if (!(await ctx.wait(200))) return false;
@@ -523,7 +524,9 @@ async function card(ctx) {
     h("dl", "", ...me.rows.map(([label, text]) => h("div", "", h("dt", "", label), h("dd", "", text)))),
     h("p", "tip", "재미로 보는 관상 풀이예요 · 휴대폰으로 찍어 가세요 · 얼굴 사진은 저장되지 않아요"),
     button("again", attract, "처음으로"));
-  keys = (k) => { if (k === " " || k === "Enter") attract(); };
+  const began = performance.now();
+  // as with the picture: presses meant for the last words must not close the card at once
+  keys = (k) => { if (isNext(k) && performance.now() - began > 2000) attract(); };
   master.pose("cheer");
   if (!(await say(ctx, "또 놀러 오세요!", { hold: null }))) return;
   await ctx.wait(900); if (ctx.alive()) master.pose("hello");
@@ -544,8 +547,8 @@ addEventListener("keydown", (event) => {
   if (event.target.closest?.("button") && (k === " " || k === "Enter")) return; // the button's own click
   if (k === "Escape") return attract();
   if (DEV && (k === "s" || k === "S" || k === "ㄴ") && ["attract", "ask", "shoot"].includes(scene)) { visitor.face = sampleFace(); return ponder(); }
-  if (k === " ") event.preventDefault();
-  if ((k === " " || k === "Enter") && !["attract", "card", "photo"].includes(scene)) return skip();
+  if (isNext(k)) event.preventDefault(); // the page itself must not scroll
+  if (isNext(k) && !["attract", "card", "photo"].includes(scene)) return skip();
   keys(k);
 });
 const jump = DEV ? params.get("scene") : null;
