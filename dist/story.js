@@ -144,6 +144,12 @@ export function outlineOf(poles) {
   };
 }
 
+/** The raw sentences about a kind of person, for a screen that says them in its own voice. */
+export function sayingsOf(poles) {
+  const main = POLES[poles[0]] ?? EVEN;
+  return { ...main, fit: poles.length ? FIT[poles[0]] : EVEN_FIT, clash: poles.length ? CLASH[poles[0]] : EVEN_CLASH };
+}
+
 /** Looks (face features) that carry a kind of person most strongly. */
 export function looksOf(pole, limit = 3) {
   const axis = pole.slice(0, -1);

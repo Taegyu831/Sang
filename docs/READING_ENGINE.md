@@ -192,3 +192,12 @@ python3 -m http.server 8765 --bind 127.0.0.1
 - 한계: 답이 항목 밖의 해석을 새로 넣었는지는 자동으로 걸러지지 않는다. 프롬프트로만 막으므로 사람이 읽어 확인해야 한다.
 - ARTIFICIAL: `MAX_KEYS` 12, `WAIT_MS` 25000, `LENGTH` 150~900자, `BANNED` 목록. 모델은 환경변수 `SUMMARY_MODEL`로 바꾼다.
 - `?summary=off`는 호출을 끄고, `?summary=default`는 되돌린다.
+
+## 캐릭터 대화 시안 (시험판, 2026-11-28, `lab/talk/`)
+
+흰 몸에 검은 테 안경만 낀 2D 캐릭터와 책상을 사이에 두고 대화하는 시안 3가지(`?look=desk|night|note`). 앱 본 화면은 바뀌지 않는다.
+
+- 측정: 앱의 `StableCapture`, `PoseCompare`, 자세 보정과 기준값을 그대로 쓴다(`capture-room.js`). 본 앱과 다른 점은 머리선 측정, 통계 저장, 동의 화면, AI 정리가 아직 없다는 것이다.
+- 풀이 재료: `facets.js`, `story.js`의 `sayingsOf`, `closing.js`.
+- 인위적 개입(팀 검토 필요): `spoken.js`의 모든 말투 틀과 "그래서 ..." 조언 문장, 별명 목록, 질문 다섯 가지 이름, `closing.js`의 `CLOSING_SPOKEN`(마지막 문구의 구어체), `app.js`의 대사와 시간값(`T`), `capture-room.js`의 `HARD_LIMIT_MS`/`MIN_AT_LIMIT`, `character.js`의 모든 모양과 동작.
+- "~할 수 있어요" 형태는 단정을 피하려는 말투일 뿐 근거의 강도를 뜻하지 않는다.

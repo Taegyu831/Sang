@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>상 마주 앉기 시안</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&display=swap" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main id="chooser" hidden>
+    <h1>마주 앉는 관상가 시안 3가지</h1>
+    <p>하나를 누르면 시작합니다. 체험 중에 <kbd>T</kbd>는 시안 바꾸기, <kbd>S</kbd>는 카메라 없이 예시 얼굴로 보기입니다.</p>
+    <div class="choices-page">
+      <a href="?look=desk" class="c-desk"><b>1. 상담 책상</b><span>책상 너머에서 말풍선으로 대화하고 수첩에 메모</span></a>
+      <a href="?look=night" class="c-night"><b>2. 밤의 상담소</b><span>게임처럼 아래 대화창으로 한 마디씩</span></a>
+      <a href="?look=note" class="c-note"><b>3. 관상 노트</b><span>옆의 큰 노트에 손글씨로 적어 가며</span></a>
+    </div>
+  </main>
+  <div id="stage" hidden></div>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
