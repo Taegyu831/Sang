@@ -5,7 +5,7 @@
 //
 // VERSION and FILES are written by tools/make-sw.py. Run it before every
 // push (python3 tools/make-sw.py --check says whether it is up to date).
-const VERSION = "f7881770306e";
+const VERSION = "2d78fa969a52";
 const FILES = [
   "./",
   "age.js",
@@ -15,6 +15,7 @@ const FILES = [
   "camera.js",
   "capture.js",
   "character.js",
+  "classic.html",
   "closing.js",
   "collect.js",
   "content.json",
@@ -85,13 +86,7 @@ const FILES = [
   "lab/scroll/motion.js",
   "lab/scroll/parts.js",
   "lab/scroll/style.css",
-  "lab/talk/app.js",
-  "lab/talk/capture-room.js",
-  "lab/talk/character-doctor.js",
-  "lab/talk/character.js",
   "lab/talk/index.html",
-  "lab/talk/spoken.js",
-  "lab/talk/style.css",
   "map.js",
   "master.js",
   "ohaeng.js",
@@ -106,6 +101,12 @@ const FILES = [
   "story.js",
   "styles.css",
   "summary.js",
+  "talk/app.js",
+  "talk/capture-room.js",
+  "talk/character.js",
+  "talk/kit.js",
+  "talk/spoken.js",
+  "talk/style.css",
   "vendor/mediapipe/face_landmarker.task",
   "vendor/mediapipe/hair_segmenter.tflite",
   "vendor/mediapipe/vision_bundle.mjs",

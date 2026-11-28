@@ -10,9 +10,10 @@ from pathlib import Path
 
 DIST = Path(__file__).resolve().parent.parent / "dist"
 version = sys.argv[1]
-pattern = re.compile(r'(["\'])(\./[\w./-]+\.(?:js|css|json))\1')
+# "./x.js" and, from dist/talk, "../x.js": one module must not load under two addresses.
+pattern = re.compile(r'(["\'])(\.\.?/[\w./-]+\.(?:js|css|json))\1')
 
-for path in list(DIST.glob("*.js")) + list(DIST.glob("*.html")):
+for path in list(DIST.glob("*.js")) + list(DIST.glob("talk/*.js")) + list(DIST.glob("*.html")):
     text = path.read_text()
     stamped = pattern.sub(lambda m: f"{m.group(1)}{m.group(2)}?v={version}{m.group(1)}", text)
     if stamped != text:

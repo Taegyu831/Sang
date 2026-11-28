@@ -1,5 +1,5 @@
-// The master of the notebook look: a two-heads-tall bald gentleman with glasses, a moustache and a
-// white coat, simplified from a reference picture the team chose. Same interface as character.js.
+// The master: a two-heads-tall bald gentleman with glasses, a moustache and a
+// white coat, simplified from a reference picture the team chose.
 // Arms are two sleeves with a real elbow (shoulder -> elbow -> wrist), so that they bend like arms
 // resting on a desk; every pose names where the elbows and wrists are.
 // ARTIFICIAL: all the shapes, colours, poses and timings are this prototype's own.
@@ -45,22 +45,41 @@ export const POSES = {
   cheer: { clasp: 0, happy: 1, brow: -12, lift: -14, smile: 22, wide: 40, gape: 20, dy: -14, lx: 135, ly: 335, lex: 145, ley: 560, rx: 665, ry: 335, rex: 655, rey: 560 },
 };
 
-/** The outline of two circles joined by their tangents: one piece of a sleeve. `open` leaves out
- *  the first circle's cap, so that no line crosses the coat at the shoulder. */
-function sleeve(x1, y1, r1, x2, y2, r2, open = false) {
+/** The outline of two circles joined by their tangents: the forearm of a sleeve. */
+function sleeve(x1, y1, r1, x2, y2, r2) {
   const d = Math.hypot(x2 - x1, y2 - y1) || 1;
   const a = Math.atan2(y2 - y1, x2 - x1);
   const b = Math.acos(Math.max(-1, Math.min(1, (r1 - r2) / d)));
   const at = (x, y, r, angle) => `${(x + r * Math.cos(angle)).toFixed(1)} ${(y + r * Math.sin(angle)).toFixed(1)}`;
   const big = (angle) => (angle > Math.PI ? 1 : 0);
-  if (open) return `M${at(x1, y1, r1, a - b)} L${at(x2, y2, r2, a - b)} A${r2} ${r2} 0 ${big(2 * b)} 1 ${at(x2, y2, r2, a + b)} L${at(x1, y1, r1, a + b)}`;
   return `M${at(x1, y1, r1, a + b)} A${r1} ${r1} 0 ${big(2 * Math.PI - 2 * b)} 1 ${at(x1, y1, r1, a - b)} L${at(x2, y2, r2, a - b)} A${r2} ${r2} 0 ${big(2 * b)} 1 ${at(x2, y2, r2, a + b)} Z`;
+}
+
+/**
+ * The upper sleeve, drawn as part of the coat. Its outer line starts on the coat's own outline at
+ * the shoulder and runs along the coat before it turns to the elbow, its inner line ends at the
+ * armpit inside the coat, and nothing is drawn between the two, so the sleeve grows out of the coat
+ * without a white patch or a broken line.
+ */
+function upperSleeve(side, ex, ey, r = 43) {
+  const sx = 400 + side * 146.5; const sy = 536; // on the coat outline, half a line inward so the lines meet
+  const ax = 400 + side * 112; const ay = 636; // the armpit
+  const dx = ex - sx; const dy = ey - sy; const d = Math.hypot(dx, dy) || 1;
+  let nx = -dy / d; let ny = dx / d;
+  if (nx * side - ny * 0.6 < 0) { nx = -nx; ny = -ny; } // the normal that points up and away from the body
+  const outer = [ex + nx * r, ey + ny * r]; const inner = [ex - nx * r, ey - ny * r];
+  // the cap goes round the far side of the elbow
+  const sweep = nx * dy - ny * dx > 0 ? 1 : 0;
+  const f = (n) => n.toFixed(1);
+  const bend = [(sx + outer[0]) / 2 + nx * 8, (sy + outer[1]) / 2 + ny * 8];
+  return `M${sx} ${sy} C${sx + side * 27} ${sy + 46} ${f(bend[0])} ${f(bend[1])} ${f(outer[0])} ${f(outer[1])} A${r} ${r} 0 0 ${sweep} ${f(inner[0])} ${f(inner[1])} Q${f((inner[0] + ax) / 2)} ${f((inner[1] + ay) / 2 + 6)} ${ax} ${ay}`;
 }
 
 /** `side`: -1 for the arm on the left of the screen, 1 for the right. */
 function makeArm(side) {
   const edge = [el("path", { fill: INK, ...line, "stroke-width": 16 }), el("path", { fill: INK, ...line, "stroke-width": 16 })];
   const fill = [el("path", { fill: COAT }), el("path", { fill: COAT })];
+  edge[0].setAttribute("stroke-linecap", "butt"); // no knob where it leaves the coat's line
   const crease = el("path", { ...thin, "stroke-width": 5 });
   const cuff = el("path", { fill: "#cfe6e0", ...line, "stroke-width": 6 });
   const watch = el("g", {}, el("circle", { r: 17, fill: "#d9d6d2", ...line, "stroke-width": 6 }), el("path", { d: "M0 -7 L0 0 L6 3", ...thin, "stroke-width": 4 }));
@@ -70,11 +89,11 @@ function makeArm(side) {
     el("path", { d: "M-31 2 C-38 -42 -24 -66 0 -66 C24 -66 38 -42 31 2 Z", fill: SKIN, ...line, "stroke-width": 7 }),
     el("path", { d: "M-11 -62 L-10 -42 M11 -62 L10 -42", ...thin, "stroke-width": 5 }));
   const group = el("g", {}, ...edge, ...fill, crease, hand, cuff, ...(side > 0 ? [watch] : []));
-  function set(shoulder, ex, ey, wx, wy, folded) {
-    const upper = sleeve(shoulder, 568, 44, ex, ey, 43);
+  function set(ex, ey, wx, wy, folded) {
+    const upper = upperSleeve(side, ex, ey);
     const fore = sleeve(ex, ey, 43, wx, wy, 30);
-    edge[0].setAttribute("d", sleeve(shoulder, 568, 44, ex, ey, 43, true));
-    fill[0].setAttribute("d", upper);
+    edge[0].setAttribute("d", upper);
+    fill[0].setAttribute("d", `${upper} L${400 + side * 135} 543 Z`); // the corner also hides the end of the line
     edge[1].setAttribute("d", fore); fill[1].setAttribute("d", fore);
     const a = Math.atan2(wy - ey, wx - ex);
     const ux = Math.cos(a); const uy = Math.sin(a);
@@ -97,8 +116,8 @@ export function createCharacter() {
     el("path", { d: "M386 492 L414 492 L408 514 L428 640 L400 676 L372 640 L392 514 Z", fill: "#2c3a6e", ...line, "stroke-width": 6 }),
     el("path", { d: "M340 466 L306 540 L336 552 L318 576 L400 672 M460 466 L494 540 L464 552 L482 576 L400 672 L400 884", ...thin }),
     ...(STETHOSCOPE ? [
-      el("path", { d: "M330 470 C270 510 262 590 276 640 M470 470 C535 505 545 590 520 650 C508 682 474 676 478 646", fill: "none", stroke: INK, "stroke-width": 14, "stroke-linecap": "round" }),
-      el("circle", { cx: 276, cy: 658, r: 22, fill: "#d9d6d2", ...line, "stroke-width": 7 }),
+      el("path", { d: "M338 472 C305 505 300 565 312 622 M462 472 C500 505 504 585 486 640 C474 672 446 668 450 640", fill: "none", stroke: INK, "stroke-width": 14, "stroke-linecap": "round" }),
+      el("circle", { cx: 314, cy: 640, r: 21, fill: "#d9d6d2", ...line, "stroke-width": 7 }),
     ] : []));
   // ---- head ----
   const tuft = (side) => {
@@ -197,8 +216,8 @@ export function createCharacter() {
     mouth.setAttribute("d", gape > 2 ? `M${400 - w} ${y} Q400 ${y + v.smile * 0.4} ${400 + w} ${y} Q400 ${y + v.smile * 0.6 + gape * 1.7} ${400 - w} ${y} Z` : `M${400 - w} ${y} Q400 ${y + v.smile * 1.2} ${400 + w} ${y}`);
     mouth.setAttribute("fill", gape > 2 ? "#7a3440" : "none");
     const together = v.clasp > 0.8;
-    left.set(278, v.lex, v.ley, v.lx, v.ly, together);
-    const hold = right.set(522, v.rex, v.rey, v.rx, v.ry, together);
+    left.set(v.lex, v.ley, v.lx, v.ly, together);
+    const hold = right.set(v.rex, v.rey, v.rx, v.ry, together);
     folded.setAttribute("transform", `translate(${(v.lx + v.rx) / 2} ${(v.ly + v.ry) / 2 - 22}) scale(1.16)`);
     folded.setAttribute("opacity", together ? 1 : 0);
     pen.setAttribute("transform", `translate(${hold.x} ${hold.y})`); pen.setAttribute("opacity", Math.max(0, v.pen * 2 - 1));

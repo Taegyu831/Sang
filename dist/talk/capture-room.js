@@ -1,14 +1,18 @@
-// The app's own guided capture (front, a slight turn to each side, a clenched jaw, a smile), driven
-// from the character's screen. The measuring is the app's; only the words and the screen are new.
-import { getPoints, computeFrontFeatures, vertical } from "../../features.js";
-import { estimatePose, frontalizePoints } from "../../pose.js";
-import { applyPoseResidual } from "../../residual.js";
-import { CALIBRATION } from "../../calibration.js";
-import { StableCapture, PoseCompare, COMPARE_STEPS, compareDeltas } from "../../capture.js";
-import { openCameraStream } from "../../camera.js";
-import { cropFace } from "../desk/engine.js";
+// The guided capture (front, a slight turn to each side, a clenched jaw, a smile), driven from the
+// character's screen. The measuring, the limits and the record are the same as in the earlier page
+// (app-v3.js), so that visitor numbers from both can be used together.
+import { getPoints, computeFrontFeatures, vertical } from "../features.js";
+import { estimatePose, frontalizePoints } from "../pose.js";
+import { applyPoseResidual, POSE_RESIDUAL, RESIDUAL_VERSION } from "../residual.js";
+import { CALIBRATION } from "../calibration.js";
+import { StableCapture, PoseCompare, COMPARE_STEPS, compareDeltas } from "../capture.js";
+import { openCameraStream } from "../camera.js";
+import { cropFace } from "./kit.js";
 
-const VENDOR = new URL("../../vendor/mediapipe/", import.meta.url).href;
+const VENDOR = new URL("../vendor/mediapipe/", import.meta.url).href;
+// The same limits as app-v3.js captureOptions(); ?strict=0 gives the loose ones back.
+const STRICT = { maxPitch: 8, maxRoll: 15, maxCenterOffset: 0.12, minFaceFill: 0.36, maxFaceFill: 0.55, limits: { smile: 0.2, jawOpen: 0.08, blink: 0.4, frown: 0.25 } };
+const limits = () => (new URLSearchParams(location.search).get("strict") === "0" ? {} : STRICT);
 const HARD_LIMIT_MS = 40000; // ARTIFICIAL: after this long the capture finishes with what it has
 const MIN_AT_LIMIT = 15; // ARTIFICIAL: ... if at least this many frames were usable
 let landmarker = null;
@@ -21,7 +25,17 @@ export function stopCamera() { stream?.getTracks().forEach((t) => t.stop()); str
 async function model(delegate) {
   mod ??= await import(`${VENDOR}vision_bundle.mjs`);
   files ??= await mod.FilesetResolver.forVisionTasks(`${VENDOR}wasm`);
-  return mod.FaceLandmarker.createFromOptions(files, { baseOptions: { modelAssetPath: `${VENDOR}face_landmarker.task`, delegate }, runningMode: "VIDEO", numFaces: 1, outputFaceBlendshapes: true });
+  return mod.FaceLandmarker.createFromOptions(files, {
+    baseOptions: { modelAssetPath: `${VENDOR}face_landmarker.task`, delegate }, runningMode: "VIDEO", numFaces: 1,
+    minFaceDetectionConfidence: 0.6, minFacePresenceConfidence: 0.6, minTrackingConfidence: 0.6, outputFaceBlendshapes: true,
+  });
+}
+let loading = null;
+let onCpu = false;
+/** Loads the measuring model once, ahead of the first visitor; the CPU takes over without a usable GPU. */
+export function prepare() {
+  loading ??= model("GPU").catch(() => { onCpu = true; return model("CPU"); }).then((m) => { landmarker = m; }).catch((error) => { loading = null; throw error; });
+  return loading;
 }
 
 /**
@@ -36,11 +50,8 @@ export async function captureFace(video, alive, on) {
   stream = opened;
   video.srcObject = stream;
   await video.play();
-  let delegate = landmarker ? null : "GPU";
-  if (!landmarker) {
-    try { landmarker = await model("GPU"); } catch { landmarker = await model("CPU"); delegate = "CPU"; }
-  }
-  const capture = new StableCapture();
+  await prepare();
+  const capture = new StableCapture(limits());
   const canvas = document.createElement("canvas");
   let compare = null; let compareIndex = 0; const compared = {}; let base = null;
   let best = null; let asked = null; let began = null;
@@ -53,16 +64,17 @@ export async function captureFace(video, alive, on) {
     const t = performance.now();
     let result;
     try { result = landmarker.detectForVideo(video, t); } catch (error) {
-      if (delegate === "CPU") throw error;
+      if (onCpu) throw error;
       console.warn("measuring failed, switching to the CPU", error);
-      landmarker = await model("CPU"); delegate = "CPU"; continue;
+      landmarker = await model("CPU"); onCpu = true; continue;
     }
     const found = result.faceLandmarks?.[0];
     if (!found) { on.trouble("none"); continue; }
     const blend = Object.fromEntries((result.faceBlendshapes?.[0]?.categories ?? []).map((c) => [c.categoryName, c.score]));
     const raw = getPoints(found, video.videoWidth, video.videoHeight);
     const pose = estimatePose(raw);
-    const values = applyPoseResidual(computeFrontFeatures(frontalizePoints(raw, pose)), pose);
+    const frontal = computeFrontFeatures(frontalizePoints(raw, pose));
+    const values = applyPoseResidual(frontal, pose);
     began ??= t;
 
     if (compare) {
@@ -79,7 +91,8 @@ export async function captureFace(video, alive, on) {
     const verdict = capture.assess({ pose, blend, faceFill, centerOffset });
     if (verdict.ok) {
       on.trouble(null);
-      capture.add(values, verdict.weight, pose, t, faceFill);
+      const fix = Object.fromEntries(Object.keys(POSE_RESIDUAL).filter((k) => Number.isFinite(frontal[k]) && Number.isFinite(values[k])).map((k) => [k, frontal[k] - values[k]]));
+      capture.add(values, verdict.weight, pose, t, faceFill, fix);
       const straight = Math.abs(pose.yaw) < 8 && Math.abs(pose.pitch) < 12;
       if (straight && verdict.weight > (best?.weight ?? 0)) {
         canvas.width = video.videoWidth; canvas.height = video.videoHeight;
@@ -100,5 +113,8 @@ export async function captureFace(video, alive, on) {
   }
   stopCamera();
   if (!alive() || !best) return null;
-  return { ...best.shot, values: { ...capture.snapshot(CALIBRATION).values, ...compareDeltas(base, compared.clench, compared.smile) } };
+  const snap = capture.snapshot(CALIBRATION);
+  const confidence = Math.round(60 * snap.stability + 40 * Math.max(0, Math.min(1, snap.totalWeight / capture.options.targetWeight)));
+  const measurement = { ...snap.values, ...compareDeltas(base, compared.clench, compared.smile), ...snap.context, residOn: 1, residVersion: RESIDUAL_VERSION, confidence, frames: snap.frames, stability: snap.stability, coverage: snap.coverage };
+  return { ...best.shot, values: measurement };
 }

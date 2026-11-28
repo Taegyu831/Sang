@@ -24,6 +24,6 @@ HTTPS 주소에서 화면과 스타일, 모델 준비 상태를 확인하고, �
 
 ## 다른 호스팅으로 이전
 
-별도 빌드 없이 `dist`를 정적 사이트 배포 경로로 사용합니다. 호스팅 주소를 바꾸면 `dist/app-v3.js`의 `PUBLIC_SITE_URL`과 `dist/index.html`의 로컬 파일 안내 링크도 새 주소로 변경합니다.
+별도 빌드 없이 `dist`를 정적 사이트 배포 경로로 사용합니다. 호스팅 주소를 바꾸면 `dist/app-v3.js`의 `PUBLIC_SITE_URL`과 `dist/classic.html`의 로컬 파일 안내 링크도 새 주소로 변경합니다.
 
 원래 Sites 연결 정보는 `archives/original-hosting.json`에 기록했습니다.

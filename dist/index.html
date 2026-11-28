@@ -1,143 +1,18 @@
 <!doctype html>
 <html lang="ko">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#f2e8da" />
-    <meta name="robots" content="noindex, nofollow, noarchive" />
-    <meta name="description" content="카메라로 얼굴의 비율을 재고, 전통 관상의 틀로 풀어 주는 졸업 전시 프로토타입" />
-    <title>상(相) 역학원 · 관상측정</title>
-    <link rel="preload" href="./fonts/PlexSansKR-Regular.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="./fonts/PlexSansKR-Bold.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="stylesheet" href="./styles.css" />
-  </head>
-  <body>
-    <div class="top-strip">촬영한 얼굴 사진과 영상은 저장되지 않습니다</div>
-    <main class="app" aria-label="상 역학원 관상측정">
-      <div class="panel">
-        <!-- 1. 시작 -->
-        <section class="screen" id="emptyState">
-          <div class="start">
-            <div class="start-hero">
-              <h1 class="start-seal" aria-label="상">相</h1>
-              <p class="start-lead">관상은 <strong>얼굴의 생김과 비율</strong>에서 사람의 <strong>기질과 흐름</strong>을 읽어 온 오랜 해석입니다.</p>
-            </div>
-            <div class="gender-pick" id="genderPick" role="group" aria-label="나의 성별">
-              <button class="chip-btn" type="button" data-gender="female">여자</button>
-              <button class="chip-btn" type="button" data-gender="male">남자</button>
-            </div>
-            <div class="gender-pick" id="agePick" role="group" aria-label="나의 나이대">
-              <button class="chip-btn" type="button" data-age="20">20대</button>
-              <button class="chip-btn" type="button" data-age="30">30대</button>
-              <button class="chip-btn" type="button" data-age="40">40대</button>
-              <button class="chip-btn" type="button" data-age="50">50대</button>
-            </div>
-            <label class="consent" id="consentLabel">
-              <input type="checkbox" id="consentBox" />
-              <span>(선택) 얼굴 <strong>비율 숫자만</strong> 익명으로 모아 통계에 씁니다.<br />사진과 영상은 저장하지 않아요.</span>
-            </label>
-            <button class="btn primary big-btn" id="cameraButton" type="button" disabled><span>준비 중</span></button>
-            <p class="note permission-note"></p>
-          </div>
-        </section>
-
-        <!-- 2. 측정 -->
-        <section class="screen" id="scanScreen" hidden>
-          <div class="scan">
-            <div class="camera-frame" id="cameraFrame">
-              <video id="camera" autoplay muted playsinline aria-label="카메라 영상"></video>
-              <canvas id="overlay" aria-hidden="true"></canvas>
-              <!-- 고개를 얼마나 '살짝' 돌릴지: 구간 세 칸, 지금 고개 위치, 따라 할 시범 -->
-              <div class="turn-guide" id="turnGuide" aria-hidden="true" hidden>
-                <div class="tg-track">
-                  <span class="tg-zone" data-zone="left"><i></i><b>◀ 살짝</b></span>
-                  <span class="tg-zone" data-zone="front"><i></i><b>정면</b></span>
-                  <span class="tg-zone" data-zone="right"><i></i><b>살짝 ▶</b></span>
-                  <span class="tg-ghost" id="tgGhost"></span>
-                  <span class="tg-head" id="tgHead"></span>
-                </div>
-              </div>
-              <!-- 안내 자막은 카메라 영상 위에 띄운다 (고개를 돌릴 때도 읽히도록) -->
-              <p class="scan-msg" id="statusMessage" role="status">얼굴을 화면 가운데에 맞춰 주세요</p>
-            </div>
-            <div class="bar"><i id="journeyProgress"></i></div>
-            <div class="scan-actions" id="scanActions" hidden>
-              <button class="btn primary big-btn" id="toResultButton" type="button" hidden>풀이 보기 ▶</button>
-              <button class="btn small" id="stopButton" type="button">그만하기</button>
-            </div>
-          </div>
-        </section>
-
-        <!-- 3. 잠깐 -->
-        <section class="screen" id="loadingScreen" hidden>
-          <div class="loading">
-            <p class="headline small-headline">관상을 풀어 보는 중<span class="dots" aria-hidden="true"></span></p>
-            <div class="bar"><i id="loadBar"></i></div>
-            <p class="load-line" id="loadLine">관상서를 펼치는 중입니다</p>
-          </div>
-        </section>
-
-        <!-- 4. 풀이: 왼쪽에 사진, 오른쪽에서 이야기가 쪽마다 넘어간다 -->
-        <section class="screen" id="resultView" aria-label="관상 풀이" hidden>
-          <div class="reading">
-            <figure class="plate" id="resultFrontFigure" hidden>
-              <div class="face-plate">
-                <img id="resultFrontImage" alt="측정할 때의 얼굴" />
-                <svg id="resultFrontOverlay" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"></svg>
-                <!-- Names and dots are HTML, not SVG: the SVG is stretched to the picture, which would squash Korean letters. -->
-                <div id="resultFrontLabels" class="face-labels" aria-hidden="true"></div>
-              </div>
-              <div class="stamp" aria-hidden="true">相</div>
-            </figure>
-            <div class="story">
-              <div class="pages" id="pages">
-                <article class="page slide" data-page="first" data-title="이 사람은">
-                  <div class="story-page" id="storyFirst">
-                  </div>
-                </article>
-
-                <article class="page slide" data-page="last" data-title="마무리">
-                  <div class="story-page closing">
-                    <p class="story-lead" id="closingLead"></p>
-                  </div>
-                  <button class="scroll-cue" id="scrollCue" type="button" aria-label="아래로 넘기기"><span></span></button>
-                </article>
-
-                <article class="page slide" data-page="fortune" data-title="운">
-                  <div class="story-page closing fortune" id="fortunePage">
-                    <div class="closing-notes" id="closingNotes" aria-live="polite"></div>
-                    <div class="closing-actions closing-after">
-                      <span class="seal closing-seal" aria-hidden="true">相</span>
-                      <button class="btn primary big-btn" id="restartButton" type="button">한 번 더 재기</button>
-                      <button class="btn" id="homeButton" type="button">처음으로<span class="home-count" id="homeCount"></span></button>
-                    </div>
-                  </div>
-                </article>
-              </div>
-              <nav class="slide-dots" id="slideDots" aria-label="풀이 쪽"></nav>
-              <div class="map" id="mapView" hidden></div>
-            </div>
-          </div>
-        </section>
-      </div>
-    </main>
-
-    <script>
-      if (window.location.protocol === "file:") {
-        window.addEventListener("DOMContentLoaded", function () {
-          var button = document.getElementById("cameraButton");
-          var note = document.querySelector(".permission-note");
-          if (button) {
-            button.disabled = false;
-            button.querySelector("span").textContent = "웹 버전으로 열기";
-            button.addEventListener("click", function () {
-              window.location.assign("https://taegyu831.github.io/Sang/");
-            });
-          }
-          if (note) note.textContent = "이 파일은 웹 주소로 열어야 카메라가 켜져요.";
-        });
-      }
-    </script>
-    <script type="module" src="./app-v3.js"></script>
-  </body>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#a9ccf0" />
+  <meta name="robots" content="noindex, nofollow, noarchive" />
+  <meta name="description" content="카메라로 얼굴의 비율을 재고, 전통 관상의 틀로 풀어 주는 졸업 전시 프로토타입" />
+  <title>상(相) · 관상 노트</title>
+  <link rel="preload" href="./fonts/PlexSansKR-Regular.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="./fonts/PlexSansKR-Bold.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="./talk/style.css" />
+</head>
+<body>
+  <div id="stage"></div>
+  <script type="module" src="./talk/app.js"></script>
+</body>
 </html>

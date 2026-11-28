@@ -135,12 +135,12 @@ MediaPipe 표준 얼굴을 정면 기준으로 삼아 현재 얼굴이 얼마나
 ## 6. 사용법
 
 - 자세 보정 끄고 비교: `?pose=raw`
-- 디버그 기록: `?debug=1`
+- 디버그 기록: `classic.html?debug=1`
   - 카메라 시작, 기록 시작, 20~30초간 고개를 좌우, 상하로 천천히 움직이고 정지
   - 비율별 흔들림, 각도 10도당 변화, 틀과 주제의 결과 일관성, CSV 저장
   - 영상 위에 측정에 쓰는 점의 이름과 번호가 표시됩니다
 - 카메라 없이 결과 화면 보기 (127.0.0.1에서만):
-  `?preview=1&v=lowerThird:47,jawCheek:84,mouthNose:2.1` (v를 빼면 평균 얼굴)
+  `classic.html?preview=1&v=lowerThird:47,jawCheek:84,mouthNose:2.1` (v를 빼면 평균 얼굴)
 
 ## 7. 테스트
 
@@ -193,12 +193,15 @@ python3 -m http.server 8765 --bind 127.0.0.1
 - ARTIFICIAL: `MAX_KEYS` 12, `WAIT_MS` 25000, `LENGTH` 150~900자, `BANNED` 목록. 모델은 환경변수 `SUMMARY_MODEL`로 바꾼다.
 - `?summary=off`는 호출을 끄고, `?summary=default`는 되돌린다.
 
-## 캐릭터 대화 시안 (시험판, 2026-11-28, `lab/talk/`)
+## 캐릭터 대화 화면 (본 화면, 2026-11-28, `dist/talk/`)
 
-흰 몸에 검은 테 안경만 낀 2D 캐릭터와 책상을 사이에 두고 대화하는 시안 3가지(`?look=desk|night|note`). 앱 본 화면은 바뀌지 않는다.
+2D 캐릭터와 책상을 사이에 두고 대화한다. 2026-11-28부터 `index.html`이 이 화면이고, 이전 화면은 `classic.html`이다(`?debug=1` 표본 기록과 `?layout=map`은 이전 화면에만 있다). 처음의 시안 3가지(desk, night, note) 중 노트 시안을 고른 뒤 나머지는 지웠다(git 기록에 남아 있다).
 
-- 측정: 앱의 `StableCapture`, `PoseCompare`, 자세 보정과 기준값을 그대로 쓴다(`capture-room.js`). 본 앱과 다른 점은 머리선 측정, 통계 저장, 동의 화면, AI 정리가 아직 없다는 것이다.
+- 흐름: 앉기, 성별, 나이대, 별명, 통계 동의, 촬영, 생각, 질문 고르기와 풀이, "이제 충분해요", 마지막 말과 카드.
+- 측정: `capture-room.js`. 이전 화면과 같은 `StableCapture` 엄격 조건(`?strict=0`은 느슨한 조건), `PoseCompare`, 자세 보정, 기준값, 저장 항목. 머리선 측정, AI 정리, 인연 초상은 없다.
+- 통계 저장: 대화에서 "네, 좋아요"를 고른 관람객만, 측정이 끝나면 한 사람에 한 번 `collect.js`로 보낸다. 아니요, 카메라 없는 예시 얼굴, `?collect=off`는 보내지 않는다. `appVersion`은 `2026-11-28`. 화면에 저장 성공 여부는 보이지 않으므로 Supabase의 건수로 확인한다. 전송에 실패한 기록은 그 브라우저에 남았다가 다음에 열 때 나간다.
 - 풀이 재료: `facets.js`, `story.js`의 `sayingsOf`, `closing.js`.
-- 인위적 개입(팀 검토 필요): `spoken.js`의 모든 말투 틀과 "그래서 ..." 조언 문장, 별명 목록, 질문 다섯 가지 이름, `closing.js`의 `CLOSING_SPOKEN`(마지막 문구의 구어체), `app.js`의 대사와 시간값(`T`), `capture-room.js`의 `HARD_LIMIT_MS`/`MIN_AT_LIMIT`, `character.js`의 모든 모양과 동작.
+- 인위적 개입(팀 검토 필요): `talk/spoken.js`의 모든 말투 틀과 "그래서 ..." 조언 문장, 별명 목록, 질문 다섯 가지 이름, `closing.js`의 `CLOSING_SPOKEN`(마지막 문구의 구어체), `talk/app.js`의 대사(동의 질문 포함)와 시간값(`T`), `talk/capture-room.js`의 `HARD_LIMIT_MS`/`MIN_AT_LIMIT`, `talk/character.js`의 모든 모양과 동작, `talk/style.css`의 색.
 - "~할 수 있어요" 형태는 단정을 피하려는 말투일 뿐 근거의 강도를 뜻하지 않는다.
-- 2026-11-28 노트 시안 선택: 전용 캐릭터 `character-doctor.js`(팀이 고른 참고 그림을 단순화, 청진기는 `STETHOSCOPE`로 끔), 팔은 어깨-팔꿈치-손목 두 마디, 배경 4색(`?bg=`, B 키, 기본 하늘색). 참고 그림이 기존 작품의 캐릭터라면 전시 전에 닮은 정도와 사용 가능 여부를 팀이 확인해야 한다.
+- 캐릭터는 팀이 고른 참고 그림을 단순화한 것이다(청진기는 `STETHOSCOPE`로 끔). 참고 그림이 기존 작품의 캐릭터라면 전시 전에 닮은 정도와 사용 가능 여부를 팀이 확인해야 한다.
+- 개발용: `?dev=1`에서만 S 키(예시 얼굴)와 `?scene=` 바로 가기가 된다. Esc는 언제나 처음으로.

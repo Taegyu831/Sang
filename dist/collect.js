@@ -3,15 +3,17 @@
 // What is sent: gender and age group the visitor chose, the face-ratio numbers
 // the measurement produced, how reliable it was. Never a picture, never a name,
 // never anything that identifies a person. Nothing is sent unless the visitor
-// ticked the box on the start screen (it is unticked for every new visitor).
+// said yes (asked anew for every visitor).
 //
 // If the network is down the record waits in this browser (also only with
 // consent) and is sent the next time the page is open with internet.
+//
+// Used by the main page (talk/app.js, asked in the conversation) and by classic.html (the box).
 
 export const DEFAULT_COLLECT_ENDPOINT = "https://project-zek4t.vercel.app/api/measure";
 const QUEUE_KEY = "sang.pending";
 const QUEUE_MAX = 200;
-export const APP_VERSION = "2026-11-24";
+export const APP_VERSION = "2026-11-28";
 
 /** The record for one finished measurement, numbers only. Returns null if it is not usable. */
 export function buildRecord({ gender, age, measurement }) {

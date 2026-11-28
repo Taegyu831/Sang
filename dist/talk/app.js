@@ -1,29 +1,30 @@
-// Character design prototype (2026-11-28): the visitor sits across from a small, serious fortune
-// reader and is led through the whole experience as a conversation.
-//   seat -> gender, age, nickname -> guided capture -> thinking -> pick a question (again and again)
-//   -> "이제 충분해요" -> the last words and a card
-// Keys: space / enter = go on, digits = choose, T = next look, S = sample face, Esc = start over.
-// ?look=note (the picked one, with its own character; B changes its background, ?bg=)|desk|night   ?scene=menu|read|end|shoot&sample=1&topic=self  (for screenshots)
-import { h, button, sampleFace, loadContent, photoCard } from "../desk/engine.js";
-import { CLOSING_QUOTE, CLOSING_SPOKEN } from "../../closing.js";
-import { createCharacter as createRound } from "./character.js";
-import { createCharacter as createDoctor } from "./character-doctor.js";
-import { captureFace, stopCamera } from "./capture-room.js";
+// The exhibition page: the visitor sits across from a small, serious fortune reader and is led
+// through the whole experience as a conversation.
+//   seat -> gender, age, nickname, may the numbers be collected -> guided capture -> thinking
+//   -> pick a question (again and again) -> "이제 충분해요" -> the last words and a card
+// Keys: space / enter = go on, digits = choose, Esc = start over.
+// For development: ?dev=1 adds S (a drawn sample face) and ?scene=ask|shoot|menu|read|end with
+// &sample=1&topic=self&hold=1. ?collect=off sends nothing, ?strict=0 loosens the capture limits.
+// The earlier page is classic.html (its ?debug=1 records samples).
+import { h, button, sampleFace, photoCard } from "./kit.js";
+import { CLOSING_QUOTE, CLOSING_SPOKEN } from "../closing.js";
+import { DEFAULT_COLLECT_ENDPOINT, buildRecord, submitMeasurement, flushQueue } from "../collect.js";
+import { createCharacter } from "./character.js";
+import { captureFace, stopCamera, prepare as prepareModel } from "./capture-room.js";
 import { TOPICS, NICKNAMES, answer, readingFor, josa } from "./spoken.js";
 
-// ARTIFICIAL: timings (ms) of this prototype.
+// ARTIFICIAL: timings (ms).
 const T = { type: 38, after: 900, perChar: 55, gesture: 1500, stuck: 60000, askIdle: 45000, menuIdle: 60000, endIdle: 60000 };
-const LOOKS = ["desk", "night", "note"];
-const NAMES = { desk: "상담 책상", night: "밤의 상담소", note: "관상 노트" };
 
-// ARTIFICIAL: backgrounds to compare behind the notebook look's character.
-const BACKS = { blue: "#a9ccf0", mint: "#b9e0cb", butter: "#f7e09a", lavender: "#d2c9f1" };
 const params = new URLSearchParams(location.search);
-let back = Object.hasOwn(BACKS, params.get("bg") ?? "") ? params.get("bg") : "blue";
-let look = params.get("look");
+const DEV = params.get("dev") === "1";
+const HOLD = DEV && params.has("hold");
+const collectParam = params.get("collect");
+const COLLECT_ENDPOINT = collectParam === "off" ? "" : collectParam || DEFAULT_COLLECT_ENDPOINT;
 const stage = document.querySelector("#stage");
 let content = null;
-const visitor = { gender: null, age: null, nick: null, face: null, reading: null, heard: [] };
+const fresh = () => ({ gender: null, age: null, nick: null, consent: false, shared: false, face: null, reading: null, heard: [] });
+let visitor = fresh();
 let master = null;
 let ui = null;
 let run = 0;
@@ -34,12 +35,10 @@ let keys = () => {};
 
 // ---------- the room ----------
 function build() {
-  master = look === "note" ? createDoctor() : createRound();
+  master = createCharacter();
   const bubble = h("div", "bubble");
-  const speaker = h("span", "speaker", "관상 선생");
   const text = h("p", "said");
-  const more = h("span", "more", "▼");
-  bubble.append(speaker, text, more);
+  bubble.append(text, h("span", "more", "▼"));
   const choices = h("div", "choices");
   const book = h("div", "book");
   const video = h("video", ""); video.muted = true; video.playsInline = true;
@@ -48,15 +47,14 @@ function build() {
   const arrow = h("div", "arrow");
   const card = h("div", "card");
   const enough = button("enough", () => ending(), "이제 충분해요");
-  const room = h("div", "room", h("div", "lamp"), h("div", "shelf"), h("div", "window"));
   const table = h("div", "table");
   const who = h("div", "who");
-  stage.replaceChildren(h("div", "scene", room, h("div", "actor", master.el), table, arrow, bubble, book, choices, mirror, card, enough, who));
+  const promise = h("p", "promise", "촬영한 얼굴 사진과 영상은 저장되지 않아요");
+  stage.replaceChildren(h("div", "scene", h("div", "room"), h("div", "actor", master.el), table, arrow, bubble, book, choices, mirror, card, enough, who, promise));
   bubble.addEventListener("click", () => skip());
   ui = { bubble, text, choices, book, video, mirror, dots, arrow, card, enough, who };
   seatAtDesk();
 }
-function setBack(name) { back = name; document.body.style.setProperty("--back", BACKS[name]); }
 function seatAtDesk() {
   const actor = stage.querySelector(".actor"); const table = stage.querySelector(".table");
   if (actor?.offsetHeight) master.desk(((table.offsetTop + table.clientTop - actor.offsetTop) / actor.offsetHeight) * 900);
@@ -107,7 +105,8 @@ async function say(ctx, line, { hold } = {}) {
   for (let spent = 0; spent < stay && !next; spent += 80) if (!(await ctx.wait(80)) || mine !== speech) return false;
   return true;
 }
-/** Choices float around the character. Resolves with the chosen value. */
+/** Shows choices: in a tidy block, or floating around when they are questions about the reading
+ *  ("orbit"). Resolves with the chosen value. */
 function choose(ctx, options, { idle = T.askIdle, className = "" } = {}) {
   return new Promise((resolve) => {
     const picked = (i) => {
@@ -116,20 +115,20 @@ function choose(ctx, options, { idle = T.askIdle, className = "" } = {}) {
       ui.choices.replaceChildren();
       resolve(options[i][1]);
     };
-    ui.choices.className = `choices n${options.length} ${className}`;
+    ui.choices.className = `choices ${className}`;
     ui.choices.replaceChildren(...options.map(([label, , extra = ""], i) => {
       const b = button(`choice p${i} ${extra}`, () => picked(i), h("kbd", "", String(i + 1)), h("span", "", label));
       b.style.setProperty("--i", i);
       return b;
     }));
     keys = (k) => picked(Number(k) - 1);
-    if (!params.get("hold")) ctx.wait(idle).then((on) => { if (on && ui.choices.childElementCount) attract(); });
+    if (!HOLD) ctx.wait(idle).then((on) => { if (on && ui.choices.childElementCount) attract(); });
   });
 }
 const heading = (title) => { ui.book.replaceChildren(h("h3", "", title), h("ul", "")); };
-/** Writes a line into the notebook, letter by letter. */
+/** Writes a line on the page, letter by letter. */
 async function write(ctx, line) {
-  const li = h("li", "");
+  const li = h("li", /^그래서/.test(line) ? "advice" : "");
   ui.book.querySelector("ul").append(li);
   const whole = strip(line);
   for (let i = 2; i < whole.length + 2; i += 2) {
@@ -145,15 +144,15 @@ async function write(ctx, line) {
 // ---------- the conversation ----------
 async function attract() {
   const ctx = enter("attract");
-  Object.assign(visitor, { gender: null, age: null, nick: null, face: null, reading: null, heard: [] });
-  heading("오늘의 손님");
+  visitor = fresh();
+  heading("");
   ui.who.textContent = "";
   master.pose("hello");
   const go = () => ask();
   choose(ctx, [["의자에 앉았어요", true, "big"]], { idle: 1e9 }).then(go);
   keys = (k) => { if (k === " " || k === "Enter" || k === "1") go(); };
   for (let i = 0; ctx.alive(); i += 1) {
-    const line = ["어서 오세요! 기다리고 있었어요.", "여기 앉으시면 얼굴을 찬찬히 봐 드릴게요.", "준비되면 아래 버튼을 눌러 주세요."][i % 3];
+    const line = ["어서 오세요! 기다리고 있었어요.", "여기 앉으시면 얼굴을 찬찬히 봐 드릴게요.", "준비되면 버튼을 눌러 주세요."][i % 3];
     master.pose(["hello", "push", "idle"][i % 3]);
     if (!(await say(ctx, line, { hold: 2200 }))) return;
   }
@@ -184,14 +183,19 @@ async function ask() {
   }
   ui.who.textContent = visitor.nick;
   master.pose("write");
-  if (!(await write(ctx, `⟦${visitor.nick}⟧`))) return;
+  if (!(await write(ctx, visitor.nick))) return;
+  // Statistics only with a clear yes; nothing is collected otherwise (see collect.js).
+  master.pose("listen");
+  if (!(await say(ctx, "하나만 더요. 얼굴 비율 숫자만 이름 없이 모아 통계에 써도 될까요? 사진은 저장하지 않아요.", { hold: null }))) return;
+  visitor.consent = await choose(ctx, [["네, 좋아요", true], ["아니요, 저장하지 마세요", false]]);
+  if (!ctx.alive()) return;
   master.pose("peek");
-  if (!(await say(ctx, `${visitor.nick}님, 예쁜 이름이네요.`, { hold: 900 }))) return;
+  if (!(await say(ctx, `알겠어요. ${visitor.nick}님, 이제 얼굴을 볼게요.`, { hold: 900 }))) return;
   shoot();
 }
 
 const ASKS = {
-  front: ["focus", "이제 얼굴을 좀 볼게요. 저를 똑바로 봐 주세요.", "", 0],
+  front: ["focus", "저를 똑바로 봐 주세요. 편한 표정이면 돼요.", "", 0],
   left: ["left", "좋아요. 고개를 살짝 이쪽으로 돌려 보세요.", "◀", 1],
   right: ["right", "이번엔 반대쪽이에요. 이쪽으로 살짝.", "▶", 2],
   done: ["focus", "음, 보여요. 다시 정면으로 돌아와 주세요.", "", 2],
@@ -216,16 +220,16 @@ async function shoot() {
   const ctx = enter("shoot");
   visitor.face = null; visitor.reading = null; visitor.heard = [];
   master.pose("focus");
-  say(ctx, `${visitor.nick ?? "손님"}님, 거울을 켤게요. 잠깐만요.`, { hold: null });
+  say(ctx, "거울을 켤게요. 잠깐만요.", { hold: null });
   let current = null; let troubleAt = 0; let shown = null;
   const line = (id) => { const [pose, text, arrow, dot] = ASKS[id]; master.pose(pose); ui.arrow.textContent = arrow; ui.arrow.dataset.arrow = arrow === "▶" ? "right" : "left"; [...ui.dots.children].forEach((d, i) => { d.classList.toggle("is-on", i === dot); d.classList.toggle("is-done", i < dot); }); say(ctx, text, { hold: null }); };
-  // If the pictures stay unusable the visitor is offered a way out instead of waiting for ever.
-  ctx.wait(T.stuck).then(async (on) => {
-    if (!on || visitor.face) return;
+  const wayOut = async () => {
     const again = await choose(ctx, [["다시 해 볼게요", true], ["처음으로", false]], { className: "stuck" });
     if (!ctx.alive()) return;
     if (again) shoot(); else attract();
-  });
+  };
+  // If the pictures stay unusable the visitor is offered a way out instead of waiting for ever.
+  ctx.wait(T.stuck).then((on) => { if (on && !visitor.face && !ui.choices.childElementCount) wayOut(); });
   try {
     const face = await captureFace(ui.video, ctx.alive, {
       stage(id) { current = id; shown = null; line(id); },
@@ -240,9 +244,13 @@ async function shoot() {
     if (!face || !ctx.alive()) return;
     visitor.face = face;
     ui.choices.replaceChildren(); keys = () => {};
+    share();
   } catch (error) {
     console.error(error);
-    if (ctx.alive()) { master.pose("think"); say(ctx, "거울이 안 켜지네요. 키보드의 S를 누르면 예시 얼굴로 봐 드릴게요.", { hold: null }); }
+    if (!ctx.alive()) return;
+    master.pose("think");
+    say(ctx, "거울이 안 켜지네요. 카메라 연결과 권한을 확인해 주세요.", { hold: null });
+    wayOut();
     return;
   }
   [...ui.dots.children].forEach((d) => d.classList.add("is-done"));
@@ -251,7 +259,14 @@ async function shoot() {
   if (!(await say(ctx, "찰칵! 다 봤어요. 아주 좋아요.", { hold: 900 }))) return;
   ponder();
 }
-function useSample() { visitor.face = sampleFace(); visitor.nick ??= NICKNAMES[0]; visitor.age ??= 20; ui.who.textContent = visitor.nick; ponder(); }
+/** One anonymous record per visitor, only with their yes, never for the drawn sample face. */
+function share() {
+  if (!visitor.consent || visitor.shared || !COLLECT_ENDPOINT || visitor.face.sample) return;
+  const record = buildRecord({ gender: visitor.gender, age: visitor.age, measurement: visitor.face.values });
+  if (!record) return;
+  visitor.shared = true;
+  submitMeasurement(COLLECT_ENDPOINT, record).catch(() => {});
+}
 function prepare() {
   visitor.face ??= sampleFace(); visitor.nick ??= NICKNAMES[0]; visitor.age ??= 20;
   visitor.reading ??= readingFor(visitor.face.values, visitor.age, content);
@@ -289,7 +304,7 @@ async function read(id) {
   const ctx = enter("read");
   prepare();
   const topic = TOPICS.find((t) => t.id === id) ?? TOPICS[0];
-  const { lines, memo } = answer(visitor.reading, topic.id, visitor.nick);
+  const { lines } = answer(visitor.reading, topic.id, visitor.nick);
   visitor.heard.push(topic.id);
   heading(topic.note);
   master.pose("push");
@@ -299,9 +314,8 @@ async function read(id) {
     ui.bubble.classList.remove("is-on");
     master.pose(gestures[i % gestures.length]);
     if (!(await ctx.wait(T.gesture))) return;
-    // The note look reads from the notebook: the whole sentence is written. The others jot a few words.
     master.pose("write");
-    if (look === "note") { if (!(await write(ctx, line))) return; } else if (memo[i]) { if (!(await write(ctx, memo[i]))) return; if (!(await ctx.wait(400))) return; } else if (!(await ctx.wait(800))) return;
+    if (!(await write(ctx, line))) return;
     master.pose(i === lines.length - 1 ? "peek" : i % 2 ? "push" : "listen");
     if (!(await say(ctx, line))) return;
   }
@@ -315,13 +329,12 @@ async function ending() {
   for (const [i, spoken] of CLOSING_SPOKEN.entries()) {
     master.pose(gestures[i]);
     if (i === 1) { if (!(await write(ctx, CLOSING_QUOTE.han))) return; if (!(await write(ctx, CLOSING_QUOTE.ko))) return; master.pose("listen"); }
-    if (!(await say(ctx, spoken.replace("{nick}", visitor.nick), { hold: params.get("hold") && i === Number(params.get("at") ?? 99) ? 1e9 : undefined }))) return;
+    if (!(await say(ctx, spoken.replace("{nick}", visitor.nick), { hold: HOLD && i === Number(params.get("at") ?? 99) ? 1e9 : undefined }))) return;
   }
   stage.dataset.scene = "card";
   scene = "card";
-  const photo = photoCard(visitor.face);
   const kept = visitor.heard.map((id) => { const { memo } = answer(visitor.reading, id, visitor.nick); return id === "self" || id === "bond" ? memo[0] : memo[1] ?? memo[0]; }).filter(Boolean).slice(0, 4);
-  ui.card.replaceChildren(h("small", "", "오늘의 관상 노트"), h("h2", "", visitor.nick), photo.box,
+  ui.card.replaceChildren(h("small", "", "오늘의 관상 노트"), h("h2", "", visitor.nick), photoCard(visitor.face),
     h("div", "tags", ...(kept.length ? kept : [`${visitor.reading.say.adn} 사람`]).map((w) => h("span", "", w))),
     h("p", "han", CLOSING_QUOTE.han), h("p", "mean", CLOSING_QUOTE.meaning), h("p", "tip", "휴대폰으로 찍어 가세요 · 얼굴 사진은 저장되지 않아요"),
     button("again", attract, "처음으로"));
@@ -329,42 +342,41 @@ async function ending() {
   master.pose("cheer");
   if (!(await say(ctx, "또 놀러 오세요!", { hold: null }))) return;
   await ctx.wait(900); if (ctx.alive()) master.pose("hello");
-  if (!params.get("hold") && (await ctx.wait(T.endIdle))) attract();
+  if (!HOLD && (await ctx.wait(T.endIdle))) attract();
 }
 
 // ---------- start ----------
 function fit() { document.documentElement.style.fontSize = `${Math.min(innerWidth / 192, innerHeight / 108)}px`; }
-function setLook(name) {
-  look = name; document.body.dataset.look = name;
-  const url = new URL(location.href); url.searchParams.set("look", name); history.replaceState(null, "", url);
-  document.title = `상 · ${NAMES[name]}`;
+addEventListener("resize", () => { fit(); if (master) seatAtDesk(); });
+fit();
+content = await (await fetch(new URL("../parts.json", import.meta.url))).json();
+build();
+addEventListener("click", (event) => { if (event.detail > 0) event.target.closest?.("button")?.blur(); });
+addEventListener("keydown", (event) => {
+  if (event.repeat) return;
+  const k = event.key;
+  if (event.target.closest?.("button") && (k === " " || k === "Enter")) return; // the button's own click
+  if (k === "Escape") return attract();
+  if (DEV && (k === "s" || k === "S" || k === "ㄴ") && ["attract", "ask", "shoot"].includes(scene)) { visitor.face = sampleFace(); return ponder(); }
+  if (k === " ") event.preventDefault();
+  if ((k === " " || k === "Enter") && scene !== "attract" && scene !== "card") return skip();
+  keys(k);
+});
+const jump = DEV ? params.get("scene") : null;
+if (DEV && params.get("sample") === "1") visitor.face = sampleFace();
+if (jump === "menu") menu();
+else if (jump === "read") { prepare(); read(params.get("topic") ?? "self"); }
+else if (jump === "end") ending();
+else if (jump === "shoot") { visitor.nick = NICKNAMES[0]; visitor.age = 20; shoot(); }
+else if (jump === "ask") ask();
+else attract();
+prepareModel().catch((error) => console.warn("the measuring model will be loaded again later", error));
+// numbers left over from an earlier visit (no internet at the time) go out when the page opens
+if (COLLECT_ENDPOINT) {
+  flushQueue(COLLECT_ENDPOINT).catch(() => {});
+  addEventListener("online", () => flushQueue(COLLECT_ENDPOINT).catch(() => {}));
 }
-if (!LOOKS.includes(look)) document.querySelector("#chooser").hidden = false;
-else {
-  addEventListener("resize", () => { fit(); if (master) seatAtDesk(); }); fit();
-  content = await (await fetch("../../parts.json")).json();
-  await loadContent();
-  stage.hidden = false;
-  setBack(back); setLook(look); build();
-  addEventListener("click", (event) => { if (event.detail > 0) event.target.closest?.("button")?.blur(); });
-  addEventListener("keydown", (event) => {
-    if (event.repeat) return;
-    const k = event.key;
-    if (event.target.closest?.("button") && (k === " " || k === "Enter")) return; // the button's own click
-    if (k === "Escape") return attract();
-    if (k === "t" || k === "T" || k === "ㅅ") { setLook(LOOKS[(LOOKS.indexOf(look) + 1) % LOOKS.length]); build(); return attract(); }
-    if (k === "b" || k === "B" || k === "ㅠ") { const names = Object.keys(BACKS); return setBack(names[(names.indexOf(back) + 1) % names.length]); }
-    if ((k === "s" || k === "S" || k === "ㄴ") && ["attract", "ask", "shoot"].includes(scene)) return useSample();
-    if (k === " ") event.preventDefault();
-    if ((k === " " || k === "Enter") && scene !== "attract" && scene !== "card") return skip();
-    keys(k);
-  });
-  const jump = params.get("scene");
-  if (params.get("sample") === "1") visitor.face = sampleFace();
-  if (jump === "menu") menu();
-  else if (jump === "read") { prepare(); read(params.get("topic") ?? "self"); }
-  else if (jump === "end") ending();
-  else if (jump === "shoot") { visitor.nick = NICKNAMES[0]; visitor.age = 20; shoot(); }
-  else if (jump === "ask") ask();
-  else attract();
+// Offline cache (sw.js). On https only; on localhost it is off unless ?sw=on.
+if ("serviceWorker" in navigator && (location.protocol === "https:" || params.get("sw") === "on")) {
+  navigator.serviceWorker.register(new URL("../sw.js", import.meta.url)).catch(() => { /* the app works without it */ });
 }

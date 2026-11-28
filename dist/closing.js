@@ -11,7 +11,7 @@ export const CLOSING_QUOTE = {
   meaning: "군자는 몸에 기량을 갖추고, 때를 기다려 움직인다",
   source: "『주역』 계사전",
 };
-// The same words as the master of the character prototype (lab/talk) says them. Keep the meaning
+// The same words as the master says them (talk/). Keep the meaning
 // the same as the written notes above when either one is changed.
 export const CLOSING_SPOKEN = [
   `마지막으로 제가 아끼는 글귀 하나 적어 드릴게요.`,

@@ -3,10 +3,10 @@
 // only turns it into speech.
 // ARTIFICIAL: every sentence frame below is written for this prototype, and so are the pieces of
 // advice ("그래서 ..."), which are built around the readings' own cautions. For the team to review.
-import { readParts, classifyFaceShape } from "../../parts.js";
-import { composeStory, sayingsOf } from "../../story.js";
-import { extrasOf } from "../../extras.js";
-import { facetsOf } from "../../facets.js";
+import { readParts, classifyFaceShape } from "../parts.js";
+import { composeStory, sayingsOf } from "../story.js";
+import { extrasOf } from "../extras.js";
+import { facetsOf } from "../facets.js";
 
 export const TOPICS = [
   { id: "self", ask: "나는 어떤 사람?", note: "성격" },

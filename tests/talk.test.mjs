@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { CALIBRATION } from "../dist/calibration.js";
 import { sayingsOf, POLE_IDS } from "../dist/story.js";
-import { TOPICS, answer, readingFor, soften, josa } from "../dist/lab/talk/spoken.js";
+import { TOPICS, answer, readingFor, soften, josa } from "../dist/talk/spoken.js";
 
 const content = JSON.parse(readFileSync(new URL("../dist/parts.json", import.meta.url)));
 
