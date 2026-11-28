@@ -14,7 +14,7 @@ import { DEFAULT_COLLECT_ENDPOINT, buildRecord, submitMeasurement, flushQueue } 
 import { coupleEndpoint, requestCouple } from "./couple.js";
 import { createCharacter } from "./character.js";
 import { captureFace, stopCamera, prepare as prepareModel } from "./capture-room.js";
-import { TOPICS, answer, readingFor, draw, josa } from "./spoken.js";
+import { TOPICS, answer, readingFor, profileOf, draw, josa } from "./spoken.js";
 
 // ARTIFICIAL: timings (ms).
 const T = { type: 38, after: 900, perChar: 55, rise: 200, stuck: 60000, askIdle: 45000, menuIdle: 60000, endIdle: 60000, photoIdle: 120000, printTalk: 11000, notice: 3200, closingGap: 2000, closingRead: 5000 };
@@ -509,10 +509,11 @@ async function booth(ctx, image) {
 /** The end: the card to take home. */
 async function card(ctx) {
   show("card");
-  const kept = visitor.heard.map((id) => { const { memo } = answer(visitor.reading, id, visitor.name); return id === "self" || id === "bond" ? memo[0] : memo[1] ?? memo[0]; }).filter(Boolean).slice(0, 4);
-  ui.card.replaceChildren(h("small", "", "오늘의 관상 노트"), h("h2", "", visitor.name), photoCard(visitor.face),
-    h("div", "tags", ...(kept.length ? kept : [`${visitor.reading.say.adn} 사람`]).map((w) => h("span", "", w))),
-    h("p", "mean", CLOSING_QUOTE.meaning), h("p", "han", CLOSING_QUOTE.han), h("p", "tip", "휴대폰으로 찍어 가세요 · 얼굴 사진은 저장되지 않아요"),
+  const me = profileOf(visitor.reading);
+  const head = h("div", "card-head", h("small", "", "오늘의 관상 노트"), h("h2", "", visitor.name), h("p", "headline", me.headline), h("div", "tags", ...me.traits.map((w) => h("span", "", w))));
+  ui.card.replaceChildren(h("div", "card-top", photoCard(visitor.face), head),
+    h("dl", "", ...me.rows.map(([label, text]) => h("div", "", h("dt", "", label), h("dd", "", text)))),
+    h("p", "tip", "재미로 보는 관상 풀이예요 · 휴대폰으로 찍어 가세요 · 얼굴 사진은 저장되지 않아요"),
     button("again", attract, "처음으로"));
   keys = (k) => { if (k === " " || k === "Enter") attract(); };
   master.pose("cheer");

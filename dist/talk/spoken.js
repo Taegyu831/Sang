@@ -230,3 +230,19 @@ export function answer(reading, topic, who, random = Math.random) {
   if (topic === "self") memo[0] = `${say.adn} 사람`;
   return { lines, memo };
 }
+
+/** What the card says about the visitor: the same readings as the answers, gathered on one page. */
+export function profileOf(reading) {
+  const { read, say } = reading;
+  const traits = [...new Set(read.flatMap((p) => p.facets.traits ?? []))].slice(0, 5);
+  const parts = read.slice(0, 3).map((p) => p.name.replace(/^(?:살짝|꽤) /, ""));
+  const rows = [
+    ["눈에 띄는 곳", parts.join(", ")],
+    ["일할 때", soften(say.work)],
+    ["사랑할 때", soften(say.love)],
+    ["흐름", soften(say.stage)],
+    ["잘 맞는 사람", `${say.fit.desc} 사람`],
+    ["살펴볼 점", say.watch],
+  ].filter(([, text]) => text);
+  return { headline: `${say.adn} 사람`, traits, rows };
+}

@@ -129,17 +129,22 @@ em { font-style: normal; font-weight: 900; background: linear-gradient(transpare
 .f1, .f3, .f5 { background: var(--lime); color: var(--ink); }
 
 /* ---------- the card to take home ---------- */
-.card { position: absolute; z-index: 9; right: 20rem; top: 6rem; width: 56rem; display: none; flex-direction: column; align-items: center; gap: 1.2rem; padding: 3.2rem; border-radius: 4rem; background: var(--white); border: 0.9rem solid var(--rim); box-shadow: 0 2rem 5rem rgba(31, 59, 48, 0.28); rotate: 2deg; text-align: center; }
+.card { position: absolute; z-index: 9; left: 103rem; top: 4rem; width: 82rem; display: none; flex-direction: column; align-items: center; gap: 2.2rem; padding: 3.6rem 4rem; border-radius: 4rem; background: var(--white); border: 0.9rem solid var(--rim); box-shadow: 0 2rem 5rem rgba(31, 59, 48, 0.28); rotate: 1deg; }
 [data-scene="card"] .card { display: flex; animation: arrive 0.6s cubic-bezier(0.2, 1.4, 0.4, 1) backwards; }
 [data-scene="card"] .book { display: none; }
-.card small { font-size: 2rem; font-weight: 800; }
-.card h2 { font-size: 5rem; font-weight: 900; }
-.card .photo { width: 28rem; aspect-ratio: 4 / 5; border-radius: 1.6rem; overflow: hidden; }
+.card-top { display: flex; gap: 3.2rem; align-items: center; width: 100%; }
+.card .photo { flex: none; width: 24rem; aspect-ratio: 4 / 5; border-radius: 1.8rem; overflow: hidden; }
 .card .photo img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.tags { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.8rem; }
-.tags span { padding: 0.6rem 1.6rem; border-radius: 99rem; background: var(--lime); color: var(--ink); font-size: 2rem; font-weight: 800; }
-.card .mean { font-size: 2.7rem; font-weight: 900; line-height: 1.4; }
-.card .han { font-family: "AppleMyungjo", "Nanum Myeongjo", serif; font-size: 2.4rem; letter-spacing: 0.1em; color: var(--green-soft); }
+.card-head { display: flex; flex-direction: column; align-items: flex-start; gap: 1.2rem; }
+.card small { font-size: 2rem; font-weight: 800; color: var(--green); }
+.card h2 { font-size: 5.2rem; font-weight: 900; line-height: 1.15; }
+.card .headline { font-size: 3.1rem; font-weight: 900; line-height: 1.4; background: linear-gradient(transparent 55%, var(--lime) 55% 94%, transparent 94%); }
+.tags { display: flex; flex-wrap: wrap; gap: 0.8rem; }
+.tags span { padding: 0.6rem 1.6rem; border-radius: 99rem; background: var(--lime); color: var(--ink); font-size: 2.1rem; font-weight: 800; }
+.card dl { width: 100%; border-top: 0.4rem solid var(--lime); }
+.card dl div { display: grid; grid-template-columns: 17rem 1fr; gap: 1.6rem; align-items: baseline; padding: 1.4rem 0; border-bottom: 0.2rem solid var(--lime-soft); }
+.card dt { font-size: 2.2rem; font-weight: 900; color: var(--green); }
+.card dd { font-size: 2.45rem; font-weight: 700; line-height: 1.5; }
 .card .tip { font-size: 1.7rem; opacity: 0.7; }
 .again { padding: 1.2rem 3.6rem; border-radius: 99rem; background: var(--ink); color: var(--rim); font-size: 2.4rem; font-weight: 900; }
 /* ---------- the couple picture in its booth frame ---------- */

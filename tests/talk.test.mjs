@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { CALIBRATION } from "../dist/calibration.js";
 import { sayingsOf, POLE_IDS } from "../dist/story.js";
-import { TOPICS, answer, readingFor, soften, josa, FRAMES } from "../dist/talk/spoken.js";
+import { TOPICS, answer, readingFor, soften, josa, FRAMES, profileOf } from "../dist/talk/spoken.js";
 
 const content = JSON.parse(readFileSync(new URL("../dist/parts.json", import.meta.url)));
 
@@ -55,4 +55,13 @@ test("one visitor hears each wording once before any comes again", () => {
   const said = [0, 1, 2, 3].map(() => answer(reading, "work", "가").lines[0]);
   assert.equal(new Set(said).size, FRAMES.work.length);
   assert.ok(FRAMES.watch.every((f) => /^(그래서|그러니)/.test(f("x"))));
+});
+
+test("the card describes the visitor from the readings", () => {
+  for (const k of [-2, 0, 2]) {
+    const me = profileOf(readingFor(Object.fromEntries(Object.entries(CALIBRATION).map(([n, c]) => [n, c.center + c.scale * k])), 20, content));
+    assert.match(me.headline, /사람$/);
+    assert.ok(me.rows.length >= 4);
+    assert.doesNotMatch(JSON.stringify(me), /undefined|니다|⟦/);
+  }
 });
