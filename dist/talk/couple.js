@@ -21,13 +21,23 @@ export function coupleEndpoint(params) {
 // mood (portrait.js MOOD) follows the reading. One entry of each list is drawn for every picture.
 export const VARIETY = {
   hair: {
-    female: ["a short bob", "long straight hair", "long soft waves", "a medium layered cut", "a tied-back ponytail", "a loose low bun", "a short pixie cut", "shoulder-length hair with curtain bangs"],
-    male: ["a short crop", "a side-parted cut", "a soft two-block cut with bangs", "a loose natural perm", "medium-length swept-back hair", "a very short buzz cut", "a centre-parted cut", "short textured hair with the forehead showing"],
+    female: ["a short bob", "long straight hair", "long soft waves", "a medium layered cut", "a tied-back ponytail", "a loose low bun", "a short pixie cut", "a curly medium perm"],
+    male: ["a short crop", "a side-parted cut", "a soft two-block cut", "a loose natural perm", "medium-length swept-back hair", "a very short buzz cut", "a centre-parted cut", "short textured hair"],
   },
-  shape: ["an oval face", "a round face", "a square face with a defined jaw", "a long slim face", "a heart-shaped face", "a face with high cheekbones"],
-  eyes: ["large double-lidded eyes", "long monolid eyes", "round bright eyes", "narrow smiling eyes", "softly downturned eyes", "slightly upturned eyes"],
-  marks: ["thick eyebrows", "faint freckles", "dimples when smiling", "a small mole on the cheek", "a broad smile showing teeth", "full lips", "a straight high nose bridge", "a small rounded nose"],
-  glasses: ["no glasses", "no glasses", "no glasses", "thin round metal glasses", "dark rimmed glasses"], // two in five wear them
+  color: ["jet black hair", "dark brown hair", "light brown dyed hair", "ash brown dyed hair", "warm reddish brown dyed hair", "honey blonde dyed hair"],
+  bangs: {
+    female: ["wispy see-through bangs", "full straight bangs", "long side-swept bangs", "curtain bangs", "no bangs, the forehead showing"],
+    male: ["bangs down over the forehead", "the forehead fully showing", "a side fringe"],
+  },
+  // one whole impression at a time: parts drawn one by one still gave faces that looked alike
+  look: [
+    "a soft puppy-like look: round gently downturned eyes, a small rounded nose, a round face",
+    "a cat-like look: upturned almond eyes, a pointed chin, sharp defined features",
+    "bold striking features: large double-lidded eyes, a high nose bridge, full lips",
+    "a clean understated look: long monolid eyes, thin lips, a long slim face",
+    "a sunny look: crescent smiling eyes, dimples, full cheeks, a broad smile showing teeth",
+    "a strong angular look: a square jaw, thick straight eyebrows, deep-set eyes",
+  ],
   skin: ["a fair skin tone", "a medium skin tone", "a warm tanned skin tone"],
   clothes: ["a cream knit sweater", "a navy cardigan over a white T-shirt", "a light blue shirt", "a grey hoodie", "a black turtleneck", "a denim jacket", "a sage green sweatshirt", "a brown corduroy shirt", "a white blouse or shirt with a collar", "a striped long-sleeve T-shirt"],
   backdrop: ["a plain white backdrop", "a pale pink backdrop", "a sky blue backdrop", "a warm beige backdrop", "a soft grey backdrop", "a pale yellow curtain backdrop"],
@@ -42,11 +52,12 @@ export function couplePrompt({ partner, age = 20, pole = null }, random = Math.r
   const gender = partner === "male" ? "male" : "female";
   const person = gender === "male" ? "man" : "woman";
   const own = (name) => draw(VARIETY[name], random);
-  const looks = [draw(VARIETY.hair[gender], random), own("shape"), own("eyes"), own("marks"), own("skin"), own("glasses")];
+  const mine = (name) => draw(VARIETY[name][gender], random);
+  const looks = [`${mine("hair")} with ${mine("bangs")}`, own("color"), own("look"), own("skin"), own("glasses")];
   return [
     "Make one natural, candid photograph taken in a Korean self photo booth, showing two adults who are a couple.",
     "The first person is the person in the input photo. Keep their face, facial features, face shape, hairstyle, glasses and skin tone faithful and clearly recognisable. Do not beautify them or change who they are.",
-    `The second person is an invented, fictional Korean ${person} in their ${decade}s, not a real individual and not a celebrity, an ordinary-looking person with their own distinct face, clearly different from the first person. Looks: ${looks.join(", ")}. Wearing ${own("clothes")}. Presence: ${MOOD[pole] ?? "a balanced, pleasant, warm expression"}.`,
+    `The second person is an invented, fictional Korean ${person} in their ${decade}s, not a real individual and not a celebrity, an ordinary-looking person with their own distinct face, whose face and hair are clearly different from the first person's. Looks: ${looks.join("; ")}. Wearing ${own("clothes")}. Presence: ${MOOD[pole] ?? "a balanced, pleasant, warm expression"}.`,
     `They sit close side by side facing the camera with relaxed happy smiles, ${own("pose")}.`,
     `Soft even flash light, ${own("backdrop")}, framed from the chest up, vertical picture, realistic skin texture, modest everyday clothes.`,
     "Wholesome and non-sexual. No text, no logo, no frame, no watermark.",
