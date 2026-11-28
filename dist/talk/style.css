@@ -51,9 +51,9 @@ em { font-style: normal; font-weight: 900; background: linear-gradient(transpare
 .book.closing li, .book.closing li:first-child { font-size: 3rem; font-weight: 600; line-height: 1.55; animation: rise 0.7s cubic-bezier(0.33, 0, 0.2, 1) backwards; }
 .book.closing h3, .book.closing p { animation: rise 0.9s cubic-bezier(0.33, 0, 0.2, 1) var(--delay) backwards; }
 @keyframes rise { from { opacity: 0; translate: 0 5rem; } }
-/* the visitor's own answers sit in a row as small tags */
-[data-scene="ask"] .book ul, [data-scene="shoot"] .book ul { flex-direction: row; flex-wrap: wrap; gap: 1.6rem; }
-[data-scene="ask"] .book li, [data-scene="shoot"] .book li, [data-scene="ask"] .book li:first-child { font-size: 3.2rem; font-weight: 800; padding: 0.8rem 2.6rem; border-radius: 99rem; background: var(--white); box-shadow: var(--shadow); }
+/* the visitor's own answers run on as one line: "20대 남성 ..." */
+[data-scene="ask"] .book ul, [data-scene="shoot"] .book ul { flex-direction: row; flex-wrap: wrap; gap: 0 1.4rem; }
+[data-scene="ask"] .book li, [data-scene="shoot"] .book li, [data-scene="ask"] .book li:first-child { font-size: 4.4rem; font-weight: 800; }
 [data-scene="shoot"] .book { display: none; }
 
 /* ---------- choices ---------- */

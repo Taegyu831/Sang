@@ -1,6 +1,6 @@
 // The exhibition page: the visitor sits across from a small, serious fortune reader and is led
 // through the whole experience as a conversation.
-//   start screen -> a short notice -> the master asks gender, age, name, a partner for the last picture (or none)
+//   start screen -> a short notice -> the master asks age, gender, name, a partner for the last picture (or none)
 //   -> guided capture (the picture is ordered) -> thinking -> pick a question (again and again);
 //      the couple picture closes the 인연 answer (or comes before the last words if never asked)
 //   -> "이제 충분해요" -> the last words -> the card
@@ -17,7 +17,7 @@ import { captureFace, stopCamera, prepare as prepareModel } from "./capture-room
 import { TOPICS, answer, readingFor, profileOf, draw, josa } from "./spoken.js";
 
 // ARTIFICIAL: timings (ms).
-const T = { type: 38, after: 900, perChar: 55, rise: 200, stuck: 60000, askIdle: 45000, menuIdle: 60000, endIdle: 60000, photoIdle: 120000, printTalk: 11000, notice: 3200, closingGap: 2000, closingRead: 5000 };
+const T = { type: 38, after: 900, perChar: 55, rise: 200, stuck: 60000, askIdle: 120000, menuIdle: 120000, endIdle: 120000, photoIdle: 120000, printTalk: 11000, notice: 3200, closingGap: 2000, closingRead: 5000 };
 
 const params = new URLSearchParams(location.search);
 const DEV = params.get("dev") === "1";
@@ -248,22 +248,22 @@ async function ask() {
   master.pose("hello");
   if (!(await say(ctx, "어서 오세요! 먼저 몇 가지만 여쭐게요.", { hold: 900 }))) return;
   master.pose("listen");
-  if (!(await say(ctx, "성별이 어떻게 되세요?", { hold: null }))) return;
-  visitor.gender = await choose(ctx, [["여성", "female"], ["남성", "male"]]);
-  master.pose("write");
-  if (!(await write(ctx, visitor.gender === "female" ? "여성" : "남성"))) return;
-  master.pose("listen");
-  if (!(await say(ctx, "좋아요. 나이대는요?", { hold: null }))) return;
+  if (!(await say(ctx, "나이대가 어떻게 되세요?", { hold: null }))) return;
   visitor.age = await choose(ctx, [["20대", 20], ["30대", 30], ["40대", 40], ["50대", 50]]);
   master.pose("write");
   if (!(await write(ctx, `${visitor.age}대`))) return;
+  master.pose("listen");
+  if (!(await say(ctx, "좋아요. 성별은요?", { hold: null }))) return;
+  visitor.gender = await choose(ctx, [["여성", "female"], ["남성", "male"]]);
+  master.pose("write");
+  if (!(await write(ctx, visitor.gender === "female" ? "여성" : "남성"))) return;
   master.pose("listen");
   if (!(await say(ctx, "이름이 어떻게 되세요? 풀이할 때 불러 드릴게요.", { hold: null }))) return;
   visitor.name = await askName(ctx);
   if (!ctx.alive()) return;
   ui.who.textContent = visitor.name;
   master.pose("write");
-  if (!(await write(ctx, visitor.name))) return;
+  if (!(await write(ctx, `${visitor.name}님`))) return;
   // The present at the end. Photos are sent only if the visitor picks a partner here.
   if (COUPLE_ENDPOINT) {
     master.pose("push");
