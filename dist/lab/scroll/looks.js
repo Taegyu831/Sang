@@ -18,7 +18,7 @@ const puzzle = {
   },
   topic(m, root, data, i, face) {
     const t = data.topics[i];
-    const s = m.section(root, t.title, 1, "topic");
+    const s = m.section(root, t.title, 2000, "topic");
     const title = h("div", "tile t-title", h("small", "", t.title), h("h2", "", HEADS[t.title] ?? t.ask));
     const shot = closeUp(face, partFor(data, i), "tile t-shot", 1.2);
     const keys = t.words.map((w, k) => h("div", `tile t-key k${k}`, w));
@@ -43,7 +43,7 @@ const sticker = {
   },
   topic(m, root, data, i, face) {
     const t = data.topics[i];
-    const s = m.section(root, t.title, 1, "topic");
+    const s = m.section(root, t.title, 2000, "topic");
     const part = partFor(data, i);
     const photo = photoCard(face);
     focusPart(photo, face, part, 1.12);
@@ -93,7 +93,7 @@ const type = {
   },
   topic(m, root, data, i, face) {
     const t = data.topics[i];
-    const s = m.section(root, t.title, 1.4, `topic ${i % 2 ? "is-dark" : ""}`);
+    const s = m.section(root, t.title, 2800, `topic ${i % 2 ? "is-dark" : ""}`);
     const giant = h("h2", "giant", ...[...(HEADS[t.title] ?? t.ask)].map((c) => h("span", "", c === " " ? " " : c)));
     const round = closeUp(face, partFor(data, i), "t-round", 1.5);
     const keys = h("div", "t-keys", ...t.words.map((w) => h("div", "slot", h("span", "", w))));

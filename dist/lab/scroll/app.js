@@ -1,7 +1,7 @@
-// Scroll design prototype (2026-11-27): after one automatic picture the whole reading is a single
-// website that is explored by scrolling. Pieces are pulled into place from elsewhere as it moves.
+// Scroll design prototype (2026-11-27, paged 2026-11-28): after one automatic picture the whole reading
+// is a website of full screens, one per turn of the wheel. Pieces are pulled into place from elsewhere.
 //   start -> two questions -> camera -> result page (face, measuring, topics, bond, summary, last words)
-// Keys: space / down = next stop, up = back, T = next look, S = sample face, Esc = start over.
+// Keys: space / down = next step, up = back, T = next look, S = sample face, Esc = start over.
 // ?look=puzzle|sticker|type   ?scene=result|shoot|ask&sample=1&at=<section number>  (for screenshots)
 import { h, button, openCamera, stopCamera, measureFrame, useCpu, cropFace, sampleFace, loadContent, readingOf, summaryOf, replay } from "../desk/engine.js";
 import { createMotion } from "./motion.js";
@@ -113,7 +113,7 @@ function result() {
   const data = readingOf(visitor.face, visitor.age ?? 20);
   const summary = summaryOf(visitor.face, data);
   motion = createMotion();
-  const hero = motion.section(page, "내 얼굴", 0.25, "hero-part");
+  const hero = motion.section(page, "내 얼굴", 0, "hero-part");
   const flying = look.hero(hero.view, visitor.face, data);
   measureSection(motion, page, visitor.face, data, { numberFrom: look.shot.number, nameFrom: look.shot.name });
   data.topics.slice(0, -1).forEach((_, i) => look.topic(motion, page, data, i, visitor.face));
@@ -125,20 +125,23 @@ function result() {
   topBar.querySelector("b").textContent = look.name;
   topBar.querySelector("nav").replaceChildren(...links);
   const bar = topBar.querySelector("i");
-  motion.start((current, total) => {
-    links.forEach((l, i) => l.classList.toggle("is-on", i === current));
-    bar.style.transform = `scaleX(${total})`;
-    cue.hidden = total > 0.97;
-    cue.classList.toggle("is-small", current > 0);
-    topBar.classList.toggle("is-end", current === names.length - 1);
-    cue.classList.toggle("is-end", current === names.length - 1);
+  motion.start(({ index, progress, ready, end, next }) => {
+    links.forEach((l, i) => l.classList.toggle("is-on", i === index));
+    bar.style.transform = `scaleX(${progress})`;
+    // The sign to go on shows only when this step is complete, and says what comes next.
+    cue.hidden = end;
+    cue.classList.toggle("is-waiting", !ready);
+    cue.firstChild.textContent = next ? `아래로 한 번 · ${next}` : "";
+    const dark = index === names.length - 1;
+    topBar.classList.toggle("is-end", dark);
+    cue.classList.toggle("is-end", dark);
   });
   arrive(flying);
-  if (params.get("at") !== null) setTimeout(() => ctx.alive() && motion.go(Number(params.get("at")), true), 300);
+  if (params.get("at") !== null) motion.go(Number(params.get("at")), true);
   // Left alone, the page goes back to the start: sooner once the end has been reached.
   const watch = async () => {
     while (await ctx.wait(1000)) {
-      const atEnd = scrollY > document.documentElement.scrollHeight - innerHeight * 1.2;
+      const atEnd = motion.atEnd;
       const quiet = performance.now() - lastInput;
       cue.classList.toggle("is-calling", quiet > 6000);
       if (params.get("hold") !== "1" && quiet > (atEnd ? T.endIdle : T.resultIdle)) return start();
@@ -164,6 +167,7 @@ else {
   addEventListener("click", (event) => { if (event.detail > 0) event.target.closest?.("button")?.blur(); });
   addEventListener("keydown", (event) => {
     const k = event.key;
+    if (event.repeat) return; // a held key must not race through the pages
     if (event.target.closest?.("button") && (k === " " || k === "Enter")) return; // the button's own click
     if (k === "Escape") return start();
     if (k === "t" || k === "T" || k === "ㅅ") { const names = Object.keys(LOOKS); setLook(names[(names.indexOf(lookName) + 1) % names.length]); return scene === "result" ? result() : start(); }

@@ -66,7 +66,7 @@ export function closeUp(face, part, className = "closeup", most = 2.6) {
 
 /** The measuring section: the face stays, and scrolling walks it through the parts. */
 export function measureSection(m, root, face, data, { numberFrom, nameFrom }) {
-  const s = m.section(root, "얼굴 측정", data.shown.length * 0.75, "measure-part");
+  const s = m.section(root, "얼굴 측정", 6000, "measure-part");
   const photo = photoCard(face, "m-photo");
   const info = h("div", "m-info");
   const steps = h("ol", "m-steps", ...data.shown.map((p) => h("li", "", p.part)));
@@ -82,7 +82,10 @@ export function measureSection(m, root, face, data, { numberFrom, nameFrom }) {
   });
   let shownStep = -2;
   const begin = 0.2; const width = (0.98 - begin) / cards.length;
+  // One step for each part: the photo moves there and the number counts up by itself.
   s.stops = cards.map((_, i) => begin + width * (i + 0.6));
+  s.froms = cards.map((_, i) => (i ? begin + width * i : 0));
+  s.more = "다음 부위";
   s.onProgress = (q) => {
     const step = q < begin ? -1 : Math.min(cards.length - 1, Math.floor((q - begin) / width));
     if (step !== shownStep) {
@@ -100,14 +103,14 @@ export function measureSection(m, root, face, data, { numberFrom, nameFrom }) {
     c.number.style.transform = `translate(${numberFrom[0] * rest}vw, ${numberFrom[1] * rest}vh) rotate(${numberFrom[2] * rest}deg)`;
     c.name.style.transform = `translate(${nameFrom[0] * rest}vw, ${nameFrom[1] * rest}vh) rotate(${nameFrom[2] * rest}deg)`;
   };
-  info.append(h("p", "m-prompt", "스크롤하면 하나씩 재요"));
+  info.append(h("p", "m-prompt", "하나씩 재 볼게요"));
   return s;
 }
 
 /** 인연: the fitting piece clicks into mine, the other one stops short of it. */
 export function bondSection(m, root, data) {
   const t = data.topics.at(-1);
-  const s = m.section(root, "인연", 1.1, "bond-part");
+  const s = m.section(root, "인연", 2400, "bond-part");
   const mine = shapeCard("is-mine", [0, 1, 0, 0], "당신", "나");
   const fit = shapeCard("is-fit", [0, 0, 0, -1], "찰떡인 사람", data.fit);
   const clash = shapeCard("is-clash", [0, 0, 0, 1], "조심할 사람", data.clash);
@@ -120,10 +123,10 @@ export function bondSection(m, root, data) {
   return s;
 }
 
-const fitText = (box) => { for (let size = 100; size > 64 && box.scrollHeight > box.clientHeight + 2; size -= 4) box.style.fontSize = `${size}%`; };
+const fitText = (box) => { for (let size = 100; size > 52 && box.scrollHeight > box.clientHeight + 2; size -= 4) box.style.fontSize = `${size}%`; };
 /** The friendly wrap-up: the card to photograph and the whole reading in a few paragraphs. */
 export function summarySection(m, root, face, data, summary) {
-  const s = m.section(root, "전체 정리", 0.9, "sum-part");
+  const s = m.section(root, "전체 정리", 1800, "sum-part");
   const photo = photoCard(face);
   const card = h("div", "sum-card", photo.box, h("div", "sum-words", ...data.words.slice(0, 5).map((w) => h("span", "", w))), h("p", "sum-bond", `찰떡  ${data.fit}`), h("p", "sum-bond", `조심  ${data.clash}`), h("small", "", "휴대폰으로 찍어 가세요"));
   const text = h("div", "sum-text", h("p", "sum-wait", "전체 정리를 쓰는 중"));
@@ -138,8 +141,8 @@ export function summarySection(m, root, face, data, summary) {
 }
 /** The last words: everything stops flying about and the lines settle straight, one at a time. */
 export function closingSection(m, root, { again, home }) {
-  const s = m.section(root, "마지막 한마디", 1.7, "end-part");
-  s.stops = [0.41, 0.57, 0.97]; // the quotation, the first note, the last words
+  const s = m.section(root, "마지막 한마디", 5000, "end-part");
+  s.stops = [0.41, 0.57, 1]; // the quotation, the first note, the last words
   const settle = (node, at, from = [0, 7], span = 0.1) => m.piece(s, node, { from: [...from, 0, 1], at, span, calm: true });
   const han = h("p", "q-han", ...[...CLOSING_QUOTE.han].map((c, i) => (c === " " ? h("i", "q-gap") : settle(h("span", "", c), 0.08 + i * 0.012, [0, i % 2 ? 9 : -9]))));
   const quote = h("blockquote", "q", han, settle(h("p", "q-ko", CLOSING_QUOTE.ko), 0.27), settle(h("p", "q-mean", CLOSING_QUOTE.meaning), 0.32), settle(h("p", "q-src", CLOSING_QUOTE.source), 0.35));

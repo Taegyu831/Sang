@@ -5,7 +5,7 @@
 //
 // VERSION and FILES are written by tools/make-sw.py. Run it before every
 // push (python3 tools/make-sw.py --check says whether it is up to date).
-const VERSION = "06320f90a2be";
+const VERSION = "57b214999b32";
 const FILES = [
   "./",
   "age.js",
