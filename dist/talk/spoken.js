@@ -15,7 +15,6 @@ export const TOPICS = [
   { id: "time", ask: "내 때는 언제?", note: "시기" },
   { id: "bond", ask: "잘 맞는 사람", note: "인연" },
 ];
-export const NICKNAMES = ["새벽빛 고래", "다정한 은하", "느긋한 민들레", "반짝이는 조약돌", "수줍은 파도", "용감한 책갈피", "포근한 눈송이", "고요한 등대", "산뜻한 자두", "꿈꾸는 우체통", "말간 초승달", "씩씩한 도토리", "설레는 오솔길", "따스한 모닥불", "총총한 별사탕", "나른한 구름", "단단한 솔방울", "해맑은 물수제비"];
 
 /** The particle that fits the last syllable: josa("코", "을", "를") → "코를". */
 export function josa(word, withFinal, without) {
@@ -58,7 +57,7 @@ function told(p, k) {
 const minus = (p) => `다만 ${seen(p)} ${josa(mark(p.items[0]), "은", "는")} 조금 살펴볼 필요가 있어 보여요.`;
 
 /** The answer to one topic: sentences to say, and a few words for the notebook. */
-export function answer(reading, topic, nick) {
+export function answer(reading, topic, who) {
   const { read, say } = reading;
   const used = new Set();
   const lines = [];
@@ -75,21 +74,21 @@ export function answer(reading, topic, nick) {
     return plus.length + (low ? 1 : 0);
   };
   if (topic === "self") {
-    lines.push(`${nick}님은 ${mark(say.adn)} 분으로 보여요.`);
+    lines.push(`${who}님은 ${mark(say.adn)} 분으로 보여요.`);
     body(["traits"]);
     lines.push(caution("그래서 지금의 균형을 편하게 지켜 가면 좋을 수 있어요."));
   } else if (topic === "work") {
-    lines.push(`${nick}님은 일에서는 ${soften(say.work)}`);
+    lines.push(`${who}님은 일에서는 ${soften(say.work)}`);
     if (!body(["work"], ["workMinus"])) body(["traits"]);
     const strength = [...used][0];
     lines.push(strength ? `그래서 ${josa(mark(strength), "을", "를")} 살릴 수 있는 자리를 고르면 좋을 수 있어요.` : "그래서 내 방식이 통하는 자리를 고르면 좋을 수 있어요.");
   } else if (topic === "love") {
-    lines.push(`${nick}님은 사랑에서는 ${soften(say.love)}`);
+    lines.push(`${who}님은 사랑에서는 ${soften(say.love)}`);
     // Without anything about people the temperament is told, from other parts than the first topic uses.
     if (!body(["people"], ["peopleMinus"])) body(["traits"], null, read.length > 3 ? read.slice(2) : read);
     lines.push(say.watch ? `그래서 ${mark(say.watch)}만 한 번씩 살펴 주면 좋을 수 있어요.` : "그래서 상대의 속도도 함께 살피면 좋을 수 있어요.");
   } else if (topic === "time") {
-    lines.push(`${nick}님은 흐름으로 보면 ${soften(say.stage)}`);
+    lines.push(`${who}님은 흐름으로 보면 ${soften(say.stage)}`);
     let any = 0;
     for (const [label, field] of [["젊을 때", "early"], ["중년", "mid"], ["나중", "late"]]) {
       const p = pick(read, [field], 1, used)[0];
@@ -100,7 +99,7 @@ export function answer(reading, topic, nick) {
     if (!any) lines.push("어느 한 시기에 크게 몰리지 않고 고르게 흘러갈 수 있어요.");
     lines.push("그래서 지금 할 수 있는 것부터 차근차근 쌓아 두면 좋을 수 있어요.");
   } else {
-    lines.push(`${nick}님은 ${mark(say.fit.desc)} 사람과 잘 맞는 분으로 보여요.`);
+    lines.push(`${who}님은 ${mark(say.fit.desc)} 사람과 잘 맞는 분으로 보여요.`);
     lines.push(soften(say.fit.why));
     lines.push(`반대로 ${mark(say.clash.desc)} 사람과는 부딪힐 수 있어요. ${soften(say.clash.why)}`);
     lines.push("그래서 처음에는 서로의 속도부터 맞춰 보면 좋을 수 있어요.");

@@ -10,7 +10,7 @@ const el = (tag, attrs = {}, ...children) => {
   n.append(...children);
   return n;
 };
-const INK = "#26222a";
+const INK = "#1f3b30"; // the forest green of the page
 const SKIN = "#ffdcc2";
 const HAIR = "#5a4c47";
 const COAT = "#ffffff";
@@ -81,7 +81,7 @@ function makeArm(side) {
   const fill = [el("path", { fill: COAT }), el("path", { fill: COAT })];
   edge[0].setAttribute("stroke-linecap", "butt"); // no knob where it leaves the coat's line
   const crease = el("path", { ...thin, "stroke-width": 5 });
-  const cuff = el("path", { fill: "#cfe6e0", ...line, "stroke-width": 6 });
+  const cuff = el("path", { fill: "#e6f4b4", ...line, "stroke-width": 6 });
   const watch = el("g", {}, el("circle", { r: 17, fill: "#d9d6d2", ...line, "stroke-width": 6 }), el("path", { d: "M0 -7 L0 0 L6 3", ...thin, "stroke-width": 4 }));
   // drawn pointing up from the wrist, the thumb on the inner side
   const hand = el("g", {},
@@ -112,8 +112,8 @@ export function createCharacter() {
   // ---- body: coat, shirt, tie ----
   const coat = el("path", { d: "M400 452 C285 452 224 540 212 670 C203 790 270 884 400 884 C530 884 597 790 588 670 C576 540 515 452 400 452 Z", fill: COAT, ...line });
   const body = el("g", {}, coat,
-    el("path", { d: "M340 466 L400 640 L460 466 Q400 448 340 466 Z", fill: "#cfe6e0", ...line, "stroke-width": 6 }),
-    el("path", { d: "M386 492 L414 492 L408 514 L428 640 L400 676 L372 640 L392 514 Z", fill: "#2c3a6e", ...line, "stroke-width": 6 }),
+    el("path", { d: "M340 466 L400 640 L460 466 Q400 448 340 466 Z", fill: "#e6f4b4", ...line, "stroke-width": 6 }),
+    el("path", { d: "M386 492 L414 492 L408 514 L428 640 L400 676 L372 640 L392 514 Z", fill: "#d6f26a", ...line, "stroke-width": 6 }),
     el("path", { d: "M340 466 L306 540 L336 552 L318 576 L400 672 M460 466 L494 540 L464 552 L482 576 L400 672 L400 884", ...thin }),
     ...(STETHOSCOPE ? [
       el("path", { d: "M338 472 C305 505 300 565 312 622 M462 472 C500 505 504 585 486 640 C474 672 446 668 450 640", fill: "none", stroke: INK, "stroke-width": 14, "stroke-linecap": "round" }),
@@ -147,7 +147,7 @@ export function createCharacter() {
   const folded = el("g", { opacity: 0 },
     el("path", { d: "M-78 14 C-84 -30 -44 -50 0 -42 C44 -50 84 -30 78 14 C70 46 34 50 0 40 C-34 50 -70 46 -78 14 Z", fill: SKIN, ...line }),
     knuckle(-39, -22, 52), knuckle(39, -22, -52), knuckle(-19, -8, 58), knuckle(19, -8, -58), knuckle(-3, 8, 62));
-  const pen = el("g", {}, el("path", { d: "M-6 14 L54 -72", stroke: "#2c3a6e", "stroke-width": 18, "stroke-linecap": "round" }), el("path", { d: "M-6 14 l-12 18", stroke: INK, "stroke-width": 7, "stroke-linecap": "round" }));
+  const pen = el("g", {}, el("path", { d: "M-6 14 L54 -72", stroke: "#4f8a5f", "stroke-width": 18, "stroke-linecap": "round" }), el("path", { d: "M-6 14 l-12 18", stroke: INK, "stroke-width": 7, "stroke-linecap": "round" }));
   const lens = el("g", { opacity: 0 }, el("path", { d: "M0 0 L-8 -44", stroke: INK, "stroke-width": 22, "stroke-linecap": "round" }),
     el("circle", { cx: -24, cy: -118, r: 76, fill: "rgba(255,255,255,0.35)", stroke: INK, "stroke-width": 16 }), el("ellipse", { cx: -24, cy: -118, rx: 24, ry: 20, fill: INK }), el("circle", { cx: -16, cy: -126, r: 7, fill: "#fff" }));
 
