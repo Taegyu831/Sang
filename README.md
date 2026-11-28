@@ -96,3 +96,11 @@ python3 -m http.server 8000 --directory dist --bind 127.0.0.1
 
 - `dist/fallback/` holds 32 portraits made ahead of time (20s only: 16 per gender, `<fit|clash>-<pole or even>-<female|male>.jpg`, 640 px, about 70 KB each). `tools/make-fallback.py` makes the missing ones through the Vercel function.
 - If the live picture takes longer than 30 s or fails (offline, rate limit, API error), the page shows the matching spare portrait, whatever age the visitor chose. If no file matches, the line drawing stays.
+
+## 휴대폰판 (dist/m)
+
+시작 화면의 QR로 열리는 세로 스크롤 화면이다. 주소: https://taegyu831.github.io/Sang/m/
+질문, 촬영, 풀이, 마지막 한마디, 카드까지 휴대폰 한 대로 끝난다. 커플 사진은 없다(장당 비용이 들고 주소를 아는 누구나 요청할 수 있게 되기 때문).
+측정과 풀이는 전시 화면과 같은 코드를 쓴다. QR 그림은 `dist/talk/qr-phone.svg`이며 주소가 바뀌면 다시 만들어야 한다.
+개발용: `?collect=off`, `?sample=1`(카메라 없이 예시 얼굴).
+

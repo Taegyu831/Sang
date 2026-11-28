@@ -13,7 +13,7 @@ import { CLOSING_QUOTE, CLOSING_SPOKEN } from "../closing.js";
 import { DEFAULT_COLLECT_ENDPOINT, buildRecord, submitMeasurement, flushQueue } from "../collect.js";
 import { coupleEndpoint, requestCouple } from "./couple.js";
 import { createCharacter } from "./character.js";
-import { captureFace, stopCamera, prepare as prepareModel } from "./capture-room.js";
+import { captureFace, stopCamera, prepare as prepareModel, ASKS, TROUBLE } from "./capture-room.js";
 import { TOPICS, answer, readingFor, profileOf, draw, josa } from "./spoken.js";
 
 // ARTIFICIAL: timings (ms).
@@ -71,9 +71,12 @@ function build() {
   const table = h("div", "table");
   const promise = h("p", "promise", "얼굴 사진과 영상은 저장되지 않아요 · 비율 숫자는 이름 없이 통계로 모아요");
   // The start screen covers the whole window until the button is pressed.
+  // A QR code in its corner opens the phone version (dist/m); the picture is in talk/qr-phone.svg.
   const floaters = ["성격", "재물", "전성기", "첫인상", "연애", "인연"].map((w, i) => h("span", `float f${i}`, w));
   const title = h("h1", "", h("span", "", "내 얼굴"), h("span", "mark", "읽어 보기"));
-  const cover = h("div", "cover", h("p", "team", "이음 | IUM"), ...floaters, h("div", "cover-mid", title, button("cta", () => notice(), "내 관상 보기")));
+  const code = h("img", ""); code.src = new URL("./qr-phone.svg", import.meta.url).href; code.alt = "휴대폰 버전 QR 코드";
+  const phone = h("div", "to-phone", code, h("p", "", h("b", "", "휴대폰으로도"), h("span", "", "카메라로 QR을 찍어 보세요")));
+  const cover = h("div", "cover", h("p", "team", "이음 | IUM"), ...floaters, h("div", "cover-mid", title, button("cta", () => notice(), "내 관상 보기")), phone);
   // shown for a moment on an empty page, between the start screen and the first question
   const notes = h("div", "notice", ...["약 3분이면 돼요", "얼굴 사진은 저장되지 않아요", "얼굴 비율 숫자는 이름 없이 통계로 모아요"].map((t, i) => { const p = h("p", "", t); p.style.setProperty("--i", i); return p; }));
   notes.addEventListener("click", () => skip());
@@ -283,28 +286,6 @@ async function ask() {
   shoot();
 }
 
-const ASKS = {
-  front: ["focus", "저를 똑바로 봐 주세요. 편한 표정이면 돼요.", "", 0],
-  left: ["left", "좋아요. 고개를 살짝 이쪽으로 돌려 보세요.", "◀", 1],
-  right: ["right", "이번엔 반대쪽이에요. 이쪽으로 살짝.", "▶", 2],
-  done: ["focus", "음, 보여요. 다시 정면으로 돌아와 주세요.", "", 2],
-  clench: ["clench", "입은 다물고, 턱에 힘을 꽉! 저처럼요.", "", 3],
-  smile: ["smile", "마지막이에요. 활짝 웃어 보세요!", "", 4],
-};
-// The app's capture guidance (capture.js GUIDANCE), in the character's own voice.
-const TROUBLE = {
-  none: "어라, 얼굴이 안 보여요. 화면 가운데에 앉아 주세요.",
-  far: "조금만 더 가까이 와 주실래요?",
-  near: "어이쿠, 가까워요. 조금만 뒤로 가 주세요.",
-  "off-center": "얼굴이 화면 한가운데 오게 앉아 주세요.",
-  yaw: "너무 많이 돌렸어요. 조금만 돌아와 주세요.",
-  "pitch-up": "턱을 살짝 당겨 주세요.",
-  "pitch-down": "고개를 살짝 들어 주세요.",
-  roll: "고개를 조금만 바로 세워 주세요.",
-  smile: "웃는 건 이따가요. 지금은 편한 무표정으로 부탁해요.",
-  "mouth-open": "입은 편하게 다물어 주세요.",
-  frown: "미간에 힘 빼고, 편안하게요.",
-};
 async function shoot() {
   const ctx = enter("shoot");
   visitor.face = null; visitor.reading = null; visitor.heard = [];

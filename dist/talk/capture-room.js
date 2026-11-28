@@ -16,6 +16,29 @@ const limits = () => (new URLSearchParams(location.search).get("strict") === "0"
 const HARD_LIMIT_MS = 40000; // ARTIFICIAL: after this long the capture finishes with what it has
 const MIN_AT_LIMIT = 15; // ARTIFICIAL: ... if at least this many frames were usable
 const SIDE_YAW = 16; // ARTIFICIAL: the head angle (degrees) preferred for the side pictures
+/** What the character says at each step: [pose, words, arrow, step number]. */
+export const ASKS = {
+  front: ["focus", "저를 똑바로 봐 주세요. 편한 표정이면 돼요.", "", 0],
+  left: ["left", "좋아요. 고개를 살짝 이쪽으로 돌려 보세요.", "◀", 1],
+  right: ["right", "이번엔 반대쪽이에요. 이쪽으로 살짝.", "▶", 2],
+  done: ["focus", "음, 보여요. 다시 정면으로 돌아와 주세요.", "", 2],
+  clench: ["clench", "입은 다물고, 턱에 힘을 꽉! 저처럼요.", "", 3],
+  smile: ["smile", "마지막이에요. 활짝 웃어 보세요!", "", 4],
+};
+// The app's capture guidance (capture.js GUIDANCE), in the character's own voice.
+export const TROUBLE = {
+  none: "어라, 얼굴이 안 보여요. 화면 가운데에 앉아 주세요.",
+  far: "조금만 더 가까이 와 주실래요?",
+  near: "어이쿠, 가까워요. 조금만 뒤로 가 주세요.",
+  "off-center": "얼굴이 화면 한가운데 오게 앉아 주세요.",
+  yaw: "너무 많이 돌렸어요. 조금만 돌아와 주세요.",
+  "pitch-up": "턱을 살짝 당겨 주세요.",
+  "pitch-down": "고개를 살짝 들어 주세요.",
+  roll: "고개를 조금만 바로 세워 주세요.",
+  smile: "웃는 건 이따가요. 지금은 편한 무표정으로 부탁해요.",
+  "mouth-open": "입은 편하게 다물어 주세요.",
+  frown: "미간에 힘 빼고, 편안하게요.",
+};
 let landmarker = null;
 let files = null;
 let mod = null;
@@ -45,7 +68,7 @@ export function prepare() {
  * on.progress(0..1). Returns the face to show with its values and `sides` (one picture from each
  * head turn, for the couple picture), or null when the scene ended.
  */
-export async function captureFace(video, alive, on) {
+export async function captureFace(video, alive, on, { limits: own } = {}) {
   stopCamera();
   const opened = await openCameraStream({ width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" });
   if (!alive()) { opened.getTracks().forEach((t) => t.stop()); return null; }
@@ -53,7 +76,7 @@ export async function captureFace(video, alive, on) {
   video.srcObject = stream;
   await video.play();
   await prepare();
-  const capture = new StableCapture(limits());
+  const capture = new StableCapture(own ?? limits());
   const canvas = document.createElement("canvas");
   let compare = null; let compareIndex = 0; const compared = {}; let base = null;
   let best = null; let asked = null; let began = null;
