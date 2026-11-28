@@ -14,7 +14,7 @@ import { DEFAULT_COLLECT_ENDPOINT, buildRecord, submitMeasurement, flushQueue } 
 import { coupleEndpoint, requestCouple } from "./couple.js";
 import { createCharacter } from "./character.js";
 import { captureFace, stopCamera, prepare as prepareModel } from "./capture-room.js";
-import { TOPICS, answer, readingFor, josa } from "./spoken.js";
+import { TOPICS, answer, readingFor, draw, josa } from "./spoken.js";
 
 // ARTIFICIAL: timings (ms).
 const T = { type: 38, after: 900, perChar: 55, rise: 200, stuck: 60000, askIdle: 45000, menuIdle: 60000, endIdle: 60000, photoIdle: 120000, printTalk: 11000, notice: 3200, closingGap: 2000, closingRead: 5000 };
@@ -28,6 +28,17 @@ const COLLECT_ENDPOINT = collectParam === "off" ? "" : collectParam || DEFAULT_C
 // a sentence has been typed).
 const READ = { gesture: 700, write: 18, type: 28, after: 600, stay: 40 };
 const NAME_MAX = 10;
+// ARTIFICIAL: wordings of the small talk around the readings; one is drawn each time.
+const CHAT = {
+  look: ["어디 보자...", "자, 한번 볼게요.", "음, 천천히 볼까요.", "오, 어디 봅시다."],
+  first: [(p) => `흠, ${josa(p, "이", "가")} 눈에 띄네요.`, (p) => `먼저 ${josa(p, "이", "가")} 보여요.`, (p) => `${p}부터 눈이 가네요.`],
+  second: [(p) => `그리고 ${p}도요.`, (p) => `${p}도 봐 둘게요.`, (p) => `${josa(p, "은", "는")} 또 이렇군요.`],
+  third: [(p) => `오호, ${p}까지.`, (p) => `마지막으로 ${p}.`, (p) => `${p}도 흥미롭네요.`],
+  ready: ["좋아요, 정리됐어요.", "됐어요, 다 읽었어요.", "자, 이제 말씀드릴게요."],
+  ask: [(n) => `${n}님, 제일 궁금한 게 뭐예요?`, (n) => `${n}님, 어떤 것부터 볼까요?`, (n) => `${n}님, 먼저 듣고 싶은 걸 골라 주세요.`],
+  more: ["그다음으로 더 궁금한 거 있어요?", "또 어떤 게 궁금해요?", "이번엔 무엇을 볼까요?"],
+  good: ["좋은 질문이에요.", "그게 궁금했군요.", "어디 한번 볼까요.", "좋아요, 그걸 볼게요."],
+};
 const SAMPLE_NAME = "홍길동"; // only for the ?dev=1 shortcuts
 const COUPLE_ENDPOINT = coupleEndpoint(params);
 const stage = document.querySelector("#stage");
@@ -194,7 +205,7 @@ function showSaying() {
 }
 /** Writes a line on the page, letter by letter. */
 async function write(ctx, line, step = 30) {
-  const li = h("li", /^그래서/.test(line) ? "advice" : "");
+  const li = h("li", /^(그래서|그러니)/.test(line) ? "advice" : "");
   ui.book.querySelector("ul").append(li);
   const whole = strip(line);
   for (let i = 2; i < whole.length + 2; i += 2) {
@@ -367,7 +378,8 @@ async function ponder() {
   prepare();
   heading(`${visitor.name}님의 상`);
   const parts = visitor.reading.read.slice(0, 3);
-  const mumbles = ["어디 보자...", ...parts.map((p, i) => [`흠, ${josa(p.part, "이", "가")} 눈에 띄네요.`, `그리고 ${p.part}도요.`, `오호, ${p.part}까지.`][i])];
+  const chat = (key) => draw(visitor.reading, `chat-${key}`, CHAT[key]);
+  const mumbles = [chat("look"), ...parts.map((p, i) => chat(["first", "second", "third"][i])(p.part))];
   const gestures = ["sky", "write", "think", "write"];
   for (const [i, text] of mumbles.entries()) {
     master.pose(gestures[i]);
@@ -375,7 +387,7 @@ async function ponder() {
     if (i) { master.pose("write"); if (!(await write(ctx, parts[i - 1].name, READ.write))) return; if (!(await ctx.wait(250))) return; }
   }
   master.pose("push");
-  if (!(await say(ctx, "좋아요, 정리됐어요.", { hold: 600, type: READ.type }))) return;
+  if (!(await say(ctx, chat("ready"), { hold: 600, type: READ.type }))) return;
   menu();
 }
 async function menu() {
@@ -386,7 +398,7 @@ async function menu() {
   if (!ui.book.querySelector("h3")) heading(`${visitor.name}님의 상`);
   master.pose("listen");
   const first = !visitor.heard.length;
-  say(ctx, first ? `${visitor.name}님, 제일 궁금한 게 뭐예요?` : "그다음으로 더 궁금한 거 있어요?", { hold: null });
+  say(ctx, first ? draw(visitor.reading, "chat-ask", CHAT.ask)(visitor.name) : draw(visitor.reading, "chat-more", CHAT.more), { hold: null });
   const id = await choose(ctx, left.map((t) => [t.ask, t.id]), { idle: T.menuIdle, className: "orbit" });
   if (ctx.alive()) read(id);
 }
@@ -398,7 +410,7 @@ async function read(id) {
   visitor.heard.push(topic.id);
   heading(topic.note);
   master.pose("push");
-  if (!(await say(ctx, `${topic.note}, 좋은 질문이에요.`, { hold: 350, type: READ.type }))) return;
+  if (!(await say(ctx, `${topic.note}, ${draw(visitor.reading, "chat-good", CHAT.good)}`, { hold: 350, type: READ.type }))) return;
   const gestures = ["think", "sky", "focus", "think", "sky"];
   for (const [i, line] of lines.entries()) {
     ui.bubble.classList.remove("is-on");

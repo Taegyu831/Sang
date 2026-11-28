@@ -204,7 +204,7 @@ python3 -m http.server 8765 --bind 127.0.0.1
 - 색: 시작 화면과 같은 아이보리, 짙은 초록, 라임으로 통일한다.
 - 통계 저장(2026-11-28 팀 결정): 동의 선택 없이, 촬영을 마친 모든 관람객의 성별, 나이대, 비율 숫자를 한 사람에 한 번 `collect.js`로 보낸다. 시작 화면과 질문 화면에 "비율 숫자는 이름 없이 통계로 모아요"라고 알린다. 카메라 없는 예시 얼굴과 `?collect=off`는 보내지 않는다. `appVersion`은 `2026-11-28.2`. 화면에 저장 성공 여부는 보이지 않으므로 Supabase의 건수로 확인한다. 전송에 실패한 기록은 그 브라우저에 남았다가 다음에 열 때 나간다. 이 고지 방식이 학교와 개인정보 보호법 기준에 충분한지는 확인되지 않았다.
 - 풀이 재료: `facets.js`, `story.js`의 `sayingsOf`, `closing.js`. 마지막 한마디는 가운데 정렬로 뜻(크게), 한자(작게, 초록), 음이 0.2초 간격(`T.rise`)으로 올라오고, 그 아래에 설명이 약 2초(`T.closingGap`) 간격으로 한 줄씩 더해진다.
-- 인위적 개입(팀 검토 필요): `talk/spoken.js`의 모든 말투 틀과 "그래서 ..." 조언 문장, 풀이 속도 값(`talk/app.js`의 `READ`), 이름 글자 수(`NAME_MAX`), 질문 다섯 가지 이름, `closing.js`의 `CLOSING_SPOKEN`(마지막 문구의 구어체), `talk/app.js`의 대사, 시작 화면 문구와 시간값(`T`), `talk/capture-room.js`의 `HARD_LIMIT_MS`/`MIN_AT_LIMIT`, `talk/character.js`의 모든 모양과 동작, `talk/style.css`의 색.
+- 인위적 개입(팀 검토 필요): `talk/spoken.js`의 모든 말투 틀(`FRAMES`, 같은 뜻의 문장을 여러 벌 두고 방문자마다 무작위로 고름. 뜻, 조심스러운 말끝, 표시 단어의 순서는 같음)과 "그래서/그러니 ..." 조언 문장, `talk/app.js`의 잡담 문장(`CHAT`), 풀이 속도 값(`talk/app.js`의 `READ`), 이름 글자 수(`NAME_MAX`), 질문 다섯 가지 이름, `closing.js`의 `CLOSING_SPOKEN`(마지막 문구의 구어체), `talk/app.js`의 대사, 시작 화면 문구와 시간값(`T`), `talk/capture-room.js`의 `HARD_LIMIT_MS`/`MIN_AT_LIMIT`, `talk/character.js`의 모든 모양과 동작, `talk/style.css`의 색.
 - "~할 수 있어요" 형태는 단정을 피하려는 말투일 뿐 근거의 강도를 뜻하지 않는다.
 - 캐릭터는 팀이 고른 참고 그림을 단순화한 것이다(청진기는 `STETHOSCOPE`로 끔). 참고 그림이 기존 작품의 캐릭터라면 전시 전에 닮은 정도와 사용 가능 여부를 팀이 확인해야 한다.
 - 개발용: `?dev=1`에서만 S 키(예시 얼굴)와 `?scene=` 바로 가기가 된다. Esc는 언제나 처음으로.
