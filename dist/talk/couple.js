@@ -58,6 +58,7 @@ export function couplePrompt({ partner, age = 20, pole = null }, random = Math.r
   return [
     "Make one natural, candid photograph taken in a Korean self photo booth, showing two adults who are a couple.",
     "The first person is the person in the input photo. Keep their face, facial features, face shape, hairstyle, glasses and skin tone faithful and clearly recognisable. Do not beautify them or change who they are.",
+    "Everything described for the second person belongs to the second person only. Never give the first person glasses, bangs, a hair colour or anything else that is not in the input photo.",
     `The second person is an invented, fictional Korean ${person} in their ${decade}s, not a real individual and not a celebrity, an ordinary-looking person with their own distinct face, whose face and hair are clearly different from the first person's. Looks: ${looks.join("; ")}. Wearing ${own("clothes")}. Presence: ${MOOD[pole] ?? "a balanced, pleasant, warm expression"}.`,
     `They sit close side by side facing the camera with relaxed happy smiles, ${own("pose")}.`,
     `Soft even flash light, ${own("backdrop")}, framed from the chest up, vertical picture, realistic skin texture, modest everyday clothes.`,
