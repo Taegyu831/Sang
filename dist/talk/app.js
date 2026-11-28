@@ -164,11 +164,19 @@ function askName(ctx) {
     const input = h("input", "name-input");
     Object.assign(input, { type: "text", maxLength: NAME_MAX, placeholder: "이름", autocomplete: "off", spellcheck: false });
     input.setAttribute("aria-label", "이름");
-    const send = h("button", "choice name-send", h("span", "", "다 적었어요"), h("kbd", "", "Enter"));
+    const send = h("button", "name-send", "Enter");
     send.type = "submit";
-    const form = h("form", "name-form", input, send, h("p", "name-note", "이름은 저장하지 않아요"));
+    send.setAttribute("aria-label", "다 적었어요");
+    const tail = h("span", "", "라고 합니다.");
+    const row = h("div", "name-row", h("span", "", "저는"), input, tail, send);
+    const form = h("form", "name-form", row, h("p", "name-note", "이름은 저장하지 않아요"));
     let typed = performance.now(); let done = false;
-    input.addEventListener("input", () => { typed = performance.now(); form.classList.remove("is-empty"); });
+    input.addEventListener("input", () => {
+      typed = performance.now(); form.classList.remove("is-empty");
+      // "박태규라고", but "박민준이라고": after a Korean final consonant
+      const last = input.value.trim().charCodeAt(input.value.trim().length - 1) - 0xac00;
+      tail.textContent = last >= 0 && last < 11172 && last % 28 ? "이라고 합니다." : "라고 합니다.";
+    });
     // the Enter that finishes a Korean syllable must not send the form
     input.addEventListener("keydown", (event) => { if (event.key === "Enter" && (event.isComposing || event.keyCode === 229)) event.preventDefault(); });
     form.addEventListener("submit", (event) => {
