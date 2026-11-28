@@ -2,7 +2,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import handler, { cleanRequest } from "../api/couple.mjs";
-import { couplePrompt, coupleEndpoint } from "../dist/talk/couple.js";
+import { couplePrompt, coupleEndpoint, VARIETY } from "../dist/talk/couple.js";
 
 const jpeg = `data:image/jpeg;base64,${Buffer.concat([Buffer.from([0xff, 0xd8]), Buffer.alloc(2000)]).toString("base64")}`;
 const spec = { partner: "male", age: 20, pole: "feel-" };
@@ -18,6 +18,18 @@ test("the prompt keeps the visitor and invents an adult partner", () => {
   assert.match(text, /fictional Korean man in their 20s/);
   assert.match(text, /non-sexual/);
   assert.match(couplePrompt({ partner: "female", age: 15 }), /woman in their 20s/); // never below the adult groups
+});
+
+test("the partner's looks change from picture to picture", () => {
+  const seen = new Set(Array.from({ length: 200 }, () => couplePrompt(spec)));
+  assert.ok(seen.size > 190);
+  for (const partner of ["female", "male"]) {
+    const first = couplePrompt({ ...spec, partner }, () => 0);
+    const last = couplePrompt({ ...spec, partner }, () => 0.999999);
+    assert.ok(first.includes(VARIETY.hair[partner][0]));
+    assert.ok(last.includes(VARIETY.hair[partner].at(-1)));
+    assert.doesNotMatch(first + last, /undefined/);
+  }
 });
 
 test("only a JPEG and a known spec are accepted", () => {
