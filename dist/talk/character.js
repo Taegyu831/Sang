@@ -1,5 +1,5 @@
 // The master: a two-heads-tall bald gentleman with glasses, a moustache and a
-// white coat, simplified from a reference picture the team chose.
+// white coat, simplified from a reference picture the team chose, with an open book on the desk.
 // Arms are two sleeves with a real elbow (shoulder -> elbow -> wrist), so that they bend like arms
 // resting on a desk; every pose names where the elbows and wrists are.
 // ARTIFICIAL: all the shapes, colours, poses and timings are this prototype's own.
@@ -14,7 +14,6 @@ const INK = "#1f3b30"; // the forest green of the page
 const SKIN = "#ffdcc2";
 const HAIR = "#5a4c47";
 const COAT = "#ffffff";
-const STETHOSCOPE = true; // the reference wears one
 const still = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 const line = { stroke: INK, "stroke-width": 8, "stroke-linejoin": "round", "stroke-linecap": "round" };
 const thin = { fill: "none", stroke: INK, "stroke-width": 6, "stroke-linecap": "round", "stroke-linejoin": "round" };
@@ -26,17 +25,17 @@ const REST_L = { lx: 330, ly: 730, lex: 175, ley: 715 };
 const REST_R = { rx: 470, ry: 730, rex: 625, rey: 715 };
 const REST = {
   dx: 0, dy: 0, tilt: 0, turn: 0, nod: 0, lean: 1, ex: 0, ey: 0, open: 1, happy: 0, wink: 0, brow: 9, lift: 0,
-  smile: 6, wide: 24, gape: 0, gy: 0, pen: 0, lens: 0, ...FOLDED,
+  smile: 6, wide: 24, gape: 0, gy: 0, pen: 0, ...FOLDED,
 };
 export const POSES = {
   idle: {},
   hello: { tilt: -6, brow: -4, lift: -10, smile: 18, wide: 34, gape: 12, clasp: 0, ...REST_L, rx: 668, ry: 420, rex: 660, rey: 640 },
   listen: { tilt: 6, brow: 2, smile: 10 },
   push: { clasp: 0, brow: 14, smile: 2, wide: 18, ...REST_L, rx: 590, ry: 392, rex: 668, rey: 622 },
-  write: { clasp: 0, tilt: 5, nod: 0.8, dy: 10, ey: 8, brow: 6, smile: 4, wide: 18, pen: 1, lx: 300, ly: 738, lex: 160, ley: 700, rx: 480, ry: 705, rex: 648, rey: 690 },
+  write: { clasp: 0, tilt: 5, nod: 0.8, dy: 10, ey: 8, brow: 6, smile: 4, wide: 18, pen: 1, lx: 270, ly: 736, lex: 145, ley: 690, rx: 540, ry: 724, rex: 692, rey: 682 },
   think: { clasp: 0, tilt: -9, ex: 9, ey: -8, brow: 16, lift: -4, smile: -2, wide: 16, lx: 340, ly: 535, lex: 250, ley: 738, rx: 430, ry: 735, rex: 610, rey: 715 },
   sky: { clasp: 0, tilt: 10, nod: -0.75, ex: 5, ey: -11, brow: -8, lift: -10, smile: 0, wide: 14, gape: 5, pen: 1, ...REST_L, rx: 560, ry: 535, rex: 660, rey: 710 },
-  focus: { clasp: 0, lean: 1.12, dy: 14, open: 0.45, brow: 20, lift: 6, smile: -4, wide: 20, lens: 1, ...REST_L, rx: 540, ry: 488, rex: 690, rey: 650 },
+  focus: { clasp: 0, lean: 1.12, dy: 14, open: 0.45, brow: 20, lift: 6, smile: -4, wide: 20, ...REST_L, rx: 540, ry: 488, rex: 690, rey: 650 },
   peek: { lean: 1.07, tilt: -5, wink: 1, brow: -2, lift: -6, smile: 16, wide: 30 },
   left: { clasp: 0, turn: -1, tilt: -8, dx: -30, ex: -7, brow: 0, smile: 10, lx: 112, ly: 470, lex: 165, ley: 665, ...REST_R },
   right: { clasp: 0, turn: 1, tilt: 8, dx: 30, ex: 7, brow: 0, smile: 10, ...REST_L, rx: 688, ry: 470, rex: 635, rey: 665 },
@@ -114,11 +113,7 @@ export function createCharacter() {
   const body = el("g", {}, coat,
     el("path", { d: "M340 466 L400 640 L460 466 Q400 448 340 466 Z", fill: "#e6f4b4", ...line, "stroke-width": 6 }),
     el("path", { d: "M386 492 L414 492 L408 514 L428 640 L400 676 L372 640 L392 514 Z", fill: "#d6f26a", ...line, "stroke-width": 6 }),
-    el("path", { d: "M340 466 L306 540 L336 552 L318 576 L400 672 M460 466 L494 540 L464 552 L482 576 L400 672 L400 884", ...thin }),
-    ...(STETHOSCOPE ? [
-      el("path", { d: "M338 472 C305 505 300 565 312 622 M462 472 C500 505 504 585 486 640 C474 672 446 668 450 640", fill: "none", stroke: INK, "stroke-width": 14, "stroke-linecap": "round" }),
-      el("circle", { cx: 314, cy: 640, r: 21, fill: "#d9d6d2", ...line, "stroke-width": 7 }),
-    ] : []));
+    el("path", { d: "M340 466 L306 540 L336 552 L318 576 L400 672 M460 466 L494 540 L464 552 L482 576 L400 672 L400 884", ...thin }));
   // ---- head ----
   const tuft = (side) => {
     const x = (n) => 400 + side * n;
@@ -148,14 +143,18 @@ export function createCharacter() {
     el("path", { d: "M-78 14 C-84 -30 -44 -50 0 -42 C44 -50 84 -30 78 14 C70 46 34 50 0 40 C-34 50 -70 46 -78 14 Z", fill: SKIN, ...line }),
     knuckle(-39, -22, 52), knuckle(39, -22, -52), knuckle(-19, -8, 58), knuckle(19, -8, -58), knuckle(-3, 8, 62));
   const pen = el("g", {}, el("path", { d: "M-6 14 L54 -72", stroke: "#4f8a5f", "stroke-width": 18, "stroke-linecap": "round" }), el("path", { d: "M-6 14 l-12 18", stroke: INK, "stroke-width": 7, "stroke-linecap": "round" }));
-  const lens = el("g", { opacity: 0 }, el("path", { d: "M0 0 L-8 -44", stroke: INK, "stroke-width": 22, "stroke-linecap": "round" }),
-    el("circle", { cx: -24, cy: -118, r: 76, fill: "rgba(255,255,255,0.35)", stroke: INK, "stroke-width": 16 }), el("ellipse", { cx: -24, cy: -118, rx: 24, ry: 20, fill: INK }), el("circle", { cx: -16, cy: -126, r: 7, fill: "#fff" }));
-
+  // The open book on the desk, between the elbows: where the pen writes.
+  const rows = [736, 752, 768].flatMap((y, i) => [`M${262 - i * 7} ${y} Q${322 - i * 3} ${y - 9} 382 ${y + 2}`, `M418 ${y + 2} Q${478 + i * 3} ${y - 9} ${538 + i * 7} ${y}`]).join(" ");
+  const book = el("g", { class: "desk-book" },
+    el("path", { d: "M244 718 Q322 696 400 722 Q478 696 556 718 L592 800 Q496 780 400 806 Q304 780 208 800 Z", fill: "#4f8a5f", ...line }),
+    el("path", { d: "M256 712 Q330 692 400 718 L400 790 Q316 766 228 784 Z", fill: "#fffdf2", ...line, "stroke-width": 6 }),
+    el("path", { d: "M544 712 Q470 692 400 718 L400 790 Q484 766 572 784 Z", fill: "#fffdf2", ...line, "stroke-width": 6 }),
+    el("path", { d: rows, fill: "none", stroke: "#a9bfae", "stroke-width": 4, "stroke-linecap": "round" }));
   const torso = el("g", {}, body, head);
   const cut = el("rect", { x: -600, y: -600, width: 2000, height: 1500 });
   const behind = el("g", { "clip-path": "url(#behind-desk)" }, torso);
-  const arms = el("g", {}, left.group, right.group, folded, pen, lens);
-  const root = el("svg", { viewBox: "0 0 800 900", class: "master", "aria-hidden": "true" }, el("clipPath", { id: "behind-desk" }, cut), behind, arms);
+  const arms = el("g", {}, left.group, right.group, folded, pen);
+  const root = el("svg", { viewBox: "0 0 800 900", class: "master", "aria-hidden": "true" }, el("clipPath", { id: "behind-desk" }, cut), behind, book, arms);
 
   const now = { ...REST };
   let goal = { ...REST };
@@ -174,7 +173,7 @@ export function createCharacter() {
     v.dy += breath;
     if (goal.clasp) { v.ly += breath * 0.8; v.ry += breath * 0.8; }
     if (name === "hello") { v.rx += wave(t * 11) * 30; v.ry += Math.abs(wave(t * 11)) * 10; }
-    if (name === "write") { v.rx += wave(t * 15) * 20 + wave(t * 2.3) * 28; v.ry += wave(t * 23) * 6; }
+    if (name === "write") { v.rx += wave(t * 15) * 16 + wave(t * 2.3) * 22; v.ry += wave(t * 23) * 6; }
     if (name === "sky") { v.rx += wave(t * 9) * 7; v.ry += Math.abs(wave(t * 9)) * 14; }
     if (name === "think") { v.ly += wave(t * 3.2) * 4; v.tilt += wave(t * 1.4) * 2; v.rx += Math.max(0, wave(t * 8)) * 6; }
     if (name === "listen") v.nod += Math.max(0, wave(t * 5)) * 0.35 * Math.max(0, 1 - age / 2.4);
@@ -221,7 +220,6 @@ export function createCharacter() {
     folded.setAttribute("transform", `translate(${(v.lx + v.rx) / 2} ${(v.ly + v.ry) / 2 - 22}) scale(1.16)`);
     folded.setAttribute("opacity", together ? 1 : 0);
     pen.setAttribute("transform", `translate(${hold.x} ${hold.y})`); pen.setAttribute("opacity", Math.max(0, v.pen * 2 - 1));
-    lens.setAttribute("transform", `translate(${hold.x} ${hold.y})`); lens.setAttribute("opacity", Math.max(0, v.lens * 3 - 2));
   }
   let shown = false;
   const frame = (ms) => {

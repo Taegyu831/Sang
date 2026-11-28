@@ -295,10 +295,10 @@ const ASKS = {
 };
 // The app's capture guidance (capture.js GUIDANCE), in the character's own voice.
 const TROUBLE = {
-  none: "어라, 안 보여요. 거울 가운데에 앉아 주세요.",
+  none: "어라, 얼굴이 안 보여요. 화면 가운데에 앉아 주세요.",
   far: "조금만 더 가까이 와 주실래요?",
   near: "어이쿠, 가까워요. 조금만 뒤로 가 주세요.",
-  "off-center": "얼굴이 거울 한가운데 오게 앉아 주세요.",
+  "off-center": "얼굴이 화면 한가운데 오게 앉아 주세요.",
   yaw: "너무 많이 돌렸어요. 조금만 돌아와 주세요.",
   "pitch-up": "턱을 살짝 당겨 주세요.",
   "pitch-down": "고개를 살짝 들어 주세요.",
@@ -311,7 +311,7 @@ async function shoot() {
   const ctx = enter("shoot");
   visitor.face = null; visitor.reading = null; visitor.heard = [];
   master.pose("focus");
-  say(ctx, "거울을 켤게요. 잠깐만요.", { hold: null });
+  say(ctx, "자, 얼굴을 찬찬히 살펴볼게요.", { hold: null });
   let current = null; let troubleAt = 0; let shown = null;
   const line = (id) => { const [pose, text, arrow, dot] = ASKS[id]; master.pose(pose); ui.arrow.textContent = arrow; ui.arrow.dataset.arrow = arrow === "▶" ? "right" : "left"; [...ui.dots.children].forEach((d, i) => { d.classList.toggle("is-on", i === dot); d.classList.toggle("is-done", i < dot); }); say(ctx, text, { hold: null }); };
   const wayOut = async () => {
@@ -341,7 +341,7 @@ async function shoot() {
     console.error(error);
     if (!ctx.alive()) return;
     master.pose("think");
-    say(ctx, "거울이 안 켜지네요. 카메라 연결과 권한을 확인해 주세요.", { hold: null });
+    say(ctx, "카메라가 안 켜지네요. 연결과 권한을 확인해 주세요.", { hold: null });
     wayOut();
     return;
   }
