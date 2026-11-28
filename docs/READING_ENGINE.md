@@ -201,3 +201,4 @@ python3 -m http.server 8765 --bind 127.0.0.1
 - 풀이 재료: `facets.js`, `story.js`의 `sayingsOf`, `closing.js`.
 - 인위적 개입(팀 검토 필요): `spoken.js`의 모든 말투 틀과 "그래서 ..." 조언 문장, 별명 목록, 질문 다섯 가지 이름, `closing.js`의 `CLOSING_SPOKEN`(마지막 문구의 구어체), `app.js`의 대사와 시간값(`T`), `capture-room.js`의 `HARD_LIMIT_MS`/`MIN_AT_LIMIT`, `character.js`의 모든 모양과 동작.
 - "~할 수 있어요" 형태는 단정을 피하려는 말투일 뿐 근거의 강도를 뜻하지 않는다.
+- 2026-11-28 노트 시안 선택: 전용 캐릭터 `character-doctor.js`(팀이 고른 참고 그림을 단순화, 청진기는 `STETHOSCOPE`로 끔), 팔은 어깨-팔꿈치-손목 두 마디, 배경 4색(`?bg=`, B 키, 기본 하늘색). 참고 그림이 기존 작품의 캐릭터라면 전시 전에 닮은 정도와 사용 가능 여부를 팀이 확인해야 한다.

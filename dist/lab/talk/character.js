@@ -129,7 +129,8 @@ export function createCharacter() {
     pen.setAttribute("transform", `translate(${v.rx} ${v.ry})`); pen.setAttribute("opacity", Math.max(0, v.pen * 2 - 1));
     lens.setAttribute("transform", `translate(${v.rx} ${v.ry})`); lens.setAttribute("opacity", Math.max(0, v.lens * 3 - 2));
   }
-  const frame = (ms) => { draw(ms / 1000); requestAnimationFrame(frame); };
+  let shown = false;
+  const frame = (ms) => { if (root.isConnected) shown = true; else if (shown) return; draw(ms / 1000); requestAnimationFrame(frame); };
   requestAnimationFrame(frame);
   return {
     el: root,

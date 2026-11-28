@@ -3,10 +3,11 @@
 //   seat -> gender, age, nickname -> guided capture -> thinking -> pick a question (again and again)
 //   -> "이제 충분해요" -> the last words and a card
 // Keys: space / enter = go on, digits = choose, T = next look, S = sample face, Esc = start over.
-// ?look=desk|night|note   ?scene=menu|read|end|shoot&sample=1&topic=self  (for screenshots)
+// ?look=note (the picked one, with its own character; B changes its background, ?bg=)|desk|night   ?scene=menu|read|end|shoot&sample=1&topic=self  (for screenshots)
 import { h, button, sampleFace, loadContent, photoCard } from "../desk/engine.js";
 import { CLOSING_QUOTE, CLOSING_SPOKEN } from "../../closing.js";
-import { createCharacter } from "./character.js";
+import { createCharacter as createRound } from "./character.js";
+import { createCharacter as createDoctor } from "./character-doctor.js";
 import { captureFace, stopCamera } from "./capture-room.js";
 import { TOPICS, NICKNAMES, answer, readingFor, josa } from "./spoken.js";
 
@@ -15,7 +16,10 @@ const T = { type: 38, after: 900, perChar: 55, gesture: 1500, stuck: 60000, askI
 const LOOKS = ["desk", "night", "note"];
 const NAMES = { desk: "상담 책상", night: "밤의 상담소", note: "관상 노트" };
 
+// ARTIFICIAL: backgrounds to compare behind the notebook look's character.
+const BACKS = { blue: "#a9ccf0", mint: "#b9e0cb", butter: "#f7e09a", lavender: "#d2c9f1" };
 const params = new URLSearchParams(location.search);
+let back = Object.hasOwn(BACKS, params.get("bg") ?? "") ? params.get("bg") : "blue";
 let look = params.get("look");
 const stage = document.querySelector("#stage");
 let content = null;
@@ -30,7 +34,7 @@ let keys = () => {};
 
 // ---------- the room ----------
 function build() {
-  master = createCharacter();
+  master = look === "note" ? createDoctor() : createRound();
   const bubble = h("div", "bubble");
   const speaker = h("span", "speaker", "관상 선생");
   const text = h("p", "said");
@@ -52,6 +56,7 @@ function build() {
   ui = { bubble, text, choices, book, video, mirror, dots, arrow, card, enough, who };
   seatAtDesk();
 }
+function setBack(name) { back = name; document.body.style.setProperty("--back", BACKS[name]); }
 function seatAtDesk() {
   const actor = stage.querySelector(".actor"); const table = stage.querySelector(".table");
   if (actor?.offsetHeight) master.desk(((table.offsetTop + table.clientTop - actor.offsetTop) / actor.offsetHeight) * 900);
@@ -340,14 +345,15 @@ else {
   content = await (await fetch("../../parts.json")).json();
   await loadContent();
   stage.hidden = false;
-  setLook(look); build();
+  setBack(back); setLook(look); build();
   addEventListener("click", (event) => { if (event.detail > 0) event.target.closest?.("button")?.blur(); });
   addEventListener("keydown", (event) => {
     if (event.repeat) return;
     const k = event.key;
     if (event.target.closest?.("button") && (k === " " || k === "Enter")) return; // the button's own click
     if (k === "Escape") return attract();
-    if (k === "t" || k === "T" || k === "ㅅ") { setLook(LOOKS[(LOOKS.indexOf(look) + 1) % LOOKS.length]); seatAtDesk(); return attract(); }
+    if (k === "t" || k === "T" || k === "ㅅ") { setLook(LOOKS[(LOOKS.indexOf(look) + 1) % LOOKS.length]); build(); return attract(); }
+    if (k === "b" || k === "B" || k === "ㅠ") { const names = Object.keys(BACKS); return setBack(names[(names.indexOf(back) + 1) % names.length]); }
     if ((k === "s" || k === "S" || k === "ㄴ") && ["attract", "ask", "shoot"].includes(scene)) return useSample();
     if (k === " ") event.preventDefault();
     if ((k === " " || k === "Enter") && scene !== "attract" && scene !== "card") return skip();
