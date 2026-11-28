@@ -8,7 +8,7 @@ const ALLOWED_ORIGINS = ["https://taegyu831.github.io", "http://127.0.0.1:8001",
 const MODELS = (process.env.IMAGE_MODEL || "gpt-image-2,gpt-image-1.5,gpt-image-1").split(",").filter(Boolean);
 const SIZE = process.env.COUPLE_SIZE || "1024x1536";
 const QUALITY = process.env.COUPLE_QUALITY || "medium";
-const MAX_PHOTO_CHARS = 1_000_000; // per picture; the page sends 800x1000 JPEGs, far below this
+const MAX_PHOTO_CHARS = 1_400_000; // per picture (three stay under the 4.5 MB body limit); the page sends 800x1000 JPEGs, far below this
 const POLES = ["drive+", "drive-", "social+", "social-", "feel+", "feel-", "steady+", "steady-"];
 
 // Per server instance only, so the OpenAI monthly limit is still the real cap.
@@ -33,7 +33,8 @@ function jpegBytes(photo) {
 
 /** Checks what the page sent; returns {images, spec} or null. The front picture comes first. */
 export function cleanRequest(body) {
-  const photos = body?.photos;
+  // a tab opened before 2026-11-28 17:50 still sends one `photo`
+  const photos = body?.photos ?? (typeof body?.photo === "string" ? [body.photo] : undefined);
   const spec = body?.spec;
   if (!Array.isArray(photos) || photos.length < 1 || photos.length > MAX_PHOTOS || !spec || typeof spec !== "object") return null;
   const images = photos.map(jpegBytes);
@@ -54,7 +55,12 @@ export default async function handler(req, res) {
   if (req.method !== "POST" || !ALLOWED_ORIGINS.includes(origin)) return res.status(403).json({ error: "not allowed" });
 
   const request = cleanRequest(req.body);
-  if (!request) return res.status(400).json({ error: "send {photos: [jpeg data URL, ...], spec: {partner, age, pole}}" });
+  if (!request) {
+    // sizes and field names only, never the content
+    const sent = [req.body?.photos ?? req.body?.photo].flat().map((p) => (typeof p === "string" ? `${p.slice(0, 23)} ${p.length}` : typeof p));
+    console.warn(`refused: fields ${Object.keys(req.body ?? {})} photos ${JSON.stringify(sent)} spec ${JSON.stringify(req.body?.spec)}`.slice(0, 600));
+    return res.status(400).json({ error: "send {photos: [jpeg data URL, ...], spec: {partner, age, pole}}" });
+  }
   const ip = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim() || "unknown";
   if (tooMany(ip)) return res.status(429).json({ error: "too many requests" });
   if (!process.env.OPENAI_API_KEY) return res.status(500).json({ error: "server has no key" });
