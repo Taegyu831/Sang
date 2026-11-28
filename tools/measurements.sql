@@ -1,4 +1,4 @@
--- Anonymous visitor measurements (only with the visitor's consent).
+-- Anonymous visitor measurements (see dist/collect.js for when they are sent).
 -- Only the Vercel function (service key) can write; nobody can read through the public API.
 create table if not exists public.measurements (
   id          bigint generated always as identity primary key,

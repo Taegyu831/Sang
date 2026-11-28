@@ -1,5 +1,5 @@
 /* A 1920x1080 room: 1rem is 10px of that design. The character on the left, plain writing on the right. */
-:root { --paper: #f6f4ef; --ink: #1c1b1f; --coral: #d2462f; --coral-soft: #ff6f61; --blue: #2457b8; --blue-soft: #e5eefb; --back: #a9ccf0; --white: #ffffff; }
+:root { --paper: #f6f4ef; --ink: #1c1b1f; --coral: #d2462f; --coral-soft: #ff6f61; --blue: #2457b8; --blue-soft: #e5eefb; --back: #a9ccf0; --white: #ffffff; --green: #1f6045; --green-soft: #3f9a6c; }
 @font-face { font-family: "Plex Sans KR"; src: url("../fonts/PlexSansKR-Regular.woff2") format("woff2"); font-weight: 400; }
 @font-face { font-family: "Plex Sans KR"; src: url("../fonts/PlexSansKR-Bold.woff2") format("woff2"); font-weight: 600 900; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -37,6 +37,15 @@ em { font-style: normal; font-weight: 800; color: var(--coral); }
 .book li:first-child { font-size: 4.3rem; font-weight: 800; }
 .book li.advice { padding: 2.4rem 3rem; border-radius: 2rem; background: var(--blue-soft); }
 .book li.advice em { color: var(--blue); }
+/* the saying at the end */
+.book.closing { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: var(--green); }
+.book.closing h3 { font-size: 4.6rem; margin-bottom: 5.4rem; }
+.book.closing h3::after { margin-inline: auto; background: var(--green-soft); }
+.book.closing ul { align-items: center; gap: 3.4rem; }
+.book.closing li { font-size: 4.4rem; font-weight: 700; }
+.book.closing li.han { font-size: 6.4rem; font-weight: 900; letter-spacing: 0.04em; }
+.book.closing h3, .book.closing li { animation: rise 0.9s cubic-bezier(0.33, 0, 0.2, 1) var(--delay) backwards; }
+@keyframes rise { from { opacity: 0; translate: 0 5rem; } }
 /* the visitor's own answers sit in a row as small tags */
 [data-scene="ask"] .book ul, [data-scene="shoot"] .book ul { flex-direction: row; flex-wrap: wrap; gap: 1.6rem; }
 [data-scene="ask"] .book li, [data-scene="shoot"] .book li, [data-scene="ask"] .book li:first-child { font-size: 3.2rem; font-weight: 800; padding: 0.8rem 2.6rem; border-radius: 99rem; background: #e9e6de; }
@@ -47,12 +56,10 @@ em { font-style: normal; font-weight: 800; color: var(--coral); }
 .choices { position: absolute; z-index: 7; left: 104rem; right: 8rem; top: 46rem; bottom: 10rem; display: grid; grid-template-columns: 1fr; grid-auto-rows: min-content; align-content: center; gap: 2.2rem; pointer-events: none; }
 .choices.names { grid-template-columns: 1fr 1fr; }
 .choices.names .ghost { grid-column: 1 / -1; }
-.choices.stuck { top: auto; bottom: 2.4rem; grid-template-columns: 1fr 1fr; }
+.choices.stuck { top: auto; left: 3rem; right: auto; width: 88rem; bottom: 2rem; grid-template-columns: 1fr 1fr; } /* clear of the camera */
 .choice { pointer-events: auto; display: flex; align-items: center; gap: 2rem; min-height: 10rem; padding: 1.6rem 3rem; border-radius: 2.4rem; border: 0.4rem solid var(--ink); background: var(--white); font-size: 3.6rem; font-weight: 800; text-align: left; animation: arrive 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) calc(var(--i) * 0.05s) backwards; transition: background 0.15s, translate 0.15s; }
 .choice:hover { background: #ffe1dc; translate: 0 -0.4rem; }
 .choice kbd { flex: none; display: grid; place-items: center; width: 4.6rem; height: 4.6rem; border-radius: 50%; background: var(--ink); color: var(--paper); font: 800 2.2rem system-ui; }
-.choice.big { justify-content: center; min-height: 13rem; border-radius: 99rem; background: var(--coral-soft); font-size: 4.4rem; }
-.choice.big kbd { display: none; }
 .choice.ghost { justify-content: center; border-style: dashed; font-size: 3rem; }
 .choices.stuck .choice { justify-content: center; min-height: 8rem; }
 /* ... except the questions about the reading, which float around */
@@ -70,15 +77,30 @@ em { font-style: normal; font-weight: 800; color: var(--coral); }
 .arrow[data-arrow="right"] { left: 76rem; }
 .arrow:empty { display: none; }
 @keyframes nudge { to { scale: 1.18; } }
-.mirror { --p: 0; position: absolute; z-index: 6; left: 116rem; top: 20rem; display: none; flex-direction: column; align-items: center; gap: 2rem; }
+.mirror { --p: 0; position: absolute; z-index: 6; left: 99.8rem; top: 5rem; display: none; flex-direction: column; align-items: center; gap: 2.4rem; }
 [data-scene="shoot"] .mirror { display: flex; animation: arrive 0.5s backwards; }
-.glass { position: relative; width: 58rem; height: 58rem; border-radius: 50%; padding: 1.2rem; background: conic-gradient(var(--coral-soft) calc(var(--p) * 360deg), var(--ink) 0); }
+.glass { position: relative; width: 88rem; height: 88rem; border-radius: 50%; padding: 1.4rem; background: conic-gradient(var(--coral-soft) calc(var(--p) * 360deg), var(--ink) 0); }
 .glass video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); border-radius: 50%; background: var(--ink); }
 .oval { position: absolute; left: 50%; top: 50%; width: 44%; height: 62%; translate: -50% -50%; border: 0.4rem dashed var(--white); border-radius: 50%; }
-.dots { display: flex; gap: 0.8rem; }
-.dots span { padding: 0.8rem 1.6rem; border-radius: 99rem; background: var(--white); border: 0.25rem solid var(--ink); font-size: 2.2rem; font-weight: 800; white-space: nowrap; }
+.dots { display: flex; gap: 1.2rem; }
+.dots span { padding: 0.8rem 2.2rem; border-radius: 99rem; background: var(--white); border: 0.25rem solid var(--ink); font-size: 2.6rem; font-weight: 800; white-space: nowrap; }
 .dots span.is-on { background: var(--ink); color: var(--paper); }
 .dots span.is-done { background: var(--coral-soft); }
+
+/* ---------- the start screen: the sticker look the team picked ---------- */
+.cover { --off: #f2f1ec; --forest: #1f3b30; --lime: #d6f26a; position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; background: var(--off); color: var(--forest); font-family: "Apple SD Gothic Neo", "Plex Sans KR", "Malgun Gothic", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+.cover-mid { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4.4rem; text-align: center; }
+.cover h1 { display: flex; flex-direction: column; align-items: center; gap: 1.2rem; font-size: 13rem; line-height: 1.15; font-weight: 900; letter-spacing: -0.04em; }
+.cover h1 span { animation: arrive 0.6s cubic-bezier(0.2, 1.4, 0.4, 1) backwards; }
+.cover h1 .mark { background: var(--lime); padding: 0 0.14em; border-radius: 0.2em; animation-delay: 0.14s; }
+.cta { padding: 3.2rem 9rem; border-radius: 99rem; background: var(--forest); color: var(--off); font-size: 4.6rem; font-weight: 900; transition: scale 0.2s; animation: arrive 0.6s cubic-bezier(0.2, 1.4, 0.4, 1) 0.5s backwards; }
+.cta:hover { scale: 1.05; }
+.hint { font-size: 2.2rem; font-weight: 600; line-height: 1.8; opacity: 0.75; }
+.float { position: absolute; padding: 1.8rem 4.6rem; border-radius: 99rem; border: 0.8rem solid #f1f2ea; background: var(--forest); color: var(--off); font-size: 4rem; font-weight: 900; box-shadow: 0 1rem 2.4rem rgba(31, 59, 48, 0.25); animation: arrive 0.6s cubic-bezier(0.2, 1.4, 0.4, 1) calc(var(--d) + 0.3s) backwards, float 3.8s ease-in-out calc(var(--d) * -6) infinite alternate; }
+/* three on the left (dark), three on the right (lime) */
+.f0 { --d: 0s; left: 6%; top: 19%; rotate: -9deg; } .f2 { --d: 0.18s; left: 3%; top: 48%; rotate: -3deg; } .f4 { --d: 0.36s; left: 11%; top: 72%; rotate: 6deg; }
+.f1 { --d: 0.09s; right: 8.5%; top: 14.5%; rotate: 8deg; } .f3 { --d: 0.27s; right: 4.5%; top: 46.5%; rotate: 5deg; } .f5 { --d: 0.45s; right: 12.5%; top: 69%; rotate: -7deg; }
+.f1, .f3, .f5 { background: var(--lime); color: var(--forest); }
 
 /* ---------- the card to take home ---------- */
 .card { position: absolute; z-index: 9; right: 20rem; top: 6rem; width: 56rem; display: none; flex-direction: column; align-items: center; gap: 1.2rem; padding: 3.2rem; border-radius: 2.4rem; background: var(--white); border: 0.5rem solid var(--ink); box-shadow: 0 2rem 5rem rgba(28, 27, 31, 0.25); rotate: 2deg; text-align: center; }
@@ -94,4 +116,4 @@ em { font-style: normal; font-weight: 800; color: var(--coral); }
 .card .mean { font-size: 2.2rem; font-weight: 700; }
 .card .tip { font-size: 1.7rem; opacity: 0.7; }
 .again { padding: 1.2rem 3.6rem; border-radius: 99rem; background: var(--ink); color: var(--paper); font-size: 2.4rem; font-weight: 800; }
-@media (prefers-reduced-motion: reduce) { *, *::after { animation-duration: 0.01s !important; animation-iteration-count: 1 !important; } }
+@media (prefers-reduced-motion: reduce) { *, *::after { animation-delay: 0s !important; animation-duration: 0.01s !important; animation-iteration-count: 1 !important; } }
