@@ -13,6 +13,7 @@ import { CLOSING_QUOTE, CLOSING_SPOKEN } from "../closing.js";
 import { DEFAULT_COLLECT_ENDPOINT, buildRecord, submitMeasurement, flushQueue } from "../collect.js";
 import { coupleEndpoint, requestCouple } from "./couple.js";
 import { createCharacter } from "./character.js";
+import { createHow } from "./how-view.js";
 import { captureFace, stopCamera, prepare as prepareModel, ASKS, TROUBLE } from "./capture-room.js";
 import { TOPICS, answer, readingFor, profileOf, draw, josa, anyName } from "./spoken.js";
 
@@ -53,6 +54,7 @@ let scene = "";
 let skip = () => {};
 let speech = 0;
 let keys = () => {};
+let how = null; // the explanation below the start screen (how-view.js)
 
 // ---------- the room ----------
 function build() {
@@ -81,6 +83,7 @@ function build() {
   const notes = h("div", "notice", ...["약 3분이면 돼요", "얼굴 사진은 저장되지 않아요", "얼굴 비율 숫자는 이름 없이 통계로 모아요"].map((t, i) => { const p = h("p", "", t); p.style.setProperty("--i", i); return p; }));
   notes.addEventListener("click", () => skip());
   document.body.append(cover, notes);
+  how = createHow({ cover, start: () => notice() });
   stage.replaceChildren(h("div", "scene", h("div", "room"), h("div", "actor", master.el), table, arrow, bubble, book, choices, mirror, card, enough, promise));
   bubble.addEventListener("click", () => skip());
   ui = { bubble, text, choices, book, video, mirror, dots, arrow, card, enough, cover, notes };
@@ -97,6 +100,7 @@ function enter(name) {
   const mine = run;
   scene = name; skip = () => {}; keys = () => {};
   stopCamera();
+  how?.close();
   stage.dataset.scene = name;
   ui.book.classList.remove("closing");
   ui.card.className = "card";
@@ -526,6 +530,7 @@ addEventListener("resize", () => { fit(); if (master) seatAtDesk(); });
 fit();
 content = await (await fetch(new URL("../parts.json", import.meta.url))).json();
 build();
+addEventListener("wheel", (event) => { if (scene === "attract" && !event.ctrlKey) how.wheel(event.deltaY); }, { passive: true });
 addEventListener("click", (event) => { if (event.detail > 0) event.target.closest?.("button")?.blur(); });
 addEventListener("keydown", (event) => {
   if (event.repeat) return;
@@ -535,6 +540,7 @@ addEventListener("keydown", (event) => {
   if (k === "Escape") return attract();
   if (DEV && (k === "s" || k === "S" || k === "ㄴ") && ["attract", "ask", "shoot"].includes(scene)) { visitor.face = sampleFace(); return ponder(); }
   if (isNext(k)) event.preventDefault(); // the page itself must not scroll
+  if (scene === "attract" && how.key(k)) { event.preventDefault(); return; } // down / up scroll to the explanation
   if (isNext(k) && !["attract", "card", "photo"].includes(scene)) return skip();
   keys(k);
 });

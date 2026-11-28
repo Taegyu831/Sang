@@ -6,6 +6,7 @@
 // ARTIFICIAL: layout, words and the limits below. For development: ?collect=off, ?sample=1.
 import { h, button, sampleFace, photoCard } from "../talk/kit.js";
 import { createCharacter } from "../talk/character.js";
+import { HOW_TITLE, HOW_LEAD, STEPS } from "../talk/how.js";
 import { captureFace, stopCamera, prepare, ASKS, TROUBLE } from "../talk/capture-room.js";
 import { TOPICS, answer, readingFor, profileOf, anyName } from "../talk/spoken.js";
 import { CLOSING_QUOTE, CLOSING_SPOKEN } from "../closing.js";
@@ -48,8 +49,26 @@ function start() {
     h("h1", "", h("span", "", "내 얼굴"), " ", h("span", "mark", "읽어 보기")),
     stageOf("big"),
     button("cta", ask, "내 관상 보기"),
-    h("ul", "notes", ...["약 3분이면 돼요", "얼굴 사진은 저장되지 않아요", "얼굴 비율 숫자는 이름 없이 통계로 모아요"].map((t) => h("li", "", t)))));
+    h("ul", "notes", ...["약 3분이면 돼요", "얼굴 사진은 저장되지 않아요", "얼굴 비율 숫자는 이름 없이 통계로 모아요"].map((t) => h("li", "", t))),
+    button("to-how", () => page.querySelector(".how").scrollIntoView({ behavior: "smooth" }), "어떻게 읽는지 궁금하면 아래로 ↓")), howSection());
+  reveal(".how > *, .how-step > *");
   master.pose("hello");
+}
+
+/** How a reading is made, below the start screen. */
+function howSection() {
+  const steps = STEPS.map((s, i) => {
+    const art = h("div", "how-art"); art.innerHTML = s.art(); // our own drawing, from talk/how.js
+    return h("article", "how-step", h("b", "how-no", String(i + 1)), h("h3", "", s.title), art, ...s.lines.map((l) => h("p", "", l)));
+  });
+  return h("section", "how", h("h2", "", HOW_TITLE), h("p", "how-lead", HOW_LEAD), ...steps, button("cta", ask, "내 관상 보기"));
+}
+/** Each piece comes up as it enters the screen. */
+function reveal(selector) {
+  watcher = new IntersectionObserver((entries) => {
+    for (const e of entries) if (e.isIntersecting) { e.target.classList.add("in"); watcher.unobserve(e.target); }
+  }, { rootMargin: "0px 0px -8% 0px" });
+  for (const node of page.querySelectorAll(selector)) watcher.observe(node);
 }
 
 function ask() {
@@ -162,10 +181,7 @@ function result() {
   ];
   show(top, ...parts);
   // each piece comes up as it enters the screen; the character follows the part being read
-  watcher = new IntersectionObserver((entries) => {
-    for (const e of entries) if (e.isIntersecting) { e.target.classList.add("in"); watcher.unobserve(e.target); }
-  }, { rootMargin: "0px 0px -8% 0px" });
-  for (const node of page.querySelectorAll(".part > *")) watcher.observe(node);
+  reveal(".part > *");
   let at = null;
   const follow = () => {
     const line = innerHeight * 0.55;
