@@ -13,11 +13,12 @@ export const CLOSING_QUOTE = {
 };
 // The same words as the master says them (talk/). Keep the meaning
 // the same as the written notes above when either one is changed.
+// The first line is said while the saying appears; the others are also written under it, one by one.
 export const CLOSING_SPOKEN = [
-  `마지막으로 제가 아끼는 글귀 하나 적어 드릴게요.`,
-  `"${CLOSING_QUOTE.meaning}." ${CLOSING_QUOTE.source}에 나오는 말이에요.`,
-  "동양철학에서 운이 좋다는 건 그냥 재수가 좋다는 뜻이 아니에요.",
-  "좋은 기운이 들어왔을 때 그걸 내 것으로 만들 만큼 ⟦준비되어 있다⟧는 뜻으로 보거든요.",
-  "그러니까 오늘 제가 본 풀이는 ⟦날씨⟧처럼 참고만 해 주세요.",
-  "⟦밭을 어떻게 일구어 나갈지⟧는 {name}님 몫이에요.",
+  `마지막으로 아끼는 글귀 하나 드릴게요.`,
+  `${CLOSING_QUOTE.source}에 나오는 말이에요.`,
+  "동양철학에서 좋은 운은 단순한 재수가 아니에요.",
+  "좋은 기운이 왔을 때 내 것으로 만들 만큼 ⟦준비되어 있다⟧는 뜻이죠.",
+  "오늘 풀이는 ⟦날씨⟧처럼 참고만 하세요.",
+  "⟦밭을 어떻게 일굴지⟧는 {name}님 몫이에요.",
 ];

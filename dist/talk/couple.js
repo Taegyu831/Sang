@@ -39,7 +39,6 @@ export const VARIETY = {
     "a sunny look: crescent smiling eyes, dimples, full cheeks, a broad smile showing teeth",
     "a strong angular look: a square jaw, thick straight eyebrows, deep-set eyes",
   ],
-  glasses: ["no glasses", "no glasses", "no glasses", "thin round metal glasses", "dark rimmed glasses"], // two in five wear them
   skin: ["a fair skin tone", "a medium skin tone", "a warm tanned skin tone"],
   clothes: ["a cream knit sweater", "a navy cardigan over a white T-shirt", "a light blue shirt", "a grey hoodie", "a black turtleneck", "a denim jacket", "a sage green sweatshirt", "a brown corduroy shirt", "a white blouse or shirt with a collar", "a striped long-sleeve T-shirt"],
   backdrop: ["a plain white backdrop", "a pale pink backdrop", "a sky blue backdrop", "a warm beige backdrop", "a soft grey backdrop", "a pale yellow curtain backdrop"],
@@ -55,7 +54,7 @@ export function couplePrompt({ partner, age = 20, pole = null, shots = 1 }, rand
   const person = gender === "male" ? "man" : "woman";
   const own = (name) => draw(VARIETY[name], random);
   const mine = (name) => draw(VARIETY[name][gender], random);
-  const looks = [`${mine("hair")} with ${mine("bangs")}`, own("color"), own("look"), own("skin"), own("glasses")];
+  const looks = [`${mine("hair")} with ${mine("bangs")}`, own("color"), own("look"), own("skin")];
   return [
     "Make one natural, candid photograph taken in a Korean self photo booth, showing two adults who are a couple.",
     shots > 1
@@ -63,7 +62,7 @@ export function couplePrompt({ partner, age = 20, pole = null, shots = 1 }, rand
       : "The first person is the person in the input photo.",
     "Keep their face, facial features, face shape, hairstyle, glasses and skin tone faithful and clearly recognisable. Do not beautify them or change who they are.",
     "Everything described for the second person belongs to the second person only. Never give the first person glasses, bangs, a hair colour or anything else that is not in the input photo.",
-    `The second person is an invented, fictional Korean ${person} in their ${decade}s, not a real individual and not a celebrity, an ordinary-looking person with their own distinct face, whose face and hair are clearly different from the first person's. Looks: ${looks.join("; ")}. Wearing ${own("clothes")}. Presence: ${MOOD[pole] ?? "a balanced, pleasant, warm expression"}.`,
+    `The second person is an invented, fictional Korean ${person} in their ${decade}s, not a real individual and not a celebrity, an ordinary-looking person with their own distinct face, whose face and hair are clearly different from the first person's. Looks: ${looks.join("; ")}. The second person never wears glasses or any eyewear. Wearing ${own("clothes")}. Presence: ${MOOD[pole] ?? "a balanced, pleasant, warm expression"}.`,
     `They sit close side by side facing the camera with relaxed happy smiles, ${own("pose")}.`,
     `Soft even flash light, ${own("backdrop")}, framed from the chest up, vertical picture, realistic skin texture, modest everyday clothes.`,
     "Wholesome and non-sexual. No text, no logo, no frame, no watermark.",

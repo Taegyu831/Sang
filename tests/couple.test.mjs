@@ -18,6 +18,8 @@ test("the prompt keeps the visitor and invents an adult partner", () => {
   assert.match(text, /fictional Korean man in their 20s/);
   assert.match(text, /non-sexual/);
   assert.match(text, /Never give the first person glasses/);
+  assert.match(text, /second person never wears glasses/);
+  assert.equal(VARIETY.glasses, undefined);
   assert.match(couplePrompt({ partner: "female", age: 15 }), /woman in their 20s/); // never below the adult groups
 });
 

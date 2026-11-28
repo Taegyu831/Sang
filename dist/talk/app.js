@@ -1,8 +1,9 @@
 // The exhibition page: the visitor sits across from a small, serious fortune reader and is led
 // through the whole experience as a conversation.
-//   start screen -> the master asks gender, age, name, a partner for the last picture (or none)
-//   -> guided capture (the picture is ordered) -> thinking -> pick a question (again and again)
-//   -> "이제 충분해요" -> the last words -> the couple picture, or a card without it
+//   start screen -> a short notice -> the master asks gender, age, name, a partner for the last picture (or none)
+//   -> guided capture (the picture is ordered) -> thinking -> pick a question (again and again);
+//      the couple picture closes the 인연 answer (or comes before the last words if never asked)
+//   -> "이제 충분해요" -> the last words -> the card
 // Keys: space / enter = go on, digits = choose, Esc = start over.
 // For development: ?dev=1 adds S (a drawn sample face) and ?scene=ask|shoot|menu|read|end with
 // &sample=1&topic=self&hold=1. ?collect=off sends nothing, ?couple=off offers no picture, ?strict=0 loosens the capture limits.
@@ -16,7 +17,7 @@ import { captureFace, stopCamera, prepare as prepareModel } from "./capture-room
 import { TOPICS, answer, readingFor, josa } from "./spoken.js";
 
 // ARTIFICIAL: timings (ms).
-const T = { type: 38, after: 900, perChar: 55, rise: 200, stuck: 60000, askIdle: 45000, menuIdle: 60000, endIdle: 60000, photoIdle: 120000, printTalk: 11000 };
+const T = { type: 38, after: 900, perChar: 55, rise: 200, stuck: 60000, askIdle: 45000, menuIdle: 60000, endIdle: 60000, photoIdle: 120000, printTalk: 11000, notice: 3200, closingGap: 2000, closingRead: 5000 };
 
 const params = new URLSearchParams(location.search);
 const DEV = params.get("dev") === "1";
@@ -61,12 +62,14 @@ function build() {
   // The start screen covers the whole window until the button is pressed.
   const floaters = ["성격", "재물", "전성기", "첫인상", "연애", "인연"].map((w, i) => h("span", `float f${i}`, w));
   const title = h("h1", "", h("span", "", "내 얼굴,"), h("span", "mark", "읽어 보기"));
-  const cover = h("div", "cover", ...floaters, h("div", "cover-mid", title, button("cta", () => ask(), "내 관상 보기"),
-    h("p", "hint", "클릭 또는 SPACE · 약 3분 · 얼굴 사진은 저장되지 않아요", h("br"), "얼굴 비율 숫자는 이름 없이 통계로 모아요")));
-  document.body.append(cover);
+  const cover = h("div", "cover", ...floaters, h("div", "cover-mid", title, button("cta", () => notice(), "내 관상 보기")));
+  // shown for a moment on an empty page, between the start screen and the first question
+  const notes = h("div", "notice", ...["약 3분이면 돼요", "얼굴 사진은 저장되지 않아요", "얼굴 비율 숫자는 이름 없이 통계로 모아요"].map((t, i) => { const p = h("p", "", t); p.style.setProperty("--i", i); return p; }));
+  notes.addEventListener("click", () => skip());
+  document.body.append(cover, notes);
   stage.replaceChildren(h("div", "scene", h("div", "room"), h("div", "actor", master.el), table, arrow, bubble, book, choices, mirror, card, enough, who, promise));
   bubble.addEventListener("click", () => skip());
-  ui = { bubble, text, choices, book, video, mirror, dots, arrow, card, enough, who, cover };
+  ui = { bubble, text, choices, book, video, mirror, dots, arrow, card, enough, who, cover, notes };
   seatAtDesk();
 }
 function seatAtDesk() {
@@ -86,6 +89,7 @@ function enter(name) {
   ui.choices.replaceChildren(); ui.card.replaceChildren(); ui.arrow.textContent = "";
   ui.enough.hidden = !["menu", "read"].includes(name);
   ui.cover.hidden = name !== "attract";
+  ui.notes.hidden = name !== "notice";
   ui.bubble.classList.remove("is-waiting");
   master.talk(false);
   const alive = () => mine === run;
@@ -179,12 +183,14 @@ function cleanName(value) {
   return name.replace(/(?<=..)님$/, "").trim();
 }
 const heading = (title) => { ui.book.replaceChildren(h("h3", "", title), h("ul", "")); };
-/** The saying at the end: centred, each line rising into place a moment after the one above. */
+/** The saying at the end: the meaning first and large, the characters under it, then the room
+ *  where the explanation arrives. */
 function showSaying() {
-  const lines = [h("h3", "", "마지막 한마디"), h("li", "han", CLOSING_QUOTE.han), h("li", "", CLOSING_QUOTE.ko)];
+  const lines = [h("h3", "", "마지막 한마디"), h("p", "mean", ...CLOSING_QUOTE.meaning.split(/(?<=,) /).map((t) => h("span", "", t))),
+    h("p", "han", CLOSING_QUOTE.han), h("p", "reading", CLOSING_QUOTE.ko)];
   lines.forEach((line, i) => line.style.setProperty("--delay", `${i * T.rise}ms`));
   ui.book.classList.add("closing");
-  ui.book.replaceChildren(lines[0], h("ul", "", ...lines.slice(1)));
+  ui.book.replaceChildren(...lines, h("ul", ""));
 }
 /** Writes a line on the page, letter by letter. */
 async function write(ctx, line, step = 30) {
@@ -211,7 +217,19 @@ function attract() {
   ui.text.textContent = "";
   ui.bubble.classList.remove("is-on");
   master.pose("hello");
-  keys = (k) => { if (k === " " || k === "Enter" || k === "1") ask(); };
+  keys = (k) => { if (k === " " || k === "Enter" || k === "1") notice(); };
+}
+/** Waits, unless a key or click asks to go on. False when this part of the conversation is over. */
+async function pause(ctx, ms) {
+  let next = false;
+  skip = () => { next = true; };
+  for (const began = performance.now(); !next && performance.now() - began < ms;) if (!(await ctx.wait(80))) return false;
+  return true;
+}
+/** A moment on an empty page: how long it takes and what happens to the face. */
+async function notice() {
+  const ctx = enter("notice");
+  if (await pause(ctx, T.notice)) ask();
 }
 async function ask() {
   const ctx = enter("ask");
@@ -391,26 +409,55 @@ async function read(id) {
     master.pose(i === lines.length - 1 ? "peek" : i % 2 ? "push" : "listen");
     if (!(await say(ctx, line, { hold: READ.after + strip(line).length * READ.stay, type: READ.type }))) return;
   }
+  if (topic.id === "bond" && !(await couplePicture(ctx))) return;
   menu();
 }
 async function ending() {
   const ctx = enter("end");
   prepare();
   heading("");
-  const gestures = ["push", "write", "listen", "think", "listen", "peek"];
-  for (const [i, spoken] of CLOSING_SPOKEN.entries()) {
-    master.pose(gestures[i]);
-    if (i === 1) { showSaying(); if (!(await ctx.wait(1200))) return; master.pose("listen"); }
-    if (!(await say(ctx, spoken.replace("{name}", () => visitor.name), { hold: HOLD && i === Number(params.get("at") ?? 99) ? 1e9 : undefined }))) return;
-  }
   const job = visitor.couple;
-  if (!job) return card(ctx);
-  if (!job.done && !(await printing(ctx, job))) return;
-  if (job.image) return booth(ctx, job.image);
-  job.stop.abort();
-  master.pose("think");
-  if (!(await say(ctx, "아쉽게도 사진은 이번에 못 받았어요. 대신 관상 카드를 드릴게요.", { hold: 1600 }))) return;
+  // never asked about 인연: the picture comes before the last words, so that it is not lost
+  if (job && !job.shown && (job.done || !job.gaveUp)) {
+    master.pose("peek");
+    if (!job.done || job.image) if (!(await say(ctx, "가기 전에, 인연 사진부터 보여 드릴게요.", { hold: 900 }))) return;
+    if (!(await couplePicture(ctx))) return;
+  }
+  const [intro, ...words] = CLOSING_SPOKEN;
+  master.pose("push");
+  if (!(await say(ctx, intro, { hold: 400 }))) return;
+  showSaying();
+  master.pose("write");
+  if (!(await pause(ctx, 1600))) return;
+  const gestures = ["listen", "think", "listen", "push", "peek"];
+  for (const [i, spoken] of words.entries()) {
+    const line = spoken.replace("{name}", () => visitor.name);
+    const began = performance.now();
+    master.pose(gestures[i % gestures.length]);
+    ui.book.querySelector("ul").append(marked("li", "", line));
+    if (!(await say(ctx, line, { hold: null, type: READ.type }))) return;
+    const rest = i === words.length - 1 ? T.closingRead : T.closingGap - (performance.now() - began);
+    if (!(await pause(ctx, HOLD && i === Number(params.get("at") ?? 99) ? 1e9 : rest))) return;
+  }
+  job?.stop.abort();
   card(ctx);
+}
+/** Shows the couple picture, once; resolves false when this part of the conversation is over. */
+async function couplePicture(ctx) {
+  const job = visitor.couple;
+  if (!job || job.shown || (job.gaveUp && !job.done)) return true;
+  const from = scene;
+  ui.enough.hidden = true;
+  if (!job.done && !(await printing(ctx, job))) return false;
+  if (!job.done) job.gaveUp = true; // it goes on being made, and is shown at the end if it arrives
+  else {
+    job.shown = true;
+    if (job.image) { if (!(await booth(ctx, job.image))) return false; }
+    else { master.pose("think"); if (!(await say(ctx, "아쉽게도 사진은 이번에 못 받았어요.", { hold: 1600 }))) return false; }
+  }
+  ui.card.className = "card"; ui.card.replaceChildren(); ui.choices.replaceChildren(); keys = () => {};
+  show(from);
+  return ctx.alive();
 }
 const show = (name) => { stage.dataset.scene = name; scene = name; };
 /** Waits for the picture. False when the part of the conversation has ended meanwhile. */
@@ -419,7 +466,7 @@ async function printing(ctx, job) {
   ui.card.className = "booth";
   ui.card.replaceChildren(h("div", "print", h("i", ""), h("p", "", "네컷 사진 인화 중")));
   let gaveUp = false;
-  choose(ctx, [["기다리지 않고 마칠래요", true]], { idle: 1e9, className: "stuck one" }).then(() => { gaveUp = true; });
+  choose(ctx, [["기다리지 않고 넘어갈래요", true]], { idle: 1e9, className: "stuck one" }).then(() => { gaveUp = true; });
   const talk = ["사진이 아직 인화 중이에요. 조금만 기다려 주세요.", "두 분 표정을 고르는 중인가 봐요.", "거의 다 됐을 거예요."];
   const poses = ["focus", "sky", "peek"];
   for (let i = 0; !job.done && !gaveUp; i += 1) {
@@ -430,27 +477,30 @@ async function printing(ctx, job) {
   ui.choices.replaceChildren();
   return ctx.alive();
 }
-/** The end with the picture: one cut in a booth frame, with the saying under it. */
+/** The picture: one cut in a booth frame. Stays until the visitor goes on. */
 async function booth(ctx, image) {
   show("photo");
   const picture = h("img", "");
   picture.src = image; picture.alt = "AI가 만든 커플 사진";
+  let done = false;
   ui.card.className = "booth";
-  ui.card.replaceChildren(picture, h("h2", "", `${visitor.name}님과 잘 맞는 인연`), h("p", "han", CLOSING_QUOTE.han), h("p", "mean", CLOSING_QUOTE.meaning),
-    h("p", "tip", "AI가 만든 가상의 사진이에요 · 휴대폰으로 찍어 가세요"), button("again", attract, "처음으로"));
-  keys = (k) => { if (k === " " || k === "Enter") attract(); };
+  ui.card.replaceChildren(picture, h("h2", "", `${visitor.name}님과 잘 맞는 인연`), h("p", "fit", `${visitor.reading.say.fit.desc} 사람`),
+    h("p", "tip", "AI가 만든 가상의 사진이에요 · 휴대폰으로 찍어 가세요"), button("again", () => { done = true; }, "다 찍었어요"));
+  const began = performance.now();
+  // keys count only after a moment, so that presses meant for the reading do not close the picture
+  keys = (k) => { if ((k === " " || k === "Enter") && performance.now() - began > 2000) done = true; };
   master.pose("cheer");
-  if (!(await say(ctx, "짜잔! 잘 어울리죠? 또 놀러 오세요!", { hold: null }))) return;
-  await ctx.wait(900); if (ctx.alive()) master.pose("hello");
-  if (!HOLD && (await ctx.wait(T.photoIdle))) attract();
+  say(ctx, "짜잔! 잘 어울리죠? 휴대폰으로 찍어 가세요.", { hold: null });
+  while (!done && (HOLD || performance.now() - began < T.photoIdle)) if (!(await ctx.wait(200))) return false;
+  return true;
 }
-/** The end without a picture. */
+/** The end: the card to take home. */
 async function card(ctx) {
   show("card");
   const kept = visitor.heard.map((id) => { const { memo } = answer(visitor.reading, id, visitor.name); return id === "self" || id === "bond" ? memo[0] : memo[1] ?? memo[0]; }).filter(Boolean).slice(0, 4);
   ui.card.replaceChildren(h("small", "", "오늘의 관상 노트"), h("h2", "", visitor.name), photoCard(visitor.face),
     h("div", "tags", ...(kept.length ? kept : [`${visitor.reading.say.adn} 사람`]).map((w) => h("span", "", w))),
-    h("p", "han", CLOSING_QUOTE.han), h("p", "mean", CLOSING_QUOTE.meaning), h("p", "tip", "휴대폰으로 찍어 가세요 · 얼굴 사진은 저장되지 않아요"),
+    h("p", "mean", CLOSING_QUOTE.meaning), h("p", "han", CLOSING_QUOTE.han), h("p", "tip", "휴대폰으로 찍어 가세요 · 얼굴 사진은 저장되지 않아요"),
     button("again", attract, "처음으로"));
   keys = (k) => { if (k === " " || k === "Enter") attract(); };
   master.pose("cheer");
